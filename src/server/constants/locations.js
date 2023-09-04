@@ -9,7 +9,12 @@ const locations = [
   'Northern',
   'Southern',
   'Eastern',
-  'Western'
+  'Western',
+  'Northeastern',
+  'Northwestern',
+  'Southeastern',
+  'Southwestern',
+  'Mountain',
 ]
 
 module.exports = locations
