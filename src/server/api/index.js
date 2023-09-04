@@ -18,8 +18,9 @@ const birdCall = async (url, options) => {
     })
     .catch(error => console.log('error', error));
 
-  // TODO: randomize position in result based on response.length
-  return response[0].comName
+  console.log('this is the response.length', response.length)
+  const random = Math.floor(Math.random() * response.length)
+  return response[random].comName
 }
 
 router.get('/', async (req, res) => {
