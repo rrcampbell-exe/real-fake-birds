@@ -13,7 +13,17 @@ const birdTypes = [
   'Peafowl',
   'Nighthawk',
   'Parrot',
-  'Toucan'
+  'Toucan',
+  'Gull',
+  'Heron',
+  'Chickadee',
+  'Hen',
+  'Rooster',
+  'Pigeon',
+  'Cardinal',
+  'Loon',
+  'Jay',
+  'Mockingbird'
 ]
 
 module.exports = birdTypes
