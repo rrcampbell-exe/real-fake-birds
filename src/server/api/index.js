@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const dotenv = require('dotenv')
 const API_KEY = dotenv.config().parsed.REACT_APP_API_KEY
+const nameGenerator = require ('../utils/name-generator')
 
 const url = "https://api.ebird.org/v2/data/obs/US/recent"
 const options = {
@@ -15,7 +16,8 @@ const birdCall = async (url, options) => {
   const fakeBird = (Math.floor(Math.random() * 2) === 0)
   if (fakeBird) {
     // TODO: update below with algorithm that generates fake bird names
-    return 'A Fake Bird'
+    console.log('it is a fake name')
+    return nameGenerator()
   }
   const response = await fetch(url, options)
     .then(response => {
