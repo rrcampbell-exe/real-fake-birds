@@ -12,14 +12,18 @@ const options = {
 };
 
 const birdCall = async (url, options) => {
+  const fakeBird = (Math.floor(Math.random() * 2) === 0)
+  if (fakeBird) {
+    // TODO: update below with algorithm that generates fake bird names
+    return 'A Fake Bird'
+  }
   const response = await fetch(url, options)
     .then(response => {
       return response.json()
     })
     .catch(error => console.log('error', error));
-
-  // TODO: randomize position in result based on response.length
-  return response[0].comName
+  const random = Math.floor(Math.random() * response.length)
+  return response[random].comName
 }
 
 router.get('/', async (req, res) => {
