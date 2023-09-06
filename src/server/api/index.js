@@ -15,8 +15,6 @@ const options = {
 const birdCall = async (url, options) => {
   const fakeBird = (Math.floor(Math.random() * 2) === 0)
   if (fakeBird) {
-    // TODO: update below with algorithm that generates fake bird names
-    console.log('it is a fake name')
     return nameGenerator()
   }
   const response = await fetch(url, options)
@@ -25,7 +23,7 @@ const birdCall = async (url, options) => {
     })
     .catch(error => console.log('error', error));
   const random = Math.floor(Math.random() * response.length)
-  return response[random].comName
+  return { birdName: response[random].comName, isReal: true }
 }
 
 router.get('/', async (req, res) => {
