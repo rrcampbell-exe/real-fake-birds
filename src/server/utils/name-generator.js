@@ -5,7 +5,7 @@ const birdTypes = require ('../constants/bird-types')
 const colorSelect = require('../utils/color-select')
 const generalAdjectiveSelect = require('./general-adjective-select')
 const surnameSelect = require('../utils/surname-select')
-const percentOfTime = require('../utils/percent-of-time')
+const percentAssignment = require('../utils/percent-of-time')
 
 
 const nameGenerator = async () => {
