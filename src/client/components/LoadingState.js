@@ -8,21 +8,17 @@ const LoadingWrapper = styled.div`
   color: white;
 `
 
-const LoadingGif = styled.iframe`
-  width: 480px;
-  height: 398px;
-  border: 0;
-  height: 50%;
-  width: 50%;
+const LoadingGif = styled.img`
+  height: 200px;
+  width: 200px;
+  border-radius: 50%;
 `
-
-// TODO: simplify loading state
 
 const LoadingState = () => {
   return (
     <LoadingWrapper>
-      <LoadingGif src="https://giphy.com/embed/JIJP1LCAtxzuCvmvIa" allowFullScreen />
-      <p>bird watching . . .</p>
+      <LoadingGif src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExOTFpeTdzaDg3NTNpaHZsOW50MGczd29wZTR1a24xMDZ4ZGtjb3UzbiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/JIJP1LCAtxzuCvmvIa/giphy.gif" alt="Little Bird Illustration GIF by Unpopular Cartoonist" />
+      <p>bird watching. . .</p>
     </LoadingWrapper>
   )
 }
