@@ -3,6 +3,7 @@ import styled from 'styled-components'
 
 const Modal = styled.div`
   display: ${props => props.isOpen ? 'flex' : 'none'};
+  width: 50vw;
   flex-direction: column;
   align-items: center;
   position: fixed;
