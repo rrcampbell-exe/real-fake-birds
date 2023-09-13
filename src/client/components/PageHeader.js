@@ -16,7 +16,7 @@ const PageTitle = () => {
   return (
     <TitleContainer>
       <h1>Real Fake Birds</h1>
-      <h4>Some are real. Some are fake. Guess which are which.</h4>
+      <h4>Some are real. Some are fake. Tell them apart.</h4>
     </TitleContainer>
   )
 }

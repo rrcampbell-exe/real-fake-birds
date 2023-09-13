@@ -1,5 +1,5 @@
 import './App.css';
-import BirdName from './client/components/BirdName/BirdName.js'
+import BirdName from './client/components/BirdName.js'
 import PageTitle from './client/components/PageHeader';
 
 function App() {
