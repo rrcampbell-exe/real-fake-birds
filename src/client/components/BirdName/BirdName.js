@@ -1,6 +1,26 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import AnswerModal from '../Modal'
+import LoadingState from '../LoadingState'
+import styled from 'styled-components'
+
+const BirdNameContainer = styled.div`
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  bottom: auto;
+  right: auto;
+  margin-right: -50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  text-align: center;
+`
+
+const ButtonContainer = styled.div`
+  display: flex;
+  justify-content: space-around;
+`
+
 
 const BirdName = () => {
   const [birdData, setBirdData] = useState('')
@@ -12,10 +32,9 @@ const BirdName = () => {
   useEffect(() => {
     const fetchData = async () => {
       const response = await axios.get('http://localhost:3001/')
-      setBirdData(response.data.birdName)
       setIsReal(response.data.isReal)
-      console.log(response.data.isReal ? 'bird is real' : 'bird is fake')
-      setIsLoading(false)
+      setTimeout(() => setIsLoading(false), 2000)
+      setTimeout(() => setBirdData(response.data.birdName), 2000)
     }
     fetchData()
   }, [])
@@ -36,19 +55,23 @@ const BirdName = () => {
     setIsModalOpen(true)
   }
 
-  if (isLoading) return 'loading'
   return (
-  <>
+  <BirdNameContainer>
+    {isLoading && <LoadingState />}
     <h1>{birdData}</h1>
-    <button id='real' onClick={(e) => responseEval(e, isReal, e.target.id)}>Real Bird</button>
-    <button id='fake' onClick={(e) => responseEval(e, isReal, e.target.id)}>Fake Bird</button>
+    {!isLoading &&
+      <ButtonContainer>
+        <button id='real' onClick={(e) => responseEval(e, isReal, e.target.id)}>Real Bird</button>
+        <button id='fake' onClick={(e) => responseEval(e, isReal, e.target.id)}>Fake Bird</button>
+      </ButtonContainer>
+    }
     <AnswerModal
       isOpen={isModalOpen}
       birdData={birdData}
       isReal={isReal}
       isCorrect={isCorrect}
     />
-  </>
+  </BirdNameContainer>
   )
 }
 
