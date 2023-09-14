@@ -23,7 +23,15 @@ const birdTypes = [
   'Cardinal',
   'Loon',
   'Jay',
-  'Mockingbird'
+  'Mockingbird',
+  'Booby',
+  'Nuthatch',
+  'Catbird',
+  'Noddy',
+  'Ostrich',
+  'Hawk',
+  'Condor',
+  'Vulture'
 ]
 
 module.exports = birdTypes
