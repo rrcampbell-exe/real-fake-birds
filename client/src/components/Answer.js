@@ -5,6 +5,7 @@ const AnswerContainer = styled.div`
   display: flex;
   flex-direction: row;
   margin: 0 2rem;
+  justify-content: center;
 `
 
 const RealFakeText = styled.span`
