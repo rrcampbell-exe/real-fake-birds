@@ -37,9 +37,6 @@ const ScoreboardContainer = styled.div`
       margin-top: 1rem;
       margin-bottom: 0rem;
     }
-    a {
-      color: #5C1B1B;
-    }
   }
 `
 
