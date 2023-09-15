@@ -6,9 +6,11 @@ import styled from 'styled-components'
 import responseEval from '../utils/response-eval'
 
 const BirdNameContainer = styled.div`
-  margin-top: 5rem;
-  display: flex;
-  flex-direction: column;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  transform: translate(-50%, -50%);
   color: white;
   text-align: center;
 `
