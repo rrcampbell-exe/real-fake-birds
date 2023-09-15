@@ -26,6 +26,9 @@ const ScoreboardContainer = styled.div`
   }
 
   @media (min-width: 600px) {
+    position: fixed;
+    top: 0;
+    right: 0;
     display: flex;
     flex-direction: column;
     align-items: end;
