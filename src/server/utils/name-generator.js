@@ -9,32 +9,28 @@ const percentAssignment = require('../utils/percent-of-time')
 
 
 const nameGenerator = async () => {
-  const includesSurname = percentAssignment(2)
+  const includesSurname = percentAssignment(10)
+  const includesAdjective = percentAssignment(40)
+  const includesLocation = percentAssignment(35)
+  const includesColor = percentAssignment(80)
+  const includesBodyPart = percentAssignment(50)
 
-  if (includesSurname) {
-    const surname = await surnameSelect() 
-    const birdTypeVal = Math.floor(Math.random() * birdTypes.length)
-
-    const getsDescription = percentAssignment(33)
-
-    if (getsDescription) {
-      const color = await colorSelect() // TODO: set this to only display some percentage of the time
-      const bodyPartVal = Math.floor(Math.random() * bodyParts.length) // TODO: set this to display only if color is being displayed, and sometimes, not display even then
-      return { birdName: `${surname}'s ${color}${bodyParts[bodyPartVal]} ${birdTypes[birdTypeVal]}`, isReal: false }
-    }
-
-    return { birdName: `${surname}'s ${birdTypes[birdTypeVal]}`, isReal: false }
-  }
-
-
-  const surname = await surnameSelect()
-  const adjective = await generalAdjectiveSelect() // TODO: set this to only display some percentage of the time
-  const locationVal = (Math.floor(Math.random() * locations.length)) // TODO: set this to only display some percentage of the time
-  const color = await colorSelect() // TODO: set this to only display some percentage of the time
-  const bodyPartVal = Math.floor(Math.random() * bodyParts.length) // TODO: set this to display only if color is being displayed, and sometimes, not display even then
+  const surname = includesSurname ? await surnameSelect() : ''
+  const adjective = includesAdjective ? await generalAdjectiveSelect() : ''
+  const locationVal = (Math.floor(Math.random() * locations.length))
+  const location = includesLocation ? locations[locationVal] : ''
+  const color = includesColor ? await colorSelect() : ''
+  const bodyPartVal = Math.floor(Math.random() * bodyParts.length)
+  const bodyPart = (includesColor && includesBodyPart) ? bodyParts[bodyPartVal] : ''
   const birdTypeVal = Math.floor(Math.random() * birdTypes.length)
 
-  return { birdName: `${surname}'s ${adjective} ${locations[locationVal]} ${color}${bodyParts[bodyPartVal]} ${birdTypes[birdTypeVal]}`, isReal: false }
+  // ensures bird values like "Robin" never display on their own as false negatives
+  if (!includesSurname && !includesAdjective && !includesLocation && !includesColor) {
+    const color = await colorSelect()
+    return { birdName: `${color} ${ birdTypes[birdTypeVal]}`, isReal: false }
+  }
+
+  return { birdName: `${includesSurname ? surname + "'s " : ''}${includesAdjective ? adjective + ' ' : ''}${includesLocation ? location + ' ' : ''} ${includesColor ? color : ''}${includesBodyPart ? bodyPart : ''} ${ birdTypes[birdTypeVal]}`, isReal: false }
 }
 
 module.exports = nameGenerator
