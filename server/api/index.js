@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const dotenv = require('dotenv')
-const API_KEY = process.env.NODE_ENV === 'development' ? dotenv.config().parsed.REACT_APP_API_KEY : dotenv.REACT_APP_API_KEY
+const API_KEY = dotenv.config().parsed.REACT_APP_API_KEY
 const nameGenerator = require ('../utils/name-generator')
 
 const url = "https://api.ebird.org/v2/data/obs/US/recent"
