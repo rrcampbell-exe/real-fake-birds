@@ -19,6 +19,7 @@ const TitleContainer = styled.div`
 
 const HeaderContainer = styled.div`
   @media (min-width: 600px) {
+    position: fixed;
     display: flex;
     justify-content: space-between;
   }
