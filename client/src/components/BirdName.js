@@ -26,7 +26,8 @@ const BirdName = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const response = await axios.get('http://localhost:3001/')
+      const url = process.env.NODE_ENV === 'development' ? 'http://localhost:3001/' : 'https://real-fake-birds-server.vercel.app/'
+      const response = await axios.get(url) 
       setIsReal(response.data.isReal)
       setTimeout(() => setIsLoading(false), 1000)
       setTimeout(() => setBirdData(response.data.birdName), 1000)
