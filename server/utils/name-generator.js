@@ -9,11 +9,11 @@ const percentAssignment = require('../utils/percent-of-time')
 
 
 const nameGenerator = async () => {
-  const includesSurname = percentAssignment(10)
-  const includesAdjective = percentAssignment(40)
+  const includesSurname = percentAssignment(5)
+  const includesAdjective = percentAssignment(20)
   const includesLocation = percentAssignment(35)
   const includesColor = percentAssignment(80)
-  const includesBodyPart = percentAssignment(50)
+  const includesBodyPart = percentAssignment(30)
 
   const surname = includesSurname ? await surnameSelect() : ''
   const adjective = includesAdjective ? await generalAdjectiveSelect() : ''
@@ -30,7 +30,7 @@ const nameGenerator = async () => {
     return { birdName: `${color} ${ birdTypes[birdTypeVal]}`, isReal: false }
   }
 
-  return { birdName: `${includesSurname ? surname + "'s " : ''}${includesAdjective ? adjective + ' ' : ''}${includesLocation ? location + ' ' : ''} ${includesColor ? color : ''}${includesBodyPart ? bodyPart : ''} ${ birdTypes[birdTypeVal]}`, isReal: false }
+  return { birdName: `${includesSurname ? surname + "'s " : ''}${includesAdjective ? adjective + ' ' : ''}${includesLocation ? location + ' ' : ''}${includesColor ? color : ''}${includesBodyPart ? bodyPart : ''} ${ birdTypes[birdTypeVal]}`, isReal: false }
 }
 
 module.exports = nameGenerator

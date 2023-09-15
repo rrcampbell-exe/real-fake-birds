@@ -17,8 +17,6 @@ const birdTypes = [
   'Gull',
   'Heron',
   'Chickadee',
-  'Hen',
-  'Rooster',
   'Pigeon',
   'Cardinal',
   'Loon',
@@ -32,7 +30,12 @@ const birdTypes = [
   'Hawk',
   'Condor',
   'Vulture',
-  'Warbler'
+  'Warbler',
+  'Thrush',
+  'Junco',
+  'Meadowlark',
+  'Lark',
+  'Bunting'
 ]
 
 module.exports = birdTypes

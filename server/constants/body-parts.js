@@ -6,7 +6,10 @@ const bodyParts = [
   '-beaked',
   '-horned',
   '-winged',
-  '-vented'
+  '-vented',
+  '-fronted',
+  '-footed',
+  '-crowned'
 ]
 
 module.exports = bodyParts
