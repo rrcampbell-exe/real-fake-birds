@@ -19,11 +19,11 @@ const nameGenerator = async () => {
 
   const adjective = includesAdjective ? await generalAdjectiveSelect() : ''
 
-  const robustLocationVal = (Math.floor(Math.random() * locations.length))
-  const { demonym, name, subregion } = locations[robustLocationVal]
+  const locationVal = (Math.floor(Math.random() * locations.length))
+  const { demonym, name, subregion } = locations[locationVal]
   const locationsArr = [demonym, name, subregion]
-  const robustLocationArrVal = (Math.floor(Math.random() * locationsArr.length))
-  const location = includesLocation ? locationsArr[robustLocationArrVal] : ''
+  const locationArrVal = (Math.floor(Math.random() * locationsArr.length))
+  const location = includesLocation ? locationsArr[locationArrVal] : ''
 
   const color = includesColor ? await colorSelect() : ''
   
