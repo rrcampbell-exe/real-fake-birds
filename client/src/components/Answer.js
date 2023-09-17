@@ -9,7 +9,7 @@ const AnswerContainer = styled.div`
 `
 
 const RealFakeText = styled.span`
-  color: #5C1B1B;
+  color: #3f1212;
 `
 
 const Answer = ({ birdData, isReal }) => {

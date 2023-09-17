@@ -43,13 +43,24 @@ const ScoreboardContainer = styled.div`
   }
 `
 
+const ResetButton = styled.button`
+  background-color: transparent;
+  padding: 0;
+  margin: 12px 0 0 0;
+  width: fit-content;
+  font-size: 0.75rem;
+  :hover {
+    cursor: button;
+  }
+`
+
 const Scoreboard = () => {
   const birdScore = JSON.parse(localStorage.getItem('birdScore'))
   const { birdsSeen, birdsIdentified } = birdScore
   return (
     <ScoreboardContainer>
       <h4>Correct Answers: {birdsIdentified}/{birdsSeen} ({ Math.floor((birdsIdentified/birdsSeen) * 100)}%)</h4>
-      <a onClick={() => { localStorage.clear(); window.location.reload() }}>Reset Score</a>
+      <ResetButton onClick={() => { localStorage.clear(); window.location.reload() }}>Reset Score</ResetButton>
     </ScoreboardContainer>
   )
 }
