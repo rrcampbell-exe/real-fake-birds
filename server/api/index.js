@@ -2,6 +2,7 @@ const router = require('express').Router();
 const API_KEY = process.env.REACT_APP_API_KEY
 const nameGenerator = require('../utils/name-generator')
 const locations = require('../constants/locations')
+const percentOfTime = require('../utils/percent-of-time')
 
 const selectLocation = () => {
   const locationVal = (Math.floor(Math.random() * locations.length))
@@ -18,7 +19,7 @@ const options = {
 };
 
 const birdCall = async (url, options) => {
-  const fakeBird = (Math.floor(Math.random() * 2) === 0)
+  const fakeBird = percentOfTime(47)
   if (fakeBird) {
     return nameGenerator()
   }
