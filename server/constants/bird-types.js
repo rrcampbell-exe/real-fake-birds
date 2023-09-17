@@ -46,7 +46,8 @@ const birdTypes = [
   'Egret',
   'Parakeet',
   'Macaw',
-  'Cockatoo'
+  'Cockatoo',
+  'Kingbird'
 ]
 
 module.exports = birdTypes
