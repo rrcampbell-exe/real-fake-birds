@@ -1,10 +1,13 @@
+require('dotenv').config();
 const express = require('express')
 const cors = require('cors')
-require('dotenv').config();
+const getBranchName = require('./utils/get-branch-name')
 
 const routes = require('./router')
 const app = express();
 const port = process.env.PORT || 3001
+
+process.env.BRANCH = getBranchName()
 
 app.use(cors())
 
