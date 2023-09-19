@@ -9,21 +9,24 @@ const responseEval = (e, isReal, chosenResponse) => {
   if (!hasLocalStorage) {
     const birdScore = {
       birdsSeen: 0,
-      birdsIdentified: 0
+      birdsIdentified: 0,
+      currentStreak: 0
     }
     localStorage.setItem('birdScore', JSON.stringify(birdScore))
   }
 
   if (isCorrect) {
     const birdScore = JSON.parse(localStorage.getItem('birdScore'))
-    let { birdsSeen, birdsIdentified } = birdScore
+    let { birdsSeen, birdsIdentified, currentStreak } = birdScore
 
     birdsSeen = birdsSeen + 1
     birdsIdentified = birdsIdentified + 1
+    currentStreak = currentStreak + 1
     
     const updatedBirdScore = {
       birdsSeen,
-      birdsIdentified
+      birdsIdentified,
+      currentStreak
     }
 
     localStorage.setItem('birdScore', JSON.stringify(updatedBirdScore))
@@ -31,13 +34,15 @@ const responseEval = (e, isReal, chosenResponse) => {
   }
 
   const birdScore = JSON.parse(localStorage.getItem('birdScore'))
-  let { birdsSeen, birdsIdentified } = birdScore
+  let { birdsSeen, birdsIdentified, currentStreak } = birdScore
 
   birdsSeen = birdsSeen + 1
+  currentStreak = 0
   
   const updatedBirdScore = {
     birdsSeen,
-    birdsIdentified
+    birdsIdentified,
+    currentStreak
   }
 
   localStorage.setItem('birdScore', JSON.stringify(updatedBirdScore))
