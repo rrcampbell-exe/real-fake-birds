@@ -36,7 +36,7 @@ const birdCall = async (url, options) => {
 }
 
 router.get('/', async (req, res) => {
-  const birdData = await birdCall(`https://api.ebird.org/v2/data/obs/${selectLocation()}/recent`, options)
+  const birdData = await birdCall(`https://api.ebird.org/v2/data/obs/${selectLocation()}/recent?back=30`, options)
   res.send(birdData)
 })
 
