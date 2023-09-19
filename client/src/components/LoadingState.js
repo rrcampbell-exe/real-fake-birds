@@ -9,9 +9,13 @@ const LoadingWrapper = styled.div`
 `
 
 const LoadingGif = styled.img`
-  height: 200px;
-  width: 200px;
+  height: 150px;
+  width: 150px;
   border-radius: 50%;
+  @media (min-width: 600px) {
+    height: 200px;
+    width: 200px;
+  }
 `
 
 const LoadingState = () => {
