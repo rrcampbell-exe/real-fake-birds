@@ -19,19 +19,37 @@ const options = {
 };
 
 const birdCall = async (url, options) => {
+  // force a fakeBird 47% of the time
+  // this number is 47%, as ~3% of the time, response.length (below) will be false
   const fakeBird = percentOfTime(47)
+
+  // instantiate timeout for failures of or delays caused by ebirds api
+  const { timeout = 8000 } = options
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeout)
+
   if (fakeBird) {
     return nameGenerator()
   }
-  const response = await fetch(url, options)
+
+  const response = await fetch(url, { ...options, signal: controller.signal })
     .then(response => {
+      clearTimeout(id) // if it takes more than timeout milliseconds to receive a response, abort call
       return response.json()
     })
     .catch(error => console.log('error', error));
-  if (response.length) {
+
+  // send error to client if timeout occurs
+  if (!response) {
+    return { error: 'birdCall timed out' }
+  }
+
+  // if a response is received and that response has bird data, assign real bird name
+  if (response && response.length) {
     const random = Math.floor(Math.random() * response.length)
     return { birdName: response[random].comName, isReal: true, url }
   }
+
   return nameGenerator()
 }
 
