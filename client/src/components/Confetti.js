@@ -8,6 +8,6 @@ const ConfettiCanvas = styled.canvas`
   left: 0;
 `
 
-const Confetti = () => <ConfettiCanvas id='my-canvas' />
+const Confetti = () => <ConfettiCanvas id='confetti-canvas' />
 
 export default Confetti
