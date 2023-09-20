@@ -25,6 +25,7 @@ const BirdName = () => {
   const [isReal, setIsReal] = useState(false)
   const [isAnswerVisible, setIsAnswerVisible] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isCorrect, setIsCorrect] = useState(false)
 
   useEffect(() => {
     fetchData(setIsReal, setIsLoading, setBirdData)
@@ -38,14 +39,15 @@ const BirdName = () => {
         <Answer
           birdData={birdData}
           isReal={isReal}
+          isCorrect={isCorrect}
         />
       }
       {!isLoading &&
         <ButtonContainer>
           {!isAnswerVisible &&
             <>
-              <button id='real' onClick={(e) => { responseEval(e, isReal, e.target.id); setIsAnswerVisible(true) }}>Real Bird</button>
-              <button id='fake' onClick={(e) => { responseEval(e, isReal, e.target.id); setIsAnswerVisible(true) }}>Fake Bird</button>
+              <button id='real' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect); setIsAnswerVisible(true) }}>Real Bird</button>
+              <button id='fake' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect); setIsAnswerVisible(true) }}>Fake Bird</button>
             </>
           }
           {isAnswerVisible && <button onClick={() => window.location.reload(true)}>Try Again</button>}

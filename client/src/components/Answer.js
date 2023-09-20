@@ -13,15 +13,15 @@ const RealFakeText = styled.span`
   color: #3f1212;
 `
 
-const Answer = ({ birdData, isReal }) => {
+const Answer = ({ birdData, isReal, isCorrect }) => {
   // TODO: use bird icons in confetti
   useEffect(() => {
     const confettiSettings = { target: 'my-canvas' };
     const confetti = new ConfettiGenerator(confettiSettings);
-    confetti.render();
+    isCorrect && confetti.render();
     
     return () => confetti.clear();
-  }, [])
+  }, [isCorrect])
   return (
     <AnswerContainer>
       <h1>The {birdData} is a <RealFakeText>{isReal ? 'real' : 'fake'}</RealFakeText> bird.</h1>

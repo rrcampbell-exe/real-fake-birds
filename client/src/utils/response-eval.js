@@ -1,10 +1,11 @@
 import localStorageCheck from './local-storage-check'
 
-const responseEval = (e, isReal, chosenResponse) => {
+const responseEval = (e, isReal, chosenResponse, setIsCorrect) => {
   e.preventDefault()
 
   const hasLocalStorage = localStorageCheck()
   const isCorrect = (isReal && chosenResponse === 'real') || (!isReal && chosenResponse === 'fake')
+  if (isCorrect) setIsCorrect(true)
 
   if (!hasLocalStorage) {
     const birdScore = {
