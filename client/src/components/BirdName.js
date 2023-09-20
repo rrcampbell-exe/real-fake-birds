@@ -30,33 +30,26 @@ const BirdName = () => {
     fetchData(setIsReal, setIsLoading, setBirdData, setIsError)
   }, [])
 
+  const displayBirdData = !isAnswerVisible && !isError && !isLoading
+
   return (
     <BirdNameContainer>
       {isError && <Error />}
       {isLoading && <LoadingState />}
-      {!isAnswerVisible && <h1>{birdData}</h1>}
+      {displayBirdData &&
+        <>
+          <h1>{birdData}</h1>
+          <button id='real' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect, setIsStreak); setIsAnswerVisible(true) }}>Real Bird</button>
+          <button id='fake' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect, setIsStreak); setIsAnswerVisible(true) }}>Fake Bird</button>
+        </>
+      }
       {isAnswerVisible &&
         <Answer
           birdData={birdData}
           isReal={isReal}
           isStreak={isStreak}
+          isCorrect={isCorrect}
         />
-      }
-      {!isLoading &&
-        <div>
-          {(!isAnswerVisible && !isError) &&
-            <>
-              <button id='real' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect, setIsStreak); setIsAnswerVisible(true) }}>Real Bird</button>
-              <button id='fake' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect, setIsStreak); setIsAnswerVisible(true) }}>Fake Bird</button>
-            </>
-          }
-          {(isAnswerVisible || isError) &&
-            <>
-              {!isError && <p>{correctnessText(isCorrect, isStreak)}</p>}
-              <button onClick={() => window.location.reload(true)}>{isError ? 'Look ' : 'Try '}Again</button>
-            </>
-          }
-        </div>
       }
     </BirdNameContainer>
   )
