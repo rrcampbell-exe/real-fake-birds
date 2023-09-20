@@ -5,6 +5,7 @@ import Error from'./Error'
 import styled from 'styled-components'
 import responseEval from '../utils/response-eval'
 import fetchData from '../utils/fetch-data'
+import correctnessText from '../utils/correctness-text'
 
 const BirdNameContainer = styled.div`
   position: fixed;
@@ -28,20 +29,6 @@ const BirdName = () => {
   useEffect(() => {
     fetchData(setIsReal, setIsLoading, setBirdData, setIsError)
   }, [])
-
-  const correctnessText = (isCorrect, isStreak) => {
-    const { currentStreak } = JSON.parse(localStorage.getItem('birdScore'))
-    if (isStreak && currentStreak !== 2) {
-      return `That's ${currentStreak} in a row! 🦅`
-    }
-    if (isStreak) {
-      return 'New streak! 🐣'
-    }
-    if (isCorrect) {
-      return 'Correct! 👏'
-    }
-    return 'Incorrect. 😬'
-  }
 
   return (
     <BirdNameContainer>
