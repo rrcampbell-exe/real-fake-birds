@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import styled from 'styled-components'
+import ConfettiGenerator from 'confetti-js'
 
 const AnswerContainer = styled.div`
   display: flex;
@@ -13,6 +14,14 @@ const RealFakeText = styled.span`
 `
 
 const Answer = ({ birdData, isReal }) => {
+  // TODO: use bird icons in confetti
+  useEffect(() => {
+    const confettiSettings = { target: 'my-canvas' };
+    const confetti = new ConfettiGenerator(confettiSettings);
+    confetti.render();
+    
+    return () => confetti.clear();
+  }, [])
   return (
     <AnswerContainer>
       <h1>The {birdData} is a <RealFakeText>{isReal ? 'real' : 'fake'}</RealFakeText> bird.</h1>
