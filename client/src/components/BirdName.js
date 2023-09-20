@@ -15,21 +15,31 @@ const BirdNameContainer = styled.div`
   text-align: center;
 `
 
-const ButtonContainer = styled.div`
-  display: flex;
-  justify-content: center;
-`
-
 const BirdName = () => {
   const [birdData, setBirdData] = useState('')
   const [isReal, setIsReal] = useState(false)
   const [isAnswerVisible, setIsAnswerVisible] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isCorrect, setIsCorrect] = useState(false)
+  const [isStreak, setIsStreak] = useState(false)
 
   useEffect(() => {
     fetchData(setIsReal, setIsLoading, setBirdData)
   }, [])
+
+  const correctnessText = (isCorrect, isStreak) => {
+    const { currentStreak } = JSON.parse(localStorage.getItem('birdScore'))
+    if (isStreak && currentStreak !== 1) {
+      return `That's ${currentStreak} in a row! 🦅`
+    }
+    if (isStreak) {
+      return 'New streak! 🐣'
+    }
+    if (isCorrect) {
+      return 'Correct! 👏'
+    }
+    return 'Incorrect. 😬'
+  }
 
   return (
     <BirdNameContainer>
@@ -39,19 +49,24 @@ const BirdName = () => {
         <Answer
           birdData={birdData}
           isReal={isReal}
-          isCorrect={isCorrect}
+          isStreak={isStreak}
         />
       }
       {!isLoading &&
-        <ButtonContainer>
+        <div>
           {!isAnswerVisible &&
             <>
-              <button id='real' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect); setIsAnswerVisible(true) }}>Real Bird</button>
-              <button id='fake' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect); setIsAnswerVisible(true) }}>Fake Bird</button>
+              <button id='real' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect, setIsStreak); setIsAnswerVisible(true) }}>Real Bird</button>
+              <button id='fake' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect, setIsStreak); setIsAnswerVisible(true) }}>Fake Bird</button>
             </>
           }
-          {isAnswerVisible && <button onClick={() => window.location.reload(true)}>Try Again</button>}
-        </ButtonContainer>
+          {isAnswerVisible &&
+            <>
+              <p>{correctnessText(isCorrect, isStreak)}</p>
+              <button onClick={() => window.location.reload(true)}>Try Again</button>
+            </>
+          }
+        </div>
       }
     </BirdNameContainer>
   )

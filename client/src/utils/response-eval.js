@@ -1,6 +1,25 @@
 import localStorageCheck from './local-storage-check'
 
-const responseEval = (e, isReal, chosenResponse, setIsCorrect) => {
+const streakEval = (currentStreak, setIsStreak) => {
+  switch (currentStreak) {
+    case 1:
+    case 5:
+    case 10:
+    case 25:
+    case 50:
+    case 100:
+    case 200:
+    case 300:
+    case 400:
+    case 500:
+      setIsStreak(true)
+      break;
+    default:
+      setIsStreak(false)
+  }
+}
+
+const responseEval = (e, isReal, chosenResponse, setIsCorrect, setIsStreak) => {
   e.preventDefault()
 
   const hasLocalStorage = localStorageCheck()
@@ -31,6 +50,9 @@ const responseEval = (e, isReal, chosenResponse, setIsCorrect) => {
     }
 
     localStorage.setItem('birdScore', JSON.stringify(updatedBirdScore))
+
+    streakEval(updatedBirdScore.currentStreak, setIsStreak)
+    
     return
   }
 
