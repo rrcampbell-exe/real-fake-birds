@@ -2,7 +2,7 @@ import localStorageCheck from './local-storage-check'
 
 const streakEval = (currentStreak, setIsStreak) => {
   switch (currentStreak) {
-    case 1:
+    case 2:
     case 5:
     case 10:
     case 25:

@@ -1,19 +1,13 @@
 import React, { useEffect } from 'react'
 import styled from 'styled-components'
 import ConfettiGenerator from 'confetti-js'
-
-const AnswerContainer = styled.div`
-  display: flex;
-  flex-direction: row;
-  margin: 0 2rem;
-  justify-content: center;
-`
+import correctnessText from '../utils/correctness-text'
 
 const RealFakeText = styled.span`
   color: #3f1212;
 `
 
-const Answer = ({ birdData, isReal, isStreak }) => {
+const Answer = ({ birdData, isReal, isStreak, isCorrect }) => {
   useEffect(() => {
     const confettiSettings = { target: 'confetti-canvas' };
     const confetti = new ConfettiGenerator(confettiSettings);
@@ -22,9 +16,11 @@ const Answer = ({ birdData, isReal, isStreak }) => {
     return () => confetti.clear();
   }, [isStreak])
   return (
-    <AnswerContainer>
+    <div>
       <h1>The {birdData} is a <RealFakeText>{isReal ? 'real' : 'fake'}</RealFakeText> bird.</h1>
-    </AnswerContainer>
+      <p>{correctnessText(isCorrect, isStreak)}</p>
+      <button onClick={() => window.location.reload(true)}>Try Again</button>
+    </div>
   )
 }
 

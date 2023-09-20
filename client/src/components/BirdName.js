@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import LoadingState from './LoadingState'
 import Answer from './Answer'
+import Error from'./Error'
 import styled from 'styled-components'
 import responseEval from '../utils/response-eval'
 import fetchData from '../utils/fetch-data'
+import correctnessText from '../utils/correctness-text'
 
 const BirdNameContainer = styled.div`
   position: fixed;
@@ -20,53 +22,34 @@ const BirdName = () => {
   const [isReal, setIsReal] = useState(false)
   const [isAnswerVisible, setIsAnswerVisible] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isError, setIsError] = useState(false)
   const [isCorrect, setIsCorrect] = useState(false)
   const [isStreak, setIsStreak] = useState(false)
 
   useEffect(() => {
-    fetchData(setIsReal, setIsLoading, setBirdData)
+    fetchData(setIsReal, setIsLoading, setBirdData, setIsError)
   }, [])
 
-  const correctnessText = (isCorrect, isStreak) => {
-    const { currentStreak } = JSON.parse(localStorage.getItem('birdScore'))
-    if (isStreak && currentStreak !== 1) {
-      return `That's ${currentStreak} in a row! 🦅`
-    }
-    if (isStreak) {
-      return 'New streak! 🐣'
-    }
-    if (isCorrect) {
-      return 'Correct! 👏'
-    }
-    return 'Incorrect. 😬'
-  }
+  const displayBirdData = !isAnswerVisible && !isError && !isLoading
 
   return (
     <BirdNameContainer>
+      {isError && <Error />}
       {isLoading && <LoadingState />}
-      {!isAnswerVisible && <h1>{birdData}</h1>}
+      {displayBirdData &&
+        <>
+          <h1>{birdData}</h1>
+          <button id='real' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect, setIsStreak); setIsAnswerVisible(true) }}>Real Bird</button>
+          <button id='fake' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect, setIsStreak); setIsAnswerVisible(true) }}>Fake Bird</button>
+        </>
+      }
       {isAnswerVisible &&
         <Answer
           birdData={birdData}
           isReal={isReal}
           isStreak={isStreak}
+          isCorrect={isCorrect}
         />
-      }
-      {!isLoading &&
-        <div>
-          {!isAnswerVisible &&
-            <>
-              <button id='real' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect, setIsStreak); setIsAnswerVisible(true) }}>Real Bird</button>
-              <button id='fake' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect, setIsStreak); setIsAnswerVisible(true) }}>Fake Bird</button>
-            </>
-          }
-          {isAnswerVisible &&
-            <>
-              <p>{correctnessText(isCorrect, isStreak)}</p>
-              <button onClick={() => window.location.reload(true)}>Try Again</button>
-            </>
-          }
-        </div>
       }
     </BirdNameContainer>
   )
