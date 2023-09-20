@@ -14,9 +14,8 @@ const RealFakeText = styled.span`
 `
 
 const Answer = ({ birdData, isReal, isCorrect }) => {
-  // TODO: use bird icons in confetti
   useEffect(() => {
-    const confettiSettings = { target: 'my-canvas' };
+    const confettiSettings = { target: 'confetti-canvas' };
     const confetti = new ConfettiGenerator(confettiSettings);
     isCorrect && confetti.render();
     
