@@ -31,7 +31,7 @@ const BirdName = () => {
 
   const correctnessText = (isCorrect, isStreak) => {
     const { currentStreak } = JSON.parse(localStorage.getItem('birdScore'))
-    if (isStreak && currentStreak !== 1) {
+    if (isStreak && currentStreak !== 2) {
       return `That's ${currentStreak} in a row! 🦅`
     }
     if (isStreak) {
