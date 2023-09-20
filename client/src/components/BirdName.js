@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import LoadingState from './LoadingState'
 import Answer from './Answer'
+import Error from'./Error'
 import styled from 'styled-components'
 import responseEval from '../utils/response-eval'
 import fetchData from '../utils/fetch-data'
@@ -20,11 +21,12 @@ const BirdName = () => {
   const [isReal, setIsReal] = useState(false)
   const [isAnswerVisible, setIsAnswerVisible] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isError, setIsError] = useState(false)
   const [isCorrect, setIsCorrect] = useState(false)
   const [isStreak, setIsStreak] = useState(false)
 
   useEffect(() => {
-    fetchData(setIsReal, setIsLoading, setBirdData)
+    fetchData(setIsReal, setIsLoading, setBirdData, setIsError)
   }, [])
 
   const correctnessText = (isCorrect, isStreak) => {
@@ -43,6 +45,7 @@ const BirdName = () => {
 
   return (
     <BirdNameContainer>
+      {isError && <Error />}
       {isLoading && <LoadingState />}
       {!isAnswerVisible && <h1>{birdData}</h1>}
       {isAnswerVisible &&
@@ -54,16 +57,16 @@ const BirdName = () => {
       }
       {!isLoading &&
         <div>
-          {!isAnswerVisible &&
+          {(!isAnswerVisible && !isError) &&
             <>
               <button id='real' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect, setIsStreak); setIsAnswerVisible(true) }}>Real Bird</button>
               <button id='fake' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect, setIsStreak); setIsAnswerVisible(true) }}>Fake Bird</button>
             </>
           }
-          {isAnswerVisible &&
+          {(isAnswerVisible || isError) &&
             <>
-              <p>{correctnessText(isCorrect, isStreak)}</p>
-              <button onClick={() => window.location.reload(true)}>Try Again</button>
+              {!isError && <p>{correctnessText(isCorrect, isStreak)}</p>}
+              <button onClick={() => window.location.reload(true)}>{isError ? 'Look ' : 'Try '}Again</button>
             </>
           }
         </div>
