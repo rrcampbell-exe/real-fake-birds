@@ -1,5 +1,7 @@
 import React from 'react'
 import styled from 'styled-components'
+import ProgressBar from './ProgressBar'
+import streakValues from '../constants/streak-values'
 
 const ScoreboardContainer = styled.div`
   display: flex;
@@ -50,7 +52,7 @@ const ScoreboardContainer = styled.div`
 const ResetButton = styled.button`
   background-color: transparent;
   padding: 0;
-  margin: 12px 0 0 0;
+  margin: 0;
   width: fit-content;
   font-size: 0.75rem;
   :hover {
@@ -61,10 +63,27 @@ const ResetButton = styled.button`
 const Scoreboard = () => {
   const birdScore = JSON.parse(localStorage.getItem('birdScore'))
   const { birdsSeen, birdsIdentified, currentStreak } = birdScore
+
+  const areAvailableStreaks = (streakValues) => streakValues > currentStreak
+  const isNextStreak = streakValues.filter(areAvailableStreaks)[0]
+
+  const currentStreakGoalEval = (streakValues) => streakValues === currentStreak
+  const isCurrentStreakGoal = streakValues.filter(currentStreakGoalEval)[0]
+      
+  const justAchievedStreak = localStorage.getItem('birdStreakAchieved') === 'true' ? true : false
+
+  const maxValue = (currentStreak, isNextStreak, isCurrentStreakGoal, justAchievedStreak) => {
+    if ((currentStreak === isCurrentStreakGoal) && justAchievedStreak) {
+      return isCurrentStreakGoal
+    }
+    return isNextStreak
+  }
+
   return (
     <ScoreboardContainer>
       <h4>Correct Answers: {birdsIdentified}/{birdsSeen} ({ Math.floor((birdsIdentified/birdsSeen) * 100)}%)</h4>
       <h4>Current Streak: {currentStreak}</h4>
+      <ProgressBar currentValue={currentStreak} maxValue={maxValue(currentStreak, isNextStreak, isCurrentStreakGoal, justAchievedStreak)}/>
       <ResetButton onClick={() => { localStorage.clear(); window.location.reload() }}>Reset Score</ResetButton>
     </ScoreboardContainer>
   )

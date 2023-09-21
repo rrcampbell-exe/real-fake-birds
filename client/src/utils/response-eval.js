@@ -1,21 +1,14 @@
 import localStorageCheck from './local-storage-check'
+import streakValues from '../constants/streak-values';
 
 const streakEval = (currentStreak, setIsStreak) => {
-  switch (currentStreak) {
-    case 2:
-    case 5:
-    case 10:
-    case 25:
-    case 50:
-    case 100:
-    case 200:
-    case 300:
-    case 400:
-    case 500:
+  for (const value of streakValues) {
+    if (currentStreak === value) {
       setIsStreak(true)
-      break;
-    default:
-      setIsStreak(false)
+      localStorage.setItem('birdStreakAchieved', true)
+      return
+    }
+    setIsStreak(false)
   }
 }
 
@@ -30,14 +23,15 @@ const responseEval = (e, isReal, chosenResponse, setIsCorrect, setIsStreak) => {
     const birdScore = {
       birdsSeen: 0,
       birdsIdentified: 0,
-      currentStreak: 0
+      currentStreak: 0,
+      justAchievedStreak: false
     }
     localStorage.setItem('birdScore', JSON.stringify(birdScore))
   }
 
   if (isCorrect) {
     const birdScore = JSON.parse(localStorage.getItem('birdScore'))
-    let { birdsSeen, birdsIdentified, currentStreak } = birdScore
+    let { birdsSeen, birdsIdentified, currentStreak, justAchievedStreak } = birdScore
 
     birdsSeen = birdsSeen + 1
     birdsIdentified = birdsIdentified + 1
@@ -46,7 +40,8 @@ const responseEval = (e, isReal, chosenResponse, setIsCorrect, setIsStreak) => {
     const updatedBirdScore = {
       birdsSeen,
       birdsIdentified,
-      currentStreak
+      currentStreak,
+      justAchievedStreak
     }
 
     localStorage.setItem('birdScore', JSON.stringify(updatedBirdScore))
