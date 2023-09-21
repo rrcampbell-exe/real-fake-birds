@@ -15,10 +15,11 @@ const Answer = ({ birdData, isReal, isStreak, isCorrect }) => {
     
     return () => confetti.clear();
   }, [isStreak])
+  
   return (
     <div>
-      <h1>The {birdData} is a <RealFakeText>{isReal ? 'real' : 'fake'}</RealFakeText> bird.</h1>
       <p>{correctnessText(isCorrect, isStreak)}</p>
+      <h1>The {birdData} is a <RealFakeText>{isReal ? 'real' : 'fake'}</RealFakeText> bird.</h1>
       <button onClick={() => window.location.reload(true)}>Try Again</button>
     </div>
   )
