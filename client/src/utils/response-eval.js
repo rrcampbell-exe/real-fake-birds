@@ -1,21 +1,13 @@
 import localStorageCheck from './local-storage-check'
+import streakValues from '../constants/streak-values';
 
 const streakEval = (currentStreak, setIsStreak) => {
-  switch (currentStreak) {
-    case 2:
-    case 5:
-    case 10:
-    case 25:
-    case 50:
-    case 100:
-    case 200:
-    case 300:
-    case 400:
-    case 500:
+  for (const value of streakValues) {
+    if (currentStreak === value) {
       setIsStreak(true)
-      break;
-    default:
-      setIsStreak(false)
+      return
+    }
+    setIsStreak(false)
   }
 }
 
