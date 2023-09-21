@@ -5,7 +5,7 @@ import Error from'./Error'
 import styled from 'styled-components'
 import responseEval from '../utils/response-eval'
 import fetchData from '../utils/fetch-data'
-import correctnessText from '../utils/correctness-text'
+import Scoreboard from './Scoreboard'
 
 const BirdNameContainer = styled.div`
   position: fixed;
@@ -33,25 +33,28 @@ const BirdName = () => {
   const displayBirdData = !isAnswerVisible && !isError && !isLoading
 
   return (
-    <BirdNameContainer>
-      {isError && <Error />}
-      {isLoading && <LoadingState />}
-      {displayBirdData &&
-        <>
-          <h1>{birdData}</h1>
-          <button id='real' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect, setIsStreak); setIsAnswerVisible(true) }}>Real Bird</button>
-          <button id='fake' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect, setIsStreak); setIsAnswerVisible(true) }}>Fake Bird</button>
-        </>
-      }
-      {isAnswerVisible &&
-        <Answer
-          birdData={birdData}
-          isReal={isReal}
-          isStreak={isStreak}
-          isCorrect={isCorrect}
-        />
-      }
-    </BirdNameContainer>
+    <>
+      <BirdNameContainer>
+        {isError && <Error />}
+        {isLoading && <LoadingState />}
+        {displayBirdData &&
+          <>
+            <h1>{birdData}</h1>
+            <button id='real' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect, setIsStreak); setIsAnswerVisible(true) }}>Real Bird</button>
+            <button id='fake' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect, setIsStreak); setIsAnswerVisible(true) }}>Fake Bird</button>
+          </>
+        }
+        {isAnswerVisible &&
+          <Answer
+            birdData={birdData}
+            isReal={isReal}
+            isStreak={isStreak}
+            isCorrect={isCorrect}
+          />
+        }
+      </BirdNameContainer>
+      {localStorage.getItem('birdScore') && <Scoreboard />}
+    </>
   )
 }
 

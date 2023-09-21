@@ -1,6 +1,5 @@
 import React from 'react'
 import styled from 'styled-components'
-import Scoreboard from './Scoreboard'
 
 const TitleContainer = styled.div`
   text-align: left;
@@ -32,7 +31,6 @@ const PageTitle = () => {
         <h1>Real Fake Birds 🦉</h1>
         <h4>Some are real. Some are fake. Tell them apart.</h4>
       </TitleContainer>
-      {localStorage.getItem('birdScore') && <Scoreboard />}
     </HeaderContainer>
   )
 }
