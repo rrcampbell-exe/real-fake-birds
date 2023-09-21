@@ -52,7 +52,7 @@ const ScoreboardContainer = styled.div`
 const ResetButton = styled.button`
   background-color: transparent;
   padding: 0;
-  margin: 12px 0 0 0;
+  margin: 0;
   width: fit-content;
   font-size: 0.75rem;
   :hover {
@@ -69,21 +69,21 @@ const Scoreboard = () => {
 
   const currentStreakGoalEval = (streakValues) => streakValues === currentStreak
   const isCurrentStreakGoal = streakValues.filter(currentStreakGoalEval)[0]
+      
+  const justAchievedStreak = localStorage.getItem('birdStreakAchieved') === 'true' ? true : false
 
-  const maxValue = (currentStreak, isNextStreak, isCurrentStreakGoal) => {
-    if (currentStreak === isCurrentStreakGoal) {
+  const maxValue = (currentStreak, isNextStreak, isCurrentStreakGoal, justAchievedStreak) => {
+    if ((currentStreak === isCurrentStreakGoal) && justAchievedStreak) {
       return isCurrentStreakGoal
     }
     return isNextStreak
   }
 
-  // TODO: need progress bar to re-render and show new goal when "Try Again" is clicked in BirdName component
-
   return (
     <ScoreboardContainer>
       <h4>Correct Answers: {birdsIdentified}/{birdsSeen} ({ Math.floor((birdsIdentified/birdsSeen) * 100)}%)</h4>
       <h4>Current Streak: {currentStreak}</h4>
-      <ProgressBar currentValue={currentStreak} maxValue={maxValue(currentStreak, isNextStreak, isCurrentStreakGoal)}/>
+      <ProgressBar currentValue={currentStreak} maxValue={maxValue(currentStreak, isNextStreak, isCurrentStreakGoal, justAchievedStreak)}/>
       <ResetButton onClick={() => { localStorage.clear(); window.location.reload() }}>Reset Score</ResetButton>
     </ScoreboardContainer>
   )

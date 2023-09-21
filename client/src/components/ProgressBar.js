@@ -14,13 +14,15 @@ const Bar = styled.div`
   background-color: #3f1212;
   border-radius: 1rem;
   height: 0.5rem;
+  width: ${props => props.percent};
+  transition: width 0.5s ease-in-out;
 `
 
 const ProgressBar = ({ currentValue, maxValue }) => {
   const widthVal = (currentValue, maxValue) => ((currentValue / maxValue) * 100)
   return (
     <ProgressBarWrapper>
-      <Bar style={{width: widthVal(currentValue, maxValue) + '%'}} />
+      <Bar percent={widthVal(currentValue, maxValue) + '%'} />
     </ProgressBarWrapper>
   )
 }
