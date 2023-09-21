@@ -1,5 +1,7 @@
 import React from 'react'
 import styled from 'styled-components'
+import ProgressBar from './ProgressBar'
+import streakValues from '../constants/streak-values'
 
 const ScoreboardContainer = styled.div`
   display: flex;
@@ -61,10 +63,27 @@ const ResetButton = styled.button`
 const Scoreboard = () => {
   const birdScore = JSON.parse(localStorage.getItem('birdScore'))
   const { birdsSeen, birdsIdentified, currentStreak } = birdScore
+
+  const areAvailableStreaks = (streakValues) => streakValues > currentStreak
+  const isNextStreak = streakValues.filter(areAvailableStreaks)[0]
+
+  const currentStreakGoalEval = (streakValues) => streakValues === currentStreak
+  const isCurrentStreakGoal = streakValues.filter(currentStreakGoalEval)[0]
+
+  const maxValue = (currentStreak, isNextStreak, isCurrentStreakGoal) => {
+    if (currentStreak === isCurrentStreakGoal) {
+      return isCurrentStreakGoal
+    }
+    return isNextStreak
+  }
+
+  // TODO: need progress bar to re-render and show new goal when "Try Again" is clicked in BirdName component
+
   return (
     <ScoreboardContainer>
       <h4>Correct Answers: {birdsIdentified}/{birdsSeen} ({ Math.floor((birdsIdentified/birdsSeen) * 100)}%)</h4>
       <h4>Current Streak: {currentStreak}</h4>
+      <ProgressBar currentValue={currentStreak} maxValue={maxValue(currentStreak, isNextStreak, isCurrentStreakGoal)}/>
       <ResetButton onClick={() => { localStorage.clear(); window.location.reload() }}>Reset Score</ResetButton>
     </ScoreboardContainer>
   )
