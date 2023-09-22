@@ -5,7 +5,6 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #1B5C1B;
 }
 
 code {
@@ -16,7 +15,6 @@ code {
 button {
   border-radius: 30px;
   border: none;
-  background-color: #3f1212;
   padding: 0.75rem;
   margin: 0.75rem;
   color: white;
