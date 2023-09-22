@@ -4,10 +4,13 @@ import styled from 'styled-components'
 const ProgressBarWrapper = styled.div`
   background-color: #f1f1f1;
   border-radius: 1rem;
-  width: 100%;
+  width: 90%;
   height: 0.5rem;
-  margin: 0.5rem 0;
+  margin: 0.5rem 0 0.25rem 0;
   overflow: hidden;
+  @media (min-width: 600px) {
+    width: 100%;
+  }
 `
 
 const Bar = styled.div`
