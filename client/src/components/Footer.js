@@ -1,44 +1,45 @@
 import React from 'react'
 import styled from 'styled-components'
+import ResetScore from './ResetScore'
 
 const FooterContainer = styled.div`
   position: fixed;
   bottom: 0;
   left: 0;
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  background-color: rgb(0,0,0,.35);
-  padding: 1.5rem 0;
   text-align: center;
   color: white;
+  align-items: start;
 
   a {
     color: white;
     margin: 0 0.5rem;
   }
   p {
-    margin: 0 0.5rem 0.5rem 0;
-  }
-  span {
-    visibility: visible;
+    margin: 1rem 0.5rem;
   }
 
   @media (min-width: 600px) {
     display: flex;
-    align-items: center;
     justify-content: center;
-    p {
-      margin: 1rem 0.5rem;
-    }
-    span {
-      visibility: hidden;
-    }
   }
+`
+
+const FooterDetails = styled.div`
+  background-color: rgb(0,0,0,.35);
+  width: 100%;
+  padding-bottom: 1rem;
 `
 
 const Footer = () => {
   return (
     <FooterContainer>
-      <p>Developed by Ryan R. Campbell</p> 🦆 <a href='https://github.com/rrcampbell-exe/real-fake-birds' rel='noopener noreferrer' target='_blank '>GitHub</a> 🦜 <a href='https://www.linkedin.com/in/ryan-campbell-aa33169/' rel='noopener noreferrer' target='_blank '>LinkedIn</a> 🦢 <a href='mailto: campbell.ryan.r@gmail.com'>Contact</a> <span>🦤</span>
+      <ResetScore />
+      <FooterDetails>
+        <p>Developed by Ryan R. Campbell</p> 🦆 <a href='https://github.com/rrcampbell-exe/real-fake-birds' rel='noopener noreferrer' target='_blank '>GitHub</a> 🦜 <a href='https://www.linkedin.com/in/ryan-campbell-aa33169/' rel='noopener noreferrer' target='_blank '>LinkedIn</a> 🦢 <a href='mailto: campbell.ryan.r@gmail.com'>Contact</a> 🦤
+      </FooterDetails>
     </FooterContainer>
   )
 }
