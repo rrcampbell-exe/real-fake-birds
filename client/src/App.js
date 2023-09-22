@@ -1,5 +1,5 @@
 import './App.css';
-import BirdName from './components/BirdName'
+import BirdNameSection from './components/BirdNameSection'
 import PageTitle from './components/PageHeader';
 import Footer from './components/Footer';
 import Confetti from './components/Confetti';
@@ -9,7 +9,7 @@ function App() {
     <>
       <Confetti />
       <PageTitle />
-      <BirdName />
+      <BirdNameSection />
       <Footer />
     </>
   );
