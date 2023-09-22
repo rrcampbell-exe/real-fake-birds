@@ -7,6 +7,8 @@ const ResetButton = styled.button`
   padding: 0.5rem;
   font-size: 0.75rem;
   margin: 1rem;
+  z-index: 0;
+
   :hover {
     cursor: button;
   }
