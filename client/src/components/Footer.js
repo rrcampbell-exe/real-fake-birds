@@ -1,6 +1,7 @@
 import React from 'react'
 import styled from 'styled-components'
 import ResetScore from './ResetScore'
+import media from '../constants/media'
 
 const FooterContainer = styled.div`
   position: fixed;
@@ -12,16 +13,19 @@ const FooterContainer = styled.div`
   text-align: center;
   color: white;
   align-items: start;
+  z-index: -1;
+  font-size: 0.875rem;
 
   a {
     color: white;
     margin: 0 0.5rem;
   }
+
   p {
-    margin: 1rem 0.5rem;
+    margin: 1rem 0.5rem 0.5rem 0.5rem;
   }
 
-  @media (min-width: 600px) {
+  @media (min-width: ${media.tabletPlus}) {
     display: flex;
     justify-content: center;
   }

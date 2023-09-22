@@ -1,5 +1,6 @@
 import React from 'react'
 import styled from 'styled-components'
+import media from '../constants/media'
 
 const LoadingWrapper = styled.div`
   display: flex;
@@ -12,7 +13,7 @@ const LoadingGif = styled.img`
   height: 150px;
   width: 150px;
   border-radius: 50%;
-  @media (min-width: 600px) {
+  @media (min-width: ${media.tabletPlus}) {
     height: 200px;
     width: 200px;
   }

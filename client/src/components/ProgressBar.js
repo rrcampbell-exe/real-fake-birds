@@ -1,5 +1,6 @@
 import React from 'react'
 import styled from 'styled-components'
+import media from '../constants/media'
 
 const ProgressBarWrapper = styled.div`
   background-color: #f1f1f1;
@@ -8,7 +9,7 @@ const ProgressBarWrapper = styled.div`
   height: 0.5rem;
   margin: 0.5rem 0 0.25rem 0;
   overflow: hidden;
-  @media (min-width: 600px) {
+  @media (min-width: ${media.tabletPlus}) {
     width: 100%;
   }
 `

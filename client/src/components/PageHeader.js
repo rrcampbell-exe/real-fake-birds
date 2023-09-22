@@ -1,5 +1,6 @@
 import React from 'react'
 import styled from 'styled-components'
+import media from '../constants/media'
 
 const TitleContainer = styled.div`
   text-align: left;
@@ -17,7 +18,7 @@ const TitleContainer = styled.div`
     font-size: 0.85rem;
   }
 
-  @media (min-width: 600px) {
+  @media (min-width: ${media.tabletPlus}) {
     h1 {
       font-size: 2rem;
     }
@@ -29,7 +30,7 @@ const TitleContainer = styled.div`
 `
 
 const HeaderContainer = styled.div`
-  @media (min-width: 600px) {
+  @media (min-width: ${media.tabletPlus}) {
     position: fixed;
     display: flex;
     justify-content: space-between;
