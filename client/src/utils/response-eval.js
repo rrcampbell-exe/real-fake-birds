@@ -1,5 +1,6 @@
 import localStorageCheck from './local-storage-check'
 import streakValues from '../constants/streak-values';
+import milestoneValues from '../constants/milestone-values';
 
 const streakEval = (currentStreak, setIsStreak) => {
   for (const value of streakValues) {
@@ -12,7 +13,18 @@ const streakEval = (currentStreak, setIsStreak) => {
   }
 }
 
-const responseEval = (e, isReal, chosenResponse, setIsCorrect, setIsStreak) => {
+const milestoneEval = (currentMilestone, setIsMilestone) => {
+  for (const value of milestoneValues) {
+    if (currentMilestone === value) {
+      setIsMilestone(true)
+      localStorage.setItem('birdMilestoneAchieved', true)
+      return
+    }
+    setIsMilestone(false)
+  }
+}
+
+const responseEval = (e, isReal, chosenResponse, setIsCorrect, setIsStreak, setIsMilestone) => {
   e.preventDefault()
 
   const hasLocalStorage = localStorageCheck()
@@ -47,6 +59,7 @@ const responseEval = (e, isReal, chosenResponse, setIsCorrect, setIsStreak) => {
     localStorage.setItem('birdScore', JSON.stringify(updatedBirdScore))
 
     streakEval(updatedBirdScore.currentStreak, setIsStreak)
+    milestoneEval(updatedBirdScore.birdsIdentified, setIsMilestone)
     
     return
   }
