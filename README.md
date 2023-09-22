@@ -1,7 +1,5 @@
 # Real Fake Birds
 
-[![license-MIT-blue.png](https://img.shields.io/badge/license-MIT-blue)](#License)
-
 ## Description
 *Some are real. Some are fake. Tell them apart.*
 
@@ -29,7 +27,7 @@ When presented with the name of a bird, guess whether this is the name of a real
  - Styled Components 💅
 
 ## License
-This application is covered under the MIT license.
+© 2023 Ryan R. Campbell. All rights reserved.
 
 ## Credits
 ### Developed By
@@ -37,6 +35,7 @@ This application is covered under the MIT license.
 
 ### APIs Used
 - [eBird API 2.0](https://documenter.getpostman.com/view/664302/S1ENwy59)
+- [The Color API](https://www.thecolorapi.com)
 - [Geography API](https://apilayer.com/marketplace/geo-api)*
 
 *Geographic information included in the generation of some fake bird names—including demonyms, country names, and country subregions—is sourced from Geography API, though this API is itself never called from within the Real Fake Birds app.
