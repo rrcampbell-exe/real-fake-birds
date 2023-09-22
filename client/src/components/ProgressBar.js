@@ -1,6 +1,7 @@
 import React from 'react'
 import styled from 'styled-components'
 import media from '../constants/media'
+import themes from '../constants/themes'
 
 const ProgressBarWrapper = styled.div`
   background-color: #f1f1f1;
@@ -16,7 +17,7 @@ const ProgressBarWrapper = styled.div`
 
 const Bar = styled.div`
   color: #fff;
-  background-color: ${props => props.isMilestoneBar ? '#1B1B5C' : '#3f1212'};
+  background-color: ${props => props.isMilestoneBar ? themes.default.tertiary : themes.default.secondary};
   border-radius: 1rem;
   height: 0.5rem;
   width: ${props => props.percent};

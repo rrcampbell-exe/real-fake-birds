@@ -3,6 +3,7 @@ import styled from 'styled-components'
 import ConfettiGenerator from 'confetti-js'
 import correctnessText from '../utils/correctness-text'
 import media from '../constants/media'
+import themes from '../constants/themes'
 
 const AnswerText = styled.h2`
   margin: 1rem;
@@ -12,7 +13,7 @@ const AnswerText = styled.h2`
 `
 
 const RealFakeText = styled.span`
-  color: #3f1212;
+  color: ${themes.default.secondary};
 `
 
 const Answer = ({ birdData, isReal, isStreak, isCorrect, isMilestone }) => {
