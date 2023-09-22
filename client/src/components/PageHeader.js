@@ -10,9 +10,21 @@ const TitleContainer = styled.div`
   flex-direction: column;
   h1 {
     margin-bottom: 0;
+    font-size: 1.75rem;
   }
   h4 {
-    margin-top: 0.5rem;
+    margin-top: 0.25rem;
+    font-size: 0.85rem;
+  }
+
+  @media (min-width: 600px) {
+    h1 {
+      font-size: 2rem;
+    }
+    h4 {
+      margin-top: 0.5rem;
+      font-size: 1rem;
+    }
   }
 `
 

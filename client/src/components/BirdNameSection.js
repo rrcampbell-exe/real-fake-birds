@@ -17,7 +17,14 @@ const BirdNameContainer = styled.div`
   text-align: center;
 `
 
-const BirdName = () => {
+const BirdName = styled.h2`
+  margin: 1rem;
+  @media (min-width: 600px) {
+    font-size: 2rem;
+  }
+`
+
+const BirdNameSection = () => {
   const [birdData, setBirdData] = useState('')
   const [isReal, setIsReal] = useState(false)
   const [isAnswerVisible, setIsAnswerVisible] = useState(false)
@@ -25,6 +32,7 @@ const BirdName = () => {
   const [isError, setIsError] = useState(false)
   const [isCorrect, setIsCorrect] = useState(false)
   const [isStreak, setIsStreak] = useState(false)
+  const [isMilestone, setIsMilestone] = useState(false)
 
   useEffect(() => {
     fetchData(setIsReal, setIsLoading, setBirdData, setIsError)
@@ -39,9 +47,9 @@ const BirdName = () => {
         {isLoading && <LoadingState />}
         {displayBirdData &&
           <>
-            <h1>{birdData}</h1>
-            <button id='real' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect, setIsStreak); setIsAnswerVisible(true) }}>Real Bird</button>
-            <button id='fake' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect, setIsStreak); setIsAnswerVisible(true) }}>Fake Bird</button>
+            <BirdName>{birdData}</BirdName>
+            <button id='real' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect, setIsStreak, setIsMilestone); setIsAnswerVisible(true) }}>Real Bird</button>
+            <button id='fake' onClick={(e) => { responseEval(e, isReal, e.target.id, setIsCorrect, setIsStreak, setIsMilestone); setIsAnswerVisible(true) }}>Fake Bird</button>
           </>
         }
         {isAnswerVisible &&
@@ -50,6 +58,7 @@ const BirdName = () => {
             isReal={isReal}
             isStreak={isStreak}
             isCorrect={isCorrect}
+            isMilestone={isMilestone}
           />
         }
       </BirdNameContainer>
@@ -58,4 +67,4 @@ const BirdName = () => {
   )
 }
 
-export default BirdName
+export default BirdNameSection
