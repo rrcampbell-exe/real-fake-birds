@@ -4,6 +4,7 @@ import ProgressBar from './ProgressBar'
 import streakValues from '../constants/streak-values'
 import milestoneValues from '../constants/milestone-values'
 import { isNextStreakEval, isNextMilestoneEval, currentStreakGoalEval, currentMilestoneGoalEval } from '../utils/goals-evaluation'
+import media from '../constants/media'
 
 const ScoreboardContainer = styled.div`
   display: flex;
@@ -28,7 +29,7 @@ const ScoreboardContainer = styled.div`
     cursor: pointer;
   }
 
-  @media (min-width: 600px) {
+  @media (min-width: ${media.tabletPlus}) {
     position: fixed;
     top: 0;
     right: 0;
@@ -51,7 +52,7 @@ const MobileFlexContainer = styled.div`
   width: 50%;
   text-align: center;
   align-items: center;
-  @media (min-width: 600px) {
+  @media (min-width: ${media.tabletPlus}) {
     display: block;
     width: fit-content;
     text-align: right;

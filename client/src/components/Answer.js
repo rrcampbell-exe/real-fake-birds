@@ -2,10 +2,11 @@ import React, { useEffect } from 'react'
 import styled from 'styled-components'
 import ConfettiGenerator from 'confetti-js'
 import correctnessText from '../utils/correctness-text'
+import media from '../constants/media'
 
 const AnswerText = styled.h2`
   margin: 1rem;
-  @media (min-width: 600px) {
+  @media (min-width: ${media.tabletPlus}) {
     font-size: 2rem;
   }
 `

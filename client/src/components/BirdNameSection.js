@@ -6,6 +6,7 @@ import styled from 'styled-components'
 import responseEval from '../utils/response-eval'
 import fetchData from '../utils/fetch-data'
 import Scoreboard from './Scoreboard'
+import media from '../constants/media'
 
 const BirdNameContainer = styled.div`
   position: fixed;
@@ -19,7 +20,7 @@ const BirdNameContainer = styled.div`
 
 const BirdName = styled.h2`
   margin: 1rem;
-  @media (min-width: 600px) {
+  @media (min-width: ${media.tabletPlus}) {
     font-size: 2rem;
   }
 `
