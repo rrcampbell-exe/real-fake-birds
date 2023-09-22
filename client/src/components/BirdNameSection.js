@@ -18,6 +18,7 @@ const BirdNameContainer = styled.div`
 `
 
 const BirdName = styled.h2`
+  margin: 1rem;
   @media (min-width: 600px) {
     font-size: 2rem;
   }

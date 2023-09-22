@@ -3,8 +3,8 @@ import styled from 'styled-components'
 import ConfettiGenerator from 'confetti-js'
 import correctnessText from '../utils/correctness-text'
 
-
 const AnswerText = styled.h2`
+  margin: 1rem;
   @media (min-width: 600px) {
     font-size: 2rem;
   }
