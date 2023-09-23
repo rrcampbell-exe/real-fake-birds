@@ -10,11 +10,10 @@ const ScoreboardContainer = styled.div`
   display: flex;
   flex-direction: row;
   margin: 0 1rem 0 1rem;
-  color: white;
   font-size: 0.75rem;
   background-color: rgba(0,0,0,.35);
   padding: 0.5rem;
-  border: solid white 1px;
+  border: solid ${({ theme }) => theme.textColor} 1px;
   border-radius: 4px;
   h4 {
     margin-top: 0.25rem;
@@ -22,7 +21,6 @@ const ScoreboardContainer = styled.div`
   }
   a {
     margin-top: 0.25rem;
-    color: white;
     font-weight: 500;
   }
   a:hover {
