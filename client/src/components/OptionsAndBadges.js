@@ -6,7 +6,7 @@ import Menu from './Menu'
 const OptionsButton = styled.button`
   border-radius: 50%;
   background-color: transparent;
-  border: 1px solid white;
+  border: 1px solid ${({ theme }) => theme.textColor};
   padding: 0.5rem;
   margin: 1rem;
   height: 2rem;

@@ -1,21 +1,23 @@
-import './App.css'
 import BirdNameSection from './components/BirdNameSection'
 import PageTitle from './components/PageHeader'
 import Footer from './components/Footer'
 import Confetti from './components/Confetti'
 import { createGlobalStyle } from 'styled-components'
 import { ThemeProvider } from 'styled-components'
-import * as theme from './constants/theme'
 import { getTheme } from './utils/theme-handler'
-
-const { defaultTheme, raven } = theme
 
 const GlobalStyle = createGlobalStyle`
   body {
     background-color: ${({ theme }) => theme.primary};
+    color: ${({ theme }) => theme.textColor};
   }
   button {
     background-color: ${({ theme }) => theme.secondary};
+    border-radius: 30px;
+    border: none;
+    padding: 0.75rem;
+    margin: 0.75rem;
+    color: ${({ theme }) => theme.textColor};
   }
 `
 

@@ -14,7 +14,6 @@ const BirdNameContainer = styled.div`
   left: 50%;
   width: 100%;
   transform: translate(-50%, -50%);
-  color: white;
   text-align: center;
 `
 

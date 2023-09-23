@@ -1,8 +1,9 @@
 import React from 'react'
+import { getTheme } from '../utils/theme-handler'
 
 const BirdSvg = () => {
   return (
-    <svg fill="#ffffff" height="14px" width="14px" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink" 
+    <svg fill={getTheme().textColor} height="14px" width="14px" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink" 
 	 viewBox="0 0 424.987 424.987" xmlSpace="preserve">
       <g>
         <path d="M351.945,78.127c0-15.715-12.785-28.5-28.5-28.5s-28.5,12.785-28.5,28.5s12.785,28.5,28.5,28.5

@@ -5,7 +5,6 @@ import media from '../constants/media'
 const TitleContainer = styled.div`
   text-align: left;
   font-size: 1rem;
-  color: white;
   margin: 0.5rem 0 0 1rem;
   display: flex;
   flex-direction: column;

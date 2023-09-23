@@ -12,13 +12,12 @@ const FooterContainer = styled.div`
   flex-direction: column;
   width: 100%;
   text-align: center;
-  color: white;
   align-items: start;
   z-index: 0;
   font-size: 0.875rem;
 
   a {
-    color: white;
+    color: ${({ theme }) => theme.textColor};
     margin: 0 0.5rem;
   }
 

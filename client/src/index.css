@@ -13,14 +13,6 @@ code {
     monospace;
 }
 
-button {
-  border-radius: 30px;
-  border: none;
-  padding: 0.75rem;
-  margin: 0.75rem;
-  color: white;
-}
-
 button:hover {
   cursor: pointer;
 }
