@@ -1,6 +1,7 @@
 import React from 'react'
 import styled from 'styled-components'
 import ResetScore from './ResetScore'
+import OptionsAndBadges from './OptionsAndBadges'
 import media from '../constants/media'
 
 const FooterContainer = styled.div`
@@ -13,7 +14,7 @@ const FooterContainer = styled.div`
   text-align: center;
   color: white;
   align-items: start;
-  z-index: -1;
+  z-index: 0;
   font-size: 0.875rem;
 
   a {
@@ -31,6 +32,12 @@ const FooterContainer = styled.div`
   }
 `
 
+const ButtonContainer = styled.div`
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+`
+
 const FooterDetails = styled.div`
   background-color: rgb(0,0,0,.35);
   width: 100%;
@@ -40,7 +47,10 @@ const FooterDetails = styled.div`
 const Footer = () => {
   return (
     <FooterContainer>
-      <ResetScore />
+      <ButtonContainer>
+        <ResetScore />
+        <OptionsAndBadges />
+      </ButtonContainer>
       <FooterDetails>
         <p>Developed by Ryan R. Campbell</p> 🦆 <a href='https://github.com/rrcampbell-exe/real-fake-birds' rel='noopener noreferrer' target='_blank '>GitHub</a> 🦜 <a href='https://www.linkedin.com/in/ryan-campbell-aa33169/' rel='noopener noreferrer' target='_blank '>LinkedIn</a> 🦢 <a href='mailto: campbell.ryan.r@gmail.com'>Contact</a> 🦤
       </FooterDetails>
