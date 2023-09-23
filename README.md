@@ -41,7 +41,12 @@ When presented with the name of a bird, guess whether this is the name of a real
 *Geographic information included in the generation of some fake bird names—including demonyms, country names, and country subregions—is sourced from Geography API, though this API is itself never called from within the Real Fake Birds app.
 
 ### Other Media
-- ["Bird Watching" Gif by Unpopular Cartoonist on GIPHY](https://giphy.com/unpopularcartoonist)
+- ["Bird Watching" Gif - Default Theme by Unpopular Cartoonist on GIPHY](https://giphy.com/unpopularcartoonist)
+- ["Bird Watching" Gif - Raven Theme by Pierre-Julien Fieux on GIPHY](https://giphy.com/pierrejulienfieux)
+- ["Bird Watching" Gif - Flamingo Theme by Casey juju on GIPHY](https://giphy.com/caseyjuju)
+- ["Bird Watching" Gif - Gull Theme by Guillaume Lucas on GIPHY](https://giphy.com/guim4uve)
+- ["Bird Watching" Gif - Swan Theme by GUIDE Culture on GIPHY](https://giphy.com/guideculture)
+- ["Bird Watching" Gif - Robin Theme by Stefanie Shank on GIPHY](https://giphy.com/stefanieshank)
 - [Bird svg used on Options and Badges Button via SVGREPO](https://www.svgrepo.com/)
 
 ## Questions, Comments, Suggestions
