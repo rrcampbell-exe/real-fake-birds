@@ -42,6 +42,7 @@ When presented with the name of a bird, guess whether this is the name of a real
 
 ### Other Media
 - ["Bird Watching" Gif by Unpopular Cartoonist on GIPHY](https://giphy.com/unpopularcartoonist)
+- [Bird svg used on Options and Badges Button via SVGREPO](https://www.svgrepo.com/)
 
 ## Questions, Comments, Suggestions
 Please email [Ryan R. Campbell](mailto:campbell.ryan.r@gmail.com) with any questions, to report any bugs, or to make any feature suggestions. You can also [contact Ryan R. Campbell on GitHub](https://www.github.com/rrcampbell-exe/).
