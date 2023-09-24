@@ -10,7 +10,15 @@ const bodyParts = [
   '-fronted',
   '-footed',
   '-crowned',
-  '-throated'
+  '-throated',
+  '-necked',
+  '-naped',
+  '-headed',
+  '-billed',
+  '-chinned',
+  '-flanked',
+  '-legged',
+  '-coverted'
 ]
 
 module.exports = bodyParts
