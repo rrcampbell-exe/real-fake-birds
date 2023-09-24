@@ -1,6 +1,7 @@
 import React from 'react'
 import styled from 'styled-components'
-import { setTheme } from '../utils/theme-handler'
+import BirdSvg from './BirdSvg'
+import { getTheme, setTheme } from '../utils/theme-handler'
 import { themes } from '../constants/theme'
 
 const MenuWrapper = styled.div`
@@ -12,13 +13,14 @@ const MenuWrapper = styled.div`
   background-color: ${({ theme }) => theme.tertiary};
   display: ${props => props.isMenuOpen ? 'flex' : 'none'};
   flex-direction: column;
-  justify-content: space-between;
   overflow: auto;
+
   button {
     background-color: transparent;
     border: 1px solid ${({ theme }) => theme.menuButtonColor};
     color: ${({ theme }) => theme.menuButtonColor};
   }
+
   #back-button {
     background-color: ${({ theme }) => theme.secondary};
     border: none;
@@ -32,23 +34,46 @@ const MenuHeader = styled.h1`
 
 const ThemeInfoContainer = styled.div`
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 0 6rem;
+`
+
+const BackButtonContainer = styled.div`
+  display: flex;
   flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  position: fixed;
+  bottom: 0;
+  width: 100%;
 `
 
 const BackButton = styled.button`
   margin-bottom: 2rem;
 `
 
+const ThemeButton = styled.button`
+  display: flex;
+  justify-content: space-around;
+  min-width: 10rem;
+`
+
 const Menu = ({ isMenuOpen, setIsMenuOpen }) => {
   return (
     <MenuWrapper isMenuOpen={isMenuOpen}>
+      <MenuHeader>Choose a Theme</MenuHeader>
       <ThemeInfoContainer>
-        <MenuHeader>Choose a Theme</MenuHeader>
         {themes.map((theme) => (
-          <button onClick={() => { setTheme(JSON.stringify(theme)); window.location.reload(true) }}>{theme.name}</button>
+          <ThemeButton onClick={() => { setTheme(JSON.stringify(theme)); window.location.reload(true) }}>
+            <BirdSvg color={getTheme().menuButtonColor} size='16px' theme={theme.name} />
+            {theme.name}
+          </ThemeButton>
         ))}
       </ThemeInfoContainer>
-      <BackButton id='back-button' onClick={() => setIsMenuOpen(false)}>Return to Game</BackButton>
+      <BackButtonContainer>
+        <BackButton id='back-button' onClick={() => setIsMenuOpen(false)}>Return to Game</BackButton>
+      </BackButtonContainer>
     </MenuWrapper>
   )
 }
