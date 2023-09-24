@@ -59,7 +59,7 @@ const MobileFlexContainer = styled.div`
 
 const Scoreboard = () => {
   const birdScore = JSON.parse(localStorage.getItem('birdScore'))
-  const { birdsSeen, birdsIdentified, currentStreak } = birdScore
+  const { birdsSeen, birdsIdentified, currentStreak, bestStreak } = birdScore
 
   const isNextStreak = isNextStreakEval(streakValues, currentStreak)
   const isCurrentStreakGoal = currentStreakGoalEval(streakValues, currentStreak)
@@ -85,7 +85,7 @@ const Scoreboard = () => {
       </MobileFlexContainer>
       <MobileFlexContainer id='streak-progress-container'>
         <ProgressBar currentValue={currentStreak} maxValue={maxValue(currentStreak, isNextStreak, isCurrentStreakGoal, justAchievedStreak)}/>
-        <h4>Current Streak: {currentStreak}</h4>
+        <h4>Current Streak: {currentStreak} | Best: {bestStreak}</h4>
       </MobileFlexContainer>
     </ScoreboardContainer>
   )
