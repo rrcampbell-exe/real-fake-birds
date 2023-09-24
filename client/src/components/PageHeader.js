@@ -1,6 +1,8 @@
 import React from 'react'
 import styled from 'styled-components'
 import media from '../constants/media'
+import BirdSvg from './BirdSvg'
+import { getTheme } from '../utils/theme-handler'
 
 const TitleContainer = styled.div`
   text-align: left;
@@ -37,10 +39,11 @@ const HeaderContainer = styled.div`
 `
 
 const PageTitle = () => {
+  const { textColor, name } = getTheme()
   return (
     <HeaderContainer>
       <TitleContainer>
-        <h1>Real Fake Birds 🦉</h1>
+        <h1>Real Fake Birds <BirdSvg size={'1.5rem'} color={textColor} /></h1>
         <h4>Some are real. Some are fake. Tell them apart.</h4>
       </TitleContainer>
     </HeaderContainer>

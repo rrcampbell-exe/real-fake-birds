@@ -10,6 +10,7 @@ const GlobalStyle = createGlobalStyle`
   body {
     background-color: ${({ theme }) => theme.primary};
     color: ${({ theme }) => theme.textColor};
+    overflow: hidden;
   }
   button {
     background-color: ${({ theme }) => theme.secondary};
