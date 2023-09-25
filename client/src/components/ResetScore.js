@@ -14,6 +14,6 @@ const ResetButton = styled.button`
   }
 `
       
-const ResetScore = () => <ResetButton onClick={() => { localStorage.clear(); window.location.reload() }}>Reset Score</ResetButton>
+const ResetScore = () => <ResetButton onClick={() => { localStorage.removeItem('birdScore'); window.location.reload() }}>Reset Score</ResetButton>
 
 export default ResetScore

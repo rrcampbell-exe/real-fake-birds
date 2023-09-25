@@ -50,16 +50,31 @@ const MobileFlexContainer = styled.div`
   width: 50%;
   text-align: center;
   align-items: center;
+  h4 {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+  }
   @media (min-width: ${media.tabletPlus}) {
     display: block;
     width: fit-content;
     text-align: right;
+    h4 {
+      flex-direction: row;
+    }
+  }
+`
+
+const Punctuation = styled.span`
+  display: none;
+  @media (min-width: ${media.tabletPlus}) {
+    display: block;
   }
 `
 
 const Scoreboard = () => {
   const birdScore = JSON.parse(localStorage.getItem('birdScore'))
-  const { birdsSeen, birdsIdentified, currentStreak } = birdScore
+  const { birdsSeen, birdsIdentified, currentStreak, bestStreak } = birdScore
 
   const isNextStreak = isNextStreakEval(streakValues, currentStreak)
   const isCurrentStreakGoal = currentStreakGoalEval(streakValues, currentStreak)
@@ -81,11 +96,23 @@ const Scoreboard = () => {
     <ScoreboardContainer>
       <MobileFlexContainer>
         <ProgressBar isMilestoneBar currentValue={birdsIdentified} maxValue={maxValue(birdsIdentified, isNextMilestone, isCurrentMilestoneGoal, justAchievedMilestone)}/>
-        <h4 id='answers-label'>Correct Answers: {birdsIdentified}/{birdsSeen} ({ Math.floor((birdsIdentified/birdsSeen) * 100)}%)</h4>
+        <h4>
+          Correct Answers
+          <Punctuation>:</Punctuation>
+          <span>
+            {birdsIdentified}/{birdsSeen} ({ Math.floor((birdsIdentified/birdsSeen) * 100)}%)
+          </span>
+        </h4>
       </MobileFlexContainer>
       <MobileFlexContainer id='streak-progress-container'>
         <ProgressBar currentValue={currentStreak} maxValue={maxValue(currentStreak, isNextStreak, isCurrentStreakGoal, justAchievedStreak)}/>
-        <h4>Current Streak: {currentStreak}</h4>
+        <h4>
+          Current Streak: {currentStreak}
+          <Punctuation> |</Punctuation>
+          <span>
+            Best: {bestStreak}
+          </span>
+        </h4>
       </MobileFlexContainer>
     </ScoreboardContainer>
   )
