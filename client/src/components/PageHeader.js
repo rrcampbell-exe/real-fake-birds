@@ -39,7 +39,7 @@ const HeaderContainer = styled.div`
 `
 
 const PageTitle = () => {
-  const { textColor, name } = getTheme()
+  const { textColor } = getTheme()
   return (
     <HeaderContainer>
       <TitleContainer>
