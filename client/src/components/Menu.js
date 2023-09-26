@@ -3,8 +3,9 @@ import styled from 'styled-components'
 import BirdSvg from './BirdSvg'
 import { getTheme, setTheme } from '../utils/theme-handler'
 import { themes } from '../constants/theme'
+import media from '../constants/media'
 
-const MenuWrapper = styled.div`
+const ModalContent = styled.div`
   position: fixed;
   top: 0;
   left: 0;
@@ -14,6 +15,7 @@ const MenuWrapper = styled.div`
   display: ${props => props.isMenuOpen ? 'flex' : 'none'};
   flex-direction: column;
   overflow: auto;
+  justify-content: space-around;
 
   button {
     background-color: transparent;
@@ -26,27 +28,47 @@ const MenuWrapper = styled.div`
     border: none;
     color: ${({ theme }) => theme.textColor};
   }
+
+  @media (min-width: ${media.tabletPlus}) {
+    max-height: 75vh;
+    max-width: 60vw;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 0.5rem;
+    border: 2px solid ${({ theme }) => theme.secondary};
+  }
 `
 
-const MenuHeader = styled.h1`
+const ModalBackdrop = styled.div`
+  display: none;
+  @media (min-width: ${media.tabletPlus}) {
+    display: ${props => props.isMenuOpen ? 'block' : 'none'};
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 100vw;
+    background-color: rgb(0,0,0,.35);
+  }
+`
+
+const ModalHeader = styled.h1`
+  margin-top: 2rem;
   color: ${({ theme }) => theme.menuButtonColor};
 `
 
-const ThemeInfoContainer = styled.div`
+const ModalBody = styled.div`
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   padding: 0 6rem;
 `
 
-const BackButtonContainer = styled.div`
+const ModalFooter = styled.div`
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
   align-items: center;
-  position: fixed;
-  bottom: 0;
-  width: 100%;
 `
 
 const BackButton = styled.button`
@@ -61,20 +83,23 @@ const ThemeButton = styled.button`
 
 const Menu = ({ isMenuOpen, setIsMenuOpen }) => {
   return (
-    <MenuWrapper isMenuOpen={isMenuOpen}>
-      <MenuHeader>Choose a Theme</MenuHeader>
-      <ThemeInfoContainer>
-        {themes.map((theme) => (
-          <ThemeButton onClick={() => { setTheme(JSON.stringify(theme)); window.location.reload(true) }}>
-            <BirdSvg color={getTheme().menuButtonColor} size='16px' theme={theme.name} />
-            {theme.name}
-          </ThemeButton>
-        ))}
-      </ThemeInfoContainer>
-      <BackButtonContainer>
-        <BackButton id='back-button' onClick={() => setIsMenuOpen(false)}>Return to Game</BackButton>
-      </BackButtonContainer>
-    </MenuWrapper>
+    <>
+      <ModalBackdrop isMenuOpen={isMenuOpen} onClick={() => setIsMenuOpen(false)} />
+      <ModalContent isMenuOpen={isMenuOpen}>
+        <ModalHeader>Choose a Theme</ModalHeader>
+        <ModalBody>
+          {themes.map((theme) => (
+            <ThemeButton onClick={() => { setTheme(JSON.stringify(theme)); window.location.reload(true) }} key={theme.name}>
+              <BirdSvg color={getTheme().menuButtonColor} size='16px' theme={theme.name} />
+              {theme.name}
+            </ThemeButton>
+          ))}
+        </ModalBody>
+        <ModalFooter>
+          <BackButton id='back-button' onClick={() => setIsMenuOpen(false)}>Return to Game</BackButton>
+        </ModalFooter>
+      </ModalContent>
+    </>
   )
 }
 
