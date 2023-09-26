@@ -46,6 +46,10 @@ const responseEval = (e, isReal, chosenResponse, setIsCorrect, setIsStreak, setI
     const birdScore = JSON.parse(localStorage.getItem('birdScore'))
     let { birdsSeen, birdsIdentified, currentStreak, justAchievedStreak, bestStreak } = birdScore
 
+    // patch to address bug that arose in upversioning game in early days
+    // can be removed in early 2024
+    if (!bestStreak) bestStreak = currentStreak
+
     birdsSeen = birdsSeen + 1
     birdsIdentified = birdsIdentified + 1
     currentStreak = currentStreak + 1
@@ -69,6 +73,10 @@ const responseEval = (e, isReal, chosenResponse, setIsCorrect, setIsStreak, setI
 
   const birdScore = JSON.parse(localStorage.getItem('birdScore'))
   let { birdsSeen, birdsIdentified, currentStreak, bestStreak } = birdScore
+
+  // patch to address bug that arose in upversioning game in early days
+  // can be removed in early 2024
+  if (!bestStreak) bestStreak = currentStreak
 
   birdsSeen = birdsSeen + 1
   currentStreak = 0
