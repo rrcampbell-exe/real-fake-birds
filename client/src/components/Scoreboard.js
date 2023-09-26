@@ -14,7 +14,7 @@ const ScoreboardContainer = styled.div`
   padding: 0.5rem;
   border: solid ${({ theme }) => theme.textColor} 1px;
   border-radius: 4px;
-  width: 50%;
+  width: fit-content;
   h4 {
     margin-top: 0.5rem;
     margin-bottom: 0rem;

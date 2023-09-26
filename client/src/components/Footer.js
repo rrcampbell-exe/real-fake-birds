@@ -46,7 +46,7 @@ const FooterDetails = styled.div`
 `
 
 const Footer = () => {
-  const { menuButtonColor } = getTheme()
+  const { textColor } = getTheme()
   return (
     <FooterContainer>
       <ButtonContainer>
@@ -55,13 +55,13 @@ const Footer = () => {
       </ButtonContainer>
       <FooterDetails>
         <p>Developed by Ryan R. Campbell</p> 
-        <Robin color={menuButtonColor} size='12px' /> 
+        <Robin color={textColor} size='12px' /> 
         <a href='https://github.com/rrcampbell-exe/real-fake-birds' rel='noopener noreferrer' target='_blank '>GitHub</a> 
-        <Swan color={menuButtonColor} size='12px' /> 
+        <Swan color={textColor} size='12px' /> 
         <a href='https://www.linkedin.com/in/ryan-campbell-aa33169/' rel='noopener noreferrer' target='_blank '>LinkedIn</a> 
-        <Flamingo color={menuButtonColor} size='12px' /> 
+        <Flamingo color={textColor} size='12px' /> 
         <a href='mailto: campbell.ryan.r@gmail.com'>Contact</a> 
-        <Gull color={menuButtonColor} size='12px' />
+        <Gull color={textColor} size='12px' />
       </FooterDetails>
     </FooterContainer>
   )
