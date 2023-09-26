@@ -1,5 +1,5 @@
-export const defaultTheme = {
-  name: 'Default',
+export const finch = {
+  name: 'Finch',
   primary: '#1B5C1B',
   secondary: '#3F1212',
   tertiary: '#1B1B5C',
@@ -65,7 +65,7 @@ export const robin = {
 }
 
 export const themes = [
-  defaultTheme,
+  finch,
   raven,
   flamingo,
   gull,
