@@ -3,6 +3,8 @@ import styled from 'styled-components'
 import ResetScore from './ResetScore'
 import OptionsAndBadges from './OptionsAndBadges'
 import media from '../constants/media'
+import { Robin, Flamingo, Swan, Gull } from '../constants/bird-svg'
+import { getTheme } from '../utils/theme-handler'
 
 const FooterContainer = styled.div`
   position: fixed;
@@ -44,6 +46,7 @@ const FooterDetails = styled.div`
 `
 
 const Footer = () => {
+  const { menuButtonColor } = getTheme()
   return (
     <FooterContainer>
       <ButtonContainer>
@@ -51,7 +54,14 @@ const Footer = () => {
         <OptionsAndBadges />
       </ButtonContainer>
       <FooterDetails>
-        <p>Developed by Ryan R. Campbell</p> 🦆 <a href='https://github.com/rrcampbell-exe/real-fake-birds' rel='noopener noreferrer' target='_blank '>GitHub</a> 🦜 <a href='https://www.linkedin.com/in/ryan-campbell-aa33169/' rel='noopener noreferrer' target='_blank '>LinkedIn</a> 🦢 <a href='mailto: campbell.ryan.r@gmail.com'>Contact</a> 🦤
+        <p>Developed by Ryan R. Campbell</p> 
+        <Robin color={menuButtonColor} size='12px' /> 
+        <a href='https://github.com/rrcampbell-exe/real-fake-birds' rel='noopener noreferrer' target='_blank '>GitHub</a> 
+        <Swan color={menuButtonColor} size='12px' /> 
+        <a href='https://www.linkedin.com/in/ryan-campbell-aa33169/' rel='noopener noreferrer' target='_blank '>LinkedIn</a> 
+        <Flamingo color={menuButtonColor} size='12px' /> 
+        <a href='mailto: campbell.ryan.r@gmail.com'>Contact</a> 
+        <Gull color={menuButtonColor} size='12px' />
       </FooterDetails>
     </FooterContainer>
   )
