@@ -5,7 +5,7 @@ import media from '../constants/media'
 const ProgressBarWrapper = styled.div`
   background-color: #f1f1f1;
   border-radius: 1rem;
-  width: 90%;
+  width: 100%;
   height: 0.5rem;
   margin: 0.5rem 0 0.25rem 0;
   overflow: hidden;
@@ -16,7 +16,7 @@ const ProgressBarWrapper = styled.div`
 
 const Bar = styled.div`
   color: #fff;
-  background-color: ${props => props.isMilestoneBar ? props.theme.tertiary : props.theme.secondary};
+  background-color: ${({ theme }) => theme.secondary};
   border-radius: 1rem;
   height: 0.5rem;
   width: ${props => props.percent};

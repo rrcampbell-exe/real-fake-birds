@@ -11,7 +11,7 @@ const ModalContent = styled.div`
   left: 0;
   height: 100vh;
   width: 100vw;
-  background-color: ${({ theme }) => theme.tertiary};
+  background-color: ${({ theme }) => theme.primary};
   display: ${props => props.isMenuOpen ? 'flex' : 'none'};
   flex-direction: column;
   overflow: auto;
@@ -19,8 +19,8 @@ const ModalContent = styled.div`
 
   button {
     background-color: transparent;
-    border: 1px solid ${({ theme }) => theme.menuButtonColor};
-    color: ${({ theme }) => theme.menuButtonColor};
+    border: 1px solid ${({ theme }) => theme.textColor};
+    color: ${({ theme }) => theme.textColor};
   }
 
   #back-button {
@@ -55,7 +55,7 @@ const ModalBackdrop = styled.div`
 
 const ModalHeader = styled.h1`
   margin-top: 2rem;
-  color: ${({ theme }) => theme.menuButtonColor};
+  color: ${({ theme }) => theme.textColor};
 `
 
 const ModalBody = styled.div`
@@ -90,7 +90,7 @@ const Menu = ({ isMenuOpen, setIsMenuOpen }) => {
         <ModalBody>
           {themes.map((theme) => (
             <ThemeButton onClick={() => { setTheme(JSON.stringify(theme)); window.location.reload(true) }} key={theme.name}>
-              <BirdSvg color={getTheme().menuButtonColor} size='16px' theme={theme.name} />
+              <BirdSvg color={getTheme().textColor} size='16px' theme={theme.name} />
               {theme.name}
             </ThemeButton>
           ))}

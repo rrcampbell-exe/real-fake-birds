@@ -12,7 +12,7 @@ const AnswerText = styled.h2`
 `
 
 const RealFakeText = styled.span`
-  color: ${({ theme }) => theme.secondary};
+  color: ${({ theme }) => theme.realFakeTextColor};
 `
 
 const Answer = ({ birdData, isReal, isStreak, isCorrect, isMilestone }) => {
