@@ -1,6 +1,6 @@
 import React from 'react'
 
-export const Default = ({ color, size }) => {
+export const Finch = ({ color, size }) => {
   return (
     <svg fill={color} height={size} width={size} version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink" 
     viewBox="0 0 424.987 424.987" xmlSpace="preserve">
