@@ -28,7 +28,7 @@ const Answer = ({ birdData, isReal, isStreak, isCorrect, isMilestone }) => {
     <div>
       <p>{correctnessText(isCorrect, isStreak, isMilestone)}</p>
       <AnswerText>The {birdData} is a <RealFakeText>{isReal ? 'real' : 'fake'}</RealFakeText> bird.</AnswerText>
-      <button onClick={() => { localStorage.setItem('birdStreakAchieved', false); localStorage.setItem('birdMilestoneAchieved', false); window.location.reload(true) }}>Try Again</button>
+      <button onClick={() => { localStorage.setItem('birdStreakAchieved', false); localStorage.setItem('birdMilestoneAchieved', false); localStorage.removeItem('birdData'); window.location.reload(true) }}>Try Again</button>
     </div>
   )
 }
