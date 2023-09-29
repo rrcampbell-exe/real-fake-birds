@@ -6,6 +6,7 @@ const colorSelect = require('../utils/color-select')
 const generalAdjectiveSelect = require('./general-adjective-select')
 const surnameSelect = require('../utils/surname-select')
 const percentAssignment = require('../utils/percent-of-time')
+const errorEval = require('../utils/error-eval')
 
 const nameGenerator = async () => {
   const includesSurname = percentAssignment(5)
@@ -30,10 +31,14 @@ const nameGenerator = async () => {
   const bodyPartVal = Math.floor(Math.random() * bodyParts.length)
   const bodyPart = (includesColor && includesBodyPart) ? bodyParts[bodyPartVal] : ''
 
-  // // ensures bird values like "Robin" never display on their own as false negatives
+  // ensures bird values like "Robin" never display on their own as false negatives
   if (!includesSurname && !includesAdjective && !includesLocation && !includesColor) {
     const color = await colorSelect()
     return { birdName: `${color} ${ birdTypes[birdTypeVal]}`, isReal: false }
+  }
+
+  if (errorEval([surname, adjective, color])) {
+    return { error: 'third-party api call timed out' }
   }
 
   return { birdName: `${includesSurname ? surname + "'s " : ''}${includesAdjective ? adjective + ' ' : ''}${includesLocation ? location + ' ' : ''}${includesColor ? color : ''}${includesBodyPart ? bodyPart : ''} ${ birdTypes[birdTypeVal]}`, isReal: false }  
