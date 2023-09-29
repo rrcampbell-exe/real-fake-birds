@@ -3,13 +3,13 @@ import LoadingState from './LoadingState'
 import Answer from './Answer'
 import Error from'./Error'
 import styled from 'styled-components'
-import responseEval from '../utils/response-eval'
-import fetchData from '../utils/fetch-data'
+import responseEval from '../../../utils/response-eval'
+import fetchData from '../../../utils/fetch-data'
 import Scoreboard from './Scoreboard'
-import media from '../constants/media'
+import media from '../../../constants/media'
 
 const BirdNameContainer = styled.div`
-  position: fixed;
+  position: absolute;
   top: 50%;
   left: 50%;
   width: 100%;

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Finch, Raven, Robin, Flamingo, Gull, Swan } from '../constants/bird-svg'
+import { Finch, Raven, Robin, Flamingo, Gull, Swan } from '../../../constants/bird-svg'
 
 const BirdSvg = ({ color, size, theme }) => {
   switch (theme) {

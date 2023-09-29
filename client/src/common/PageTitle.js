@@ -1,7 +1,7 @@
 import React from 'react'
 import styled from 'styled-components'
 import media from '../constants/media'
-import BirdSvg from './BirdSvg'
+import BirdSvg from '../pages/Home/components/BirdSvg'
 import { getTheme } from '../utils/theme-handler'
 
 const TitleContainer = styled.div`
@@ -32,7 +32,6 @@ const TitleContainer = styled.div`
 
 const HeaderContainer = styled.div`
   @media (min-width: ${media.tabletPlus}) {
-    position: fixed;
     display: flex;
     justify-content: space-between;
   }

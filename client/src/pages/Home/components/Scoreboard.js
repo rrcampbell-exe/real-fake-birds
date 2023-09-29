@@ -1,9 +1,9 @@
 import React from 'react'
 import styled from 'styled-components'
 import ProgressBar from './ProgressBar'
-import streakValues from '../constants/streak-values'
-import { isNextStreakEval, currentStreakGoalEval } from '../utils/goals-evaluation'
-import media from '../constants/media'
+import streakValues from '../../../constants/streak-values'
+import { isNextStreakEval, currentStreakGoalEval } from '../../../utils/goals-evaluation'
+import media from '../../../constants/media'
 
 const ScoreboardContainer = styled.div`
   display: flex;

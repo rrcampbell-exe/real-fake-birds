@@ -1,10 +1,9 @@
 import React from 'react'
 import styled from 'styled-components'
-import ResetScore from './ResetScore'
-import OptionsAndBadges from './OptionsAndBadges'
-import media from '../constants/media'
-import { Robin, Flamingo, Swan, Gull } from '../constants/bird-svg'
-import { getTheme } from '../utils/theme-handler'
+import OptionsAndBadges from '../../Menu/components/OptionsAndBadges'
+import media from '../../../constants/media'
+import { Robin, Flamingo, Swan, Gull } from '../../../constants/bird-svg'
+import { getTheme } from '../../../utils/theme-handler'
 
 const FooterContainer = styled.div`
   position: fixed;
@@ -12,11 +11,11 @@ const FooterContainer = styled.div`
   left: 0;
   display: flex;
   flex-direction: column;
-  width: 100%;
   text-align: center;
-  align-items: start;
+  align-items: end;
   z-index: 0;
   font-size: 0.875rem;
+  width: 100%;
 
   a {
     color: ${({ theme }) => theme.textColor};
@@ -33,12 +32,6 @@ const FooterContainer = styled.div`
   }
 `
 
-const ButtonContainer = styled.div`
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-`
-
 const FooterDetails = styled.div`
   background-color: rgb(0,0,0,.35);
   width: 100%;
@@ -49,10 +42,7 @@ const Footer = () => {
   const { textColor } = getTheme()
   return (
     <FooterContainer>
-      <ButtonContainer>
-        <ResetScore />
-        <OptionsAndBadges />
-      </ButtonContainer>
+      <OptionsAndBadges />
       <FooterDetails>
         <p>Developed by Ryan R. Campbell</p> 
         <Robin color={textColor} size='12px' /> 

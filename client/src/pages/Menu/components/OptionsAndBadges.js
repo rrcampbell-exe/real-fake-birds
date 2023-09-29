@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
+import React from 'react'
 import styled from 'styled-components'
-import BirdSvg from './BirdSvg'
-import Menu from './Menu'
-import { getTheme } from '../utils/theme-handler'
+import BirdSvg from '../../Home/components/BirdSvg'
+import { getTheme } from '../../../utils/theme-handler'
+import { Link } from 'react-router-dom'
 
 const OptionsButton = styled.button`
   border-radius: 50%;
@@ -16,16 +16,14 @@ const OptionsButton = styled.button`
 `
 
 const OptionsAndBadges = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const { textColor, name } = getTheme()
 
   return (
-    <>
-      <Menu isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} />
-      <OptionsButton onClick={() => setIsMenuOpen(true)} >
+    <Link to='/menu'>
+      <OptionsButton>
         <BirdSvg color={textColor} size='16px' theme={name} />
       </OptionsButton>
-    </>
+    </Link>
   )
 }
 
