@@ -37,7 +37,7 @@ const nameGenerator = async () => {
     return { birdName: `${color} ${ birdTypes[birdTypeVal]}`, isReal: false }
   }
 
-  if (errorEval([surname, adjective, location, color])) {
+  if (errorEval([surname, adjective, color])) {
     return { error: 'third-party api call timed out' }
   }
 
