@@ -15,14 +15,14 @@ const Menu = () => {
       <GlobalStyle />
       <PageTitle />
       <MenuContent>
-        <MenuHeader>Options and Rewards</MenuHeader>
+        <MenuHeader>Real Fake Menu</MenuHeader>
         <MenuBody>
           <BadgesContainer>
-            <h4>Rewards</h4>
+            <h4>Real Fake Rewards</h4>
             <Badges />
           </BadgesContainer>
           <ThemeButtonContainer>
-            <h4>Choose a Theme</h4>
+            <h4>Real Fake Themes</h4>
             {themes.map((theme) => (
               <StyledLink to='/'>
                 <ThemeButton onClick={() => { setTheme(JSON.stringify(theme)) }} key={theme.name}>
