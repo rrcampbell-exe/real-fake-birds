@@ -1,5 +1,5 @@
 import React from 'react'
-import { EggMilestone, HatchlingMilestone, NestlingMilestone, FledglingMilestone, JuvenileMilestone, RealGrownMilestone } from '../../../constants/badge-svg'
+import { EggMilestone, HatchlingMilestone, NestlingMilestone, FledglingMilestone, JuvenileMilestone, RealGrownMilestone, ElderbirdMilestone, BirdgodMilestone } from '../../../constants/badge-svg'
 
 const MilestoneBadgeSvg = ({ color, milestone }) => {
   switch (milestone) {
@@ -15,6 +15,10 @@ const MilestoneBadgeSvg = ({ color, milestone }) => {
       return <JuvenileMilestone color={color} size='3.5rem' />
     case 500:
       return <RealGrownMilestone color={color} size='3rem' />
+    case 750:
+      return <ElderbirdMilestone color={color} size='3rem' />
+    case 1000:
+      return <BirdgodMilestone color={color} size='3rem' />
     default:
       return <EggMilestone color={color} size='3rem' />
   }
