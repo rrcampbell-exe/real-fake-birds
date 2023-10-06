@@ -37,7 +37,9 @@ export const ThemeButtonContainer = styled.div`
 
 export const BadgesContainer = styled.div`
   margin: 0 1rem;
-  justify-content: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   svg {
     margin: 0.25rem 0.5rem;
   }

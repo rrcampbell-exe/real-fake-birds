@@ -7,6 +7,8 @@ import styled from 'styled-components'
 const BadgeCollectionContainer = styled.div`
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
+  max-width: 20rem;
 `
 
 const BadgesSection = () => {
