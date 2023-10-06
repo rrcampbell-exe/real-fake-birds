@@ -1,5 +1,6 @@
 import styled from 'styled-components'
 import { Link } from 'react-router-dom'
+import media from '../../../constants/media'
 
 export const MenuContent = styled.div`
   button {
@@ -16,12 +17,6 @@ export const MenuContent = styled.div`
 
 `
 
-export const MenuHeader = styled.h3`
-  display: flex;
-  justify-content: center;
-  color: ${({ theme }) => theme.textColor};
-`
-
 export const MenuBody = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -30,9 +25,26 @@ export const MenuBody = styled.div`
   text-align: center;
 `
 
-export const ThemeButtonContainer = styled.div``
+export const ThemeButtonContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 1rem;
+  @media (min-width: ${media.tabletPlus}) {
+    width: 40%;
+  }
+`
 
-export const BadgesContainer = styled.div``
+export const BadgesContainer = styled.div`
+  margin: 0 1rem;
+  justify-content: start;
+  svg {
+    margin: 0.25rem 0.5rem;
+  }
+  @media (min-width: ${media.tabletPlus}) {
+    width: 40%;
+  }
+`
 
 export const MenuFooter = styled.div`
   display: flex;

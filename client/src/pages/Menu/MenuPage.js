@@ -2,7 +2,7 @@ import React from 'react'
 import BirdSvg from '../Home/components/BirdSvg'
 import { getTheme, setTheme } from '../../utils/theme-handler'
 import { themes } from '../../constants/theme'
-import { MenuContent, MenuHeader, MenuBody, MenuFooter, BackButton, ThemeButton, ThemeButtonContainer, BadgesContainer, StyledLink } from './components/MenuStyles'
+import { MenuContent, MenuBody, MenuFooter, BackButton, ThemeButton, ThemeButtonContainer, BadgesContainer, StyledLink } from './components/MenuStyles'
 import Badges from './components/Badges'
 import { ThemeProvider } from 'styled-components'
 import GlobalStyle from '../../GlobalStyles'
@@ -10,17 +10,19 @@ import { Link } from 'react-router-dom'
 import PageTitle from '../../common/PageTitle'
 
 const Menu = () => {
+  const hasBadges = localStorage.getItem('birdMilestonesArray')
   return (
     <ThemeProvider theme={getTheme()}>
       <GlobalStyle />
       <PageTitle />
       <MenuContent>
-        <MenuHeader>Real Fake Menu</MenuHeader>
         <MenuBody>
-          <BadgesContainer>
-            <h4>Real Fake Rewards</h4>
-            <Badges />
-          </BadgesContainer>
+          {hasBadges &&
+            <BadgesContainer>
+              <h4>Real Fake Rewards</h4>
+              <Badges />
+            </BadgesContainer>
+          }
           <ThemeButtonContainer>
             <h4>Real Fake Themes</h4>
             {themes.map((theme) => (
