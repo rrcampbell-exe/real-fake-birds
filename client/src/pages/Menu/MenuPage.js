@@ -17,12 +17,15 @@ const Menu = () => {
       <PageTitle />
       <MenuContent>
         <MenuBody>
-          {hasBadges &&
-            <BadgesContainer>
-              <h4>Real Fake Rewards</h4>
-              <Badges />
-            </BadgesContainer>
-          }
+          <BadgesContainer>
+            <h4>Real Fake Rewards</h4>
+            {hasBadges && <Badges />}
+            {!hasBadges &&
+              <>
+                <p>You haven't earned any rewards yet.</p>
+                <p>Play on to earn real fake bird badges!</p>
+              </>}
+          </BadgesContainer>
           <ThemeButtonContainer>
             <h4>Real Fake Themes</h4>
             {themes.map((theme) => (
