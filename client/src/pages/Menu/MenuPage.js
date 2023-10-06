@@ -3,7 +3,7 @@ import BirdSvg from '../Home/components/BirdSvg'
 import { getTheme, setTheme } from '../../utils/theme-handler'
 import { themes } from '../../constants/theme'
 import { MenuContent, MenuBody, MenuFooter, BackButton, ThemeButton, ThemeButtonContainer, BadgesContainer, StyledLink } from './components/MenuStyles'
-import Badges from './components/Badges'
+import BadgesSection from './components/BadgesSection'
 import { ThemeProvider } from 'styled-components'
 import GlobalStyle from '../../GlobalStyles'
 import { Link } from 'react-router-dom'
@@ -19,7 +19,7 @@ const Menu = () => {
         <MenuBody>
           <BadgesContainer>
             <h4>Real Fake Rewards</h4>
-            {hasBadges && <Badges />}
+            {hasBadges && <BadgesSection />}
             {!hasBadges &&
               <>
                 <p>You haven't earned any rewards yet.</p>
