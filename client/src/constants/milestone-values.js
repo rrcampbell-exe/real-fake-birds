@@ -1,4 +1,3 @@
-// TODO: need badges for elderbird, birdgod
 // TODO: get more sense of humor in the badge descriptions for the younger birds
 
 const milestoneValues = [
@@ -23,13 +22,13 @@ const milestoneValues = [
   {
     badge: 'Fledgling Badge',
     value: 100,
-    description: 'Preparing for take-off!',
+    description: `"What do you mean I'm not ready to fly? Stepdad totally lets me fly when I go over to his nest!"`,
     achievement: 'Earned for correctly identifying 100 real fake birds.'
   },
   {
     badge: 'Juvenile Badge',
     value: 250,
-    description: `Doing kickflips in the sky. Or something.`,
+    description: `Doing kickflips in the sky. It's not just a phase! Or something.`,
     achievement: 'Earned for correctly identifying 250 real fake birds.'
   },
   {
@@ -41,7 +40,7 @@ const milestoneValues = [
   {
     badge: 'Elderbird Badge',
     value: 750,
-    description: 'Your wisdom is beyond the comprehension of most.',
+    description: `"Back in my day, I had to fly 15 miles to school into the wind each way. Juveniles these days don't know how good they've got it."`,
     achievement: 'Earned for correctly identifying 750 real fake birds.'
   },
   {
