@@ -1,43 +1,54 @@
+// TODO: need badges for elderbird, birdgod
+// TODO: get more sense of humor in the badge descriptions for the younger birds
+
 const milestoneValues = [
   {
-    badge: 'egg',
+    badge: 'Egg Badge',
     value: 10,
-    description: `You've found an egg! Now, will it hatch? When?`
+    description: 'The start of something special!',
+    achievement: 'Earned for correctly identifying 10 real fake birds.'
   },
   {
-    badge: 'hatchling',
+    badge: 'Hatchling Badge',
     value: 25,
-    description: `You hatched a baby bird!`
+    description: 'Welcome to the world!',
+    achievement: 'Earned for correctly identifying 25 real fake birds. '
   },
   {
-    badge: 'nestling',
+    badge: 'Nestling Badge',
     value: 50,
-    description: `A nestling!`
+    description: 'Feeling right at home!',
+    achievement: 'Earned for correctly identifying 50 real fake birds.'
   },
   {
-    badge: 'fledgling',
+    badge: 'Fledgling Badge',
     value: 100,
-    description: `A fledgling!`
+    description: 'Preparing for take-off!',
+    achievement: 'Earned for correctly identifying 100 real fake birds.'
   },
   {
-    badge: 'juvenile',
+    badge: 'Juvenile Badge',
     value: 250,
-    description: `A juvenile!`
+    description: `Doing kickflips in the sky. Or something.`,
+    achievement: 'Earned for correctly identifying 250 real fake birds.'
   },
   {
-    badge: 'realGrown',
+    badge: 'Full-Grown Bird Badge',
     value: 500,
-    description: `A grown-ass bird!`
+    description: `It's true: no adult bird has ever had to make a mortgage payment.`,
+    achievement: 'Earned for correctly identifying 500 real fake birds.'
   },
   {
-    badge: 'TBD',
+    badge: 'Elderbird Badge',
     value: 750,
-    description: `TBD!`
+    description: 'Your wisdom is beyond the comprehension of most.',
+    achievement: 'Earned for correctly identifying 750 real fake birds.'
   },
   {
-    badge: 'TBD',
+    badge: 'Birdgod Badge',
     value: 1000,
-    description: `TBD but for 1000!`
+    description: 'A soarer of skies unsoared, a knower of the unknowable.',
+    achievement: 'Earned for correctly identifying 1,000 real fake birds.'
   }
 ]
 
