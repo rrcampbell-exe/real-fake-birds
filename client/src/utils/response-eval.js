@@ -13,14 +13,11 @@ const streakEval = (currentStreak, setIsStreak) => {
   }
 }
 
-const updateMilestonesArray = (currentMilestoneAchieved, allMilestonesAchieved) => {
+const updateMilestonesArray = (allMilestonesAchieved) => {
   if (localStorage.getItem('birdMilestonesArray')) {
-    let milestonesArray = JSON.parse(localStorage.getItem('birdMilestonesArray'))
-    milestonesArray.push(currentMilestoneAchieved)
-    return milestonesArray
-  } else {
-    return allMilestonesAchieved
+    localStorage.removeItem('birdMilestonesArray')
   }
+  return allMilestonesAchieved
 }
 
 const milestoneEval = (currentMilestone, setIsMilestone) => {
@@ -31,9 +28,8 @@ const milestoneEval = (currentMilestone, setIsMilestone) => {
       localStorage.setItem('hasUnseenBadges', true)
 
       const allMilestonesAchieved = milestoneValues.filter((milestone) => milestone.value <= currentMilestone)
-      const currentMilestoneAchieved = milestoneValues.filter((milestone) => milestone.value === currentMilestone)[0]
       
-      const milestonesArray = JSON.stringify(updateMilestonesArray(currentMilestoneAchieved, allMilestonesAchieved))
+      const milestonesArray = JSON.stringify(updateMilestonesArray(allMilestonesAchieved))
       
       localStorage.setItem('birdMilestonesArray', milestonesArray)
 
