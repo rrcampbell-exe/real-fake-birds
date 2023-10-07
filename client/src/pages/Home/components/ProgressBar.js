@@ -1,6 +1,6 @@
 import React from 'react'
 import styled from 'styled-components'
-import media from '../constants/media'
+import media from '../../../constants/media'
 
 const ProgressBarWrapper = styled.div`
   background-color: #f1f1f1;

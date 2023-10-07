@@ -48,7 +48,7 @@ When presented with the name of a bird, guess whether this is the name of a real
 - ["Bird Watching" Gif - Gull Theme by Guillaume Lucas on GIPHY](https://giphy.com/guim4uve)
 - ["Bird Watching" Gif - Swan Theme by GUIDE Culture on GIPHY](https://giphy.com/guideculture)
 - ["Bird Watching" Gif - Robin Theme by Stefanie Shank on GIPHY](https://giphy.com/stefanieshank)
-- [Bird svg used on Options and Badges Button via SVGREPO](https://www.svgrepo.com/)
+- [Bird SVGs via SVGREPO](https://www.svgrepo.com/)
 
 ## Questions, Comments, Suggestions
 Please email [Ryan R. Campbell](mailto:campbell.ryan.r@gmail.com) with any questions, to report any bugs, or to make any feature suggestions. You can also [contact Ryan R. Campbell on GitHub](https://www.github.com/rrcampbell-exe/).

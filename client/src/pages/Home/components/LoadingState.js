@@ -1,7 +1,7 @@
 import React from 'react'
 import styled from 'styled-components'
-import media from '../constants/media'
-import { getTheme } from '../utils/theme-handler'
+import media from '../../../constants/media'
+import { getTheme } from '../../../utils/theme-handler'
 
 const LoadingWrapper = styled.div`
   display: flex;
