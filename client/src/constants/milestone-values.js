@@ -1,22 +1,20 @@
-// TODO: get more sense of humor in the badge descriptions for the younger birds
-
 const milestoneValues = [
   {
     badge: 'Egg Badge',
     value: 10,
-    description: 'The start of something special!',
+    description: `An egg! It's probably not for frying...`,
     achievement: 'Earned for correctly identifying 10 real fake birds.'
   },
   {
     badge: 'Hatchling Badge',
     value: 25,
-    description: 'Welcome to the world!',
+    description: `"The world is a big, new, scary place. Now someone feed me."`,
     achievement: 'Earned for correctly identifying 25 real fake birds. '
   },
   {
     badge: 'Nestling Badge',
     value: 50,
-    description: 'Feeling right at home!',
+    description: 'How can something so tiny make so much noise?',
     achievement: 'Earned for correctly identifying 50 real fake birds.'
   },
   {
@@ -46,7 +44,7 @@ const milestoneValues = [
   {
     badge: 'Birdgod Badge',
     value: 1000,
-    description: 'A soarer of skies unsoared, a knower of the unknowable.',
+    description: 'You are become birdgod: a soarer of skies unsoared, a knower of the unknowable.',
     achievement: 'Earned for correctly identifying 1,000 real fake birds.'
   }
 ]
