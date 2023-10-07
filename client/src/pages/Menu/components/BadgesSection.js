@@ -2,14 +2,7 @@ import React from 'react'
 import { getTheme } from '../../../utils/theme-handler'
 import MilestoneBadgeSvg from './MilestoneBadgeSvg'
 import Badge from './Badge'
-import styled from 'styled-components'
-
-const BadgeCollectionContainer = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  max-width: 20rem;
-`
+import { BadgeCollectionContainer } from './MenuStyles'
 
 const BadgesSection = () => {
   const { textColor } = getTheme()
