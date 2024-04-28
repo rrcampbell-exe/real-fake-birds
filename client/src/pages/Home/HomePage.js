@@ -6,6 +6,7 @@ import GlobalStyle from '../../GlobalStyles'
 import { ThemeProvider } from 'styled-components'
 import { getTheme } from '../../utils/theme-handler'
 import styled from 'styled-components'
+import { Analytics } from '@vercel/analytics/react'
 
 const PageContainer = styled.div`
   overflow: hidden;
@@ -19,6 +20,7 @@ function HomePage() {
         <Confetti />
         <PageTitle />
         <BirdNameSection />
+        <Analytics />
         <Footer />
       </PageContainer>
     </ThemeProvider>
