@@ -8,6 +8,7 @@ import { ThemeProvider } from 'styled-components'
 import GlobalStyle from '../../GlobalStyles'
 import { Link } from 'react-router-dom'
 import PageTitle from '../../common/PageTitle'
+import { Analytics } from '@vercel/analytics/react'
 
 const Menu = () => {
   const hasBadges = localStorage.getItem('birdMilestonesArray')
@@ -44,6 +45,7 @@ const Menu = () => {
           </Link>
         </MenuFooter>
       </MenuContent>
+      <Analytics />
     </ThemeProvider>
   )
 }
