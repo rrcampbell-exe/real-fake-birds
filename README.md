@@ -27,7 +27,7 @@ When presented with the name of a bird, guess whether this is the name of a real
  - Styled Components 💅
 
 ## License
-© 2023 Ryan R. Campbell. All rights reserved.
+© 2023 - 2024 Ryan R. Campbell. All rights reserved.
 
 ## Credits
 ### Developed By
