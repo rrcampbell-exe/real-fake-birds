@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { Flame, Zap, Target, Bird } from 'lucide-react';
+import { useStoredJson } from '@/hooks/useStoredValue';
 
 interface Stats {
   birdsSeen: number;
@@ -11,11 +11,7 @@ interface Stats {
 }
 
 export default function PersonalBests() {
-  const [stats] = useState<Stats | null>(() => {
-    if (typeof window === 'undefined') return null;
-    const raw = localStorage.getItem('birdScore');
-    return raw ? (JSON.parse(raw) as Stats) : null;
-  });
+  const stats = useStoredJson<Stats | null>('birdScore', null);
 
   if (!stats) return null;
 

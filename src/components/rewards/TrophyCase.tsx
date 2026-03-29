@@ -1,20 +1,16 @@
 'use client';
 
-import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Lock } from 'lucide-react';
 import { milestones } from '@/lib/constants/milestones';
 import MilestoneBadgeSvg from '@/components/icons/MilestoneBadgeSvg';
-import { getTheme } from '@/lib/utils/theme-handler';
+import { finch } from '@/lib/themes';
 import type { Milestone } from '@/types';
+import { useStoredJson } from '@/hooks/useStoredValue';
 
 export default function TrophyCase() {
-  const [earned] = useState<Milestone[]>(() => {
-    if (typeof window === 'undefined') return [];
-    const raw = localStorage.getItem('birdMilestonesArray');
-    return raw ? (JSON.parse(raw) as Milestone[]) : [];
-  });
-  const { textColor } = getTheme();
+  const earned = useStoredJson<Milestone[]>('birdMilestonesArray', []);
+  const { textColor } = useStoredJson('birdTheme', finch);
 
   const earnedValues = new Set(earned.map((m) => m.value));
 

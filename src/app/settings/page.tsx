@@ -1,18 +1,17 @@
 'use client';
 
-import { useState } from 'react';
 import { Check } from 'lucide-react';
 import { themes } from '@/lib/themes';
-import { getTheme, setTheme } from '@/lib/utils/theme-handler';
+import { setTheme } from '@/lib/utils/theme-handler';
 import BirdSvg from '@/components/icons/BirdSvg';
-import type { Theme } from '@/types';
+import { finch } from '@/lib/themes';
+import { useStoredJson } from '@/hooks/useStoredValue';
 
 export default function SettingsPage() {
-  const [currentTheme, setCurrentTheme] = useState<Theme>(() => getTheme());
+  const currentTheme = useStoredJson('birdTheme', finch);
 
-  const handleThemeChange = (theme: Theme) => {
+  const handleThemeChange = (theme: typeof finch) => {
     setTheme(theme);
-    setCurrentTheme(theme);
     document.documentElement.setAttribute('data-theme', theme.name);
   };
 

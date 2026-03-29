@@ -3,6 +3,7 @@
 import { Flame, Target, Zap } from 'lucide-react';
 import { streakValues } from '@/lib/constants/streaks';
 import { isNextStreakEval } from '@/lib/utils/goals-evaluation';
+import { useStoredJson } from '@/hooks/useStoredValue';
 
 interface Stats {
   birdsSeen: number;
@@ -18,11 +19,7 @@ interface StatsBarProps {
 export default function StatsBar({ refreshTrigger }: StatsBarProps) {
   void refreshTrigger;
 
-  const stats = (() => {
-    if (typeof window === 'undefined') return null;
-    const raw = localStorage.getItem('birdScore');
-    return raw ? (JSON.parse(raw) as Stats) : null;
-  })();
+  const stats = useStoredJson<Stats | null>('birdScore', null);
 
   if (!stats) return null;
 

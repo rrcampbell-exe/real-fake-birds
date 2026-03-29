@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Bird, Trophy, Settings } from 'lucide-react';
+import { useStoredBoolean } from '@/hooks/useStoredValue';
 
 const links = [
   { href: '/', label: 'Play', icon: Bird },
@@ -12,10 +13,7 @@ const links = [
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const hasUnseenBadges = (() => {
-    if (typeof window === 'undefined') return false;
-    return JSON.parse(localStorage.getItem('hasUnseenBadges') ?? 'false') as boolean;
-  })();
+  const hasUnseenBadges = useStoredBoolean('hasUnseenBadges');
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around bg-[var(--color-surface)] backdrop-blur-md border-t border-[var(--color-surface-border)] px-2 pb-[env(safe-area-inset-bottom)]">

@@ -1,8 +1,10 @@
 import type { Theme } from '@/types';
 import { finch, themes } from '@/lib/themes';
+import { notifyStoredValueChanged } from '@/hooks/useStoredValue';
 
 export function setTheme(theme: Theme): void {
   localStorage.setItem('birdTheme', JSON.stringify(theme));
+  notifyStoredValueChanged('birdTheme');
 }
 
 export function getTheme(): Theme {
