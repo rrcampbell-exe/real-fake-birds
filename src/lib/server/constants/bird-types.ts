@@ -1,0 +1,15 @@
+export const birdTypes: string[] = [
+  'Robin', 'Swallow', 'Duck', 'Owl', 'Sparrow', 'Hummingbird', 'Woodpecker',
+  'Wren', 'Finch', 'Swan', 'Goose', 'Peafowl', 'Nighthawk', 'Parrot',
+  'Toucan', 'Gull', 'Heron', 'Chickadee', 'Pigeon', 'Cardinal', 'Loon',
+  'Jay', 'Mockingbird', 'Booby', 'Nuthatch', 'Catbird', 'Noddy', 'Ostrich',
+  'Hawk', 'Condor', 'Vulture', 'Warbler', 'Thrush', 'Junco', 'Meadowlark',
+  'Lark', 'Bunting', 'Quail', 'Coot', 'Guinea Fowl', 'Vireo', 'Crane',
+  'Sandpiper', 'Dove', 'Egret', 'Parakeet', 'Macaw', 'Cockatoo', 'Kingbird',
+  'Crow', 'Raven', 'Falcon', 'Tit', 'Canary', 'Puffin', 'Pelican', 'Cuckoo',
+  'Stork', 'Albatross', 'Eagle', 'Swift', 'Grebe', 'Petrel', 'Buzzard',
+  'Kite', 'Kiwi', 'Hornbill', 'Hoopoe', 'Woodhoopoe', 'Nightjar',
+  'Frogmouth', 'Oilbird', 'Cassowary', 'Emu', 'Mousebird', 'Bee-eater',
+  'Motmot', 'Roadrunner', 'Koel', 'Coucal', 'Sunbittern', 'Skylark',
+  'Starling', 'Flamingo', 'Gannet',
+];
