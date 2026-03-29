@@ -1,0 +1,132 @@
+@import "tailwindcss";
+
+/* ─── Theme CSS Variables ─── */
+
+:root {
+  --color-primary: #1B5C1B;
+  --color-primary-light: #267326;
+  --color-secondary: #3F1212;
+  --color-text: #FFFFFF;
+  --color-real-fake-text: #3F1212;
+  --color-surface: rgba(255,255,255,0.08);
+  --color-surface-hover: rgba(255,255,255,0.14);
+  --color-surface-border: rgba(255,255,255,0.12);
+  --color-muted: rgba(255,255,255,0.55);
+  --shadow-card: 0 8px 32px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.15);
+  --shadow-button: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+[data-theme="Raven"] {
+  --color-primary: #0a0a14;
+  --color-primary-light: #14142a;
+  --color-secondary: #1B1B5C;
+  --color-text: #FFFFFF;
+  --color-real-fake-text: #B6B6FF;
+  --color-surface: rgba(255,255,255,0.06);
+  --color-surface-hover: rgba(255,255,255,0.1);
+  --color-surface-border: rgba(255,255,255,0.08);
+  --color-muted: rgba(255,255,255,0.45);
+}
+
+[data-theme="Flamingo"] {
+  --color-primary: #EC7189;
+  --color-primary-light: #f08da0;
+  --color-secondary: #327CBA;
+  --color-text: #FFFFFF;
+  --color-real-fake-text: #327CBA;
+  --color-surface: rgba(255,255,255,0.12);
+  --color-surface-hover: rgba(255,255,255,0.2);
+  --color-surface-border: rgba(255,255,255,0.18);
+  --color-muted: rgba(255,255,255,0.6);
+}
+
+[data-theme="Gull"] {
+  --color-primary: #7CD9FF;
+  --color-primary-light: #9ae3ff;
+  --color-secondary: #FFA27C;
+  --color-text: #FFFFFF;
+  --color-real-fake-text: #FFA27C;
+  --color-surface: rgba(255,255,255,0.15);
+  --color-surface-hover: rgba(255,255,255,0.25);
+  --color-surface-border: rgba(255,255,255,0.2);
+  --color-muted: rgba(255,255,255,0.6);
+  --shadow-card: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+}
+
+[data-theme="Swan"] {
+  --color-primary: #FAF9F6;
+  --color-primary-light: #FFFFFF;
+  --color-secondary: #EAAD43;
+  --color-text: #2d2d2d;
+  --color-real-fake-text: #EAAD43;
+  --color-surface: rgba(0,0,0,0.04);
+  --color-surface-hover: rgba(0,0,0,0.08);
+  --color-surface-border: rgba(0,0,0,0.08);
+  --color-muted: rgba(0,0,0,0.45);
+  --shadow-card: 0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.05);
+}
+
+[data-theme="Robin"] {
+  --color-primary: #874F22;
+  --color-primary-light: #9e6230;
+  --color-secondary: #D94311;
+  --color-text: #FFFFFF;
+  --color-real-fake-text: #D94311;
+  --color-surface: rgba(255,255,255,0.1);
+  --color-surface-hover: rgba(255,255,255,0.16);
+  --color-surface-border: rgba(255,255,255,0.14);
+  --color-muted: rgba(255,255,255,0.55);
+}
+
+/* ─── Tailwind Theme Tokens ─── */
+
+@theme inline {
+  --color-theme-primary: var(--color-primary);
+  --color-theme-primary-light: var(--color-primary-light);
+  --color-theme-secondary: var(--color-secondary);
+  --color-theme-text: var(--color-text);
+  --color-theme-real-fake: var(--color-real-fake-text);
+  --color-theme-surface: var(--color-surface);
+  --color-theme-surface-hover: var(--color-surface-hover);
+  --color-theme-surface-border: var(--color-surface-border);
+  --color-theme-muted: var(--color-muted);
+}
+
+/* ─── Base Styles ─── */
+
+body {
+  background-color: var(--color-primary);
+  color: var(--color-text);
+  margin: 0;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+/* ─── Scrollbar ─── */
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-surface-border); border-radius: 3px; }
+
+/* ─── Custom Animations ─── */
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes streak-glow {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.3); }
+}
