@@ -40,6 +40,11 @@ export interface Location {
   subregion: string;
 }
 
+export interface SoundSettings {
+  muted: boolean;
+  volume: number;
+}
+
 export interface SvgIconProps {
   color: string;
   size: string;
