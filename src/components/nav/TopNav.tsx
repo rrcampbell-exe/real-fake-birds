@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Bird, Trophy, Settings } from 'lucide-react';
 import { useStoredBoolean } from '@/hooks/useStoredValue';
+import { useSound } from '@/hooks/useSound';
 
 const links = [
   { href: '/', label: 'Play', icon: Bird },
@@ -14,6 +15,7 @@ const links = [
 export default function TopNav() {
   const pathname = usePathname();
   const hasUnseenBadges = useStoredBoolean('hasUnseenBadges');
+  const { play } = useSound();
 
   return (
     <nav className="hidden md:flex items-center justify-between px-6 py-3 bg-[var(--color-surface)] backdrop-blur-md border-b border-[var(--color-surface-border)]">
@@ -33,6 +35,7 @@ export default function TopNav() {
             <Link
               key={href}
               href={href}
+              onClick={() => play('navTap')}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 active
                   ? 'bg-[var(--color-secondary)] text-[var(--color-text)]'

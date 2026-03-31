@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { Check, X } from 'lucide-react';
 import { correctnessText } from '@/lib/utils/correctness-text';
+import { useSound } from '@/hooks/useSound';
 
 interface AnswerProps {
   birdData: string;
@@ -23,6 +24,29 @@ export default function Answer({
   isMilestone,
   onTryAgain,
 }: AnswerProps) {
+  const { play } = useSound();
+
+  // Play answer reveal sounds, synced with the spring animation delay
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isCorrect) {
+        play('correct');
+      } else {
+        play('wrong');
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [isCorrect, play]);
+
+  // Play celebration sounds for streaks / milestones
+  useEffect(() => {
+    if (isMilestone) {
+      play('milestone');
+    } else if (isStreak) {
+      play('streak');
+    }
+  }, [isStreak, isMilestone, play]);
+
   useEffect(() => {
     if (isStreak || isMilestone) {
       const duration = 2500;
@@ -82,7 +106,7 @@ export default function Answer({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.35 }}
-        onClick={onTryAgain}
+        onClick={() => { play('whoosh'); onTryAgain(); }}
         className="mt-2 py-3 px-8 rounded-xl font-[family-name:var(--font-display)] font-semibold text-base
           bg-[var(--color-secondary)] text-[var(--color-text)] border-none
           shadow-[var(--shadow-button)] hover:brightness-110 active:scale-[0.97]

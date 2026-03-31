@@ -1,18 +1,21 @@
 'use client';
 
-import { Check } from 'lucide-react';
+import { Check, Volume2, VolumeX } from 'lucide-react';
 import { themes } from '@/lib/themes';
 import { setTheme } from '@/lib/utils/theme-handler';
 import BirdSvg from '@/components/icons/BirdSvg';
 import { finch } from '@/lib/themes';
 import { useStoredJson } from '@/hooks/useStoredValue';
+import { useSound } from '@/hooks/useSound';
 
 export default function SettingsPage() {
   const currentTheme = useStoredJson('birdTheme', finch);
+  const { isMuted, volume, setMuted, setVolume, play } = useSound();
 
   const handleThemeChange = (theme: typeof finch) => {
     setTheme(theme);
     document.documentElement.setAttribute('data-theme', theme.name);
+    play('themeChange');
   };
 
   return (
@@ -72,6 +75,57 @@ export default function SettingsPage() {
               </button>
             );
           })}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold mb-3">
+          Sound
+        </h2>
+        <div className="p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-surface-border)] flex flex-col gap-4">
+          {/* Mute toggle */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {isMuted ? (
+                <VolumeX size={18} className="text-[var(--color-muted)]" />
+              ) : (
+                <Volume2 size={18} className="text-[var(--color-secondary)]" />
+              )}
+              <span className="text-sm font-medium">Sound Effects</span>
+            </div>
+            <button
+              onClick={() => setMuted(!isMuted)}
+              className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${
+                isMuted ? 'bg-[var(--color-surface-border)]' : 'bg-[var(--color-secondary)]'
+              }`}
+              aria-label={isMuted ? 'Unmute sound' : 'Mute sound'}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+                  isMuted ? '' : 'translate-x-5'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Volume slider */}
+          {!isMuted && (
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-[var(--color-muted)] w-12 shrink-0">Volume</span>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={volume}
+                onChange={(e) => setVolume(parseFloat(e.target.value))}
+                className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer accent-[var(--color-secondary)] bg-[var(--color-surface-border)]"
+              />
+              <span className="text-xs text-[var(--color-muted)] w-8 text-right">
+                {Math.round(volume * 100)}%
+              </span>
+            </div>
+          )}
         </div>
       </section>
 
