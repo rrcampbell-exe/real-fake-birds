@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import HintButton from './HintButton';
+import { useSound } from '@/hooks/useSound';
 
 interface BirdCardProps {
   birdName: string;
@@ -18,6 +19,13 @@ export default function BirdCard({
   loadingContent,
   answerContent,
 }: BirdCardProps) {
+  const { play } = useSound();
+
+  const handleAnswer = (e: React.MouseEvent<HTMLButtonElement>) => {
+    play('tap');
+    onAnswer(e);
+  };
+
   return (
     <div className="w-full max-w-md mx-auto px-4">
       <motion.div
@@ -66,7 +74,7 @@ export default function BirdCard({
                 <div className="flex gap-3 w-full">
                   <button
                     id="real"
-                    onClick={onAnswer}
+                    onClick={handleAnswer}
                     className="flex-1 py-3.5 px-6 rounded-xl font-[family-name:var(--font-display)] font-semibold text-base
                       bg-[var(--color-secondary)] text-[var(--color-text)] border-none
                       shadow-[var(--shadow-button)] hover:brightness-110 active:scale-[0.97]
@@ -76,7 +84,7 @@ export default function BirdCard({
                   </button>
                   <button
                     id="fake"
-                    onClick={onAnswer}
+                    onClick={handleAnswer}
                     className="flex-1 py-3.5 px-6 rounded-xl font-[family-name:var(--font-display)] font-semibold text-base
                       bg-transparent text-[var(--color-text)] border-2 border-[var(--color-text)]
                       hover:bg-[var(--color-surface-hover)] active:scale-[0.97]

@@ -1,9 +1,18 @@
 'use client';
 
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Bird } from 'lucide-react';
+import { useSound } from '@/hooks/useSound';
 
 export default function LoadingState() {
+  const { startLoop, stopLoop } = useSound();
+
+  useEffect(() => {
+    startLoop('loadingLoop');
+    return () => stopLoop('loadingLoop');
+  }, [startLoop, stopLoop]);
+
   return (
     <div className="flex flex-col items-center gap-4 py-2">
       <motion.div

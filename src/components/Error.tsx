@@ -1,8 +1,16 @@
 'use client';
 
+import { useEffect } from 'react';
 import { AlertCircle } from 'lucide-react';
+import { useSound } from '@/hooks/useSound';
 
 export default function Error() {
+  const { play } = useSound();
+
+  useEffect(() => {
+    play('error');
+  }, [play]);
+
   return (
     <div className="w-full max-w-md mx-auto px-4">
       <div
@@ -14,7 +22,7 @@ export default function Error() {
           No birds found
         </p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => { play('whoosh'); window.location.reload(); }}
           className="py-2.5 px-6 rounded-xl font-[family-name:var(--font-display)] font-semibold text-sm
             bg-[var(--color-secondary)] text-[var(--color-text)] border-none
             shadow-[var(--shadow-button)] hover:brightness-110 active:scale-[0.97]
