@@ -61,9 +61,9 @@ export default function BirdCard({
                 className="flex flex-col items-center gap-6"
               >
                 {/* Hint button placeholder */}
-                <div className="self-end">
+                {/* <div className="self-end">
                   <HintButton disabled />
-                </div>
+                </div> */}
 
                 {/* Bird name */}
                 <h2 className="font-[family-name:var(--font-display)] text-2xl md:text-4xl font-bold text-center leading-tight">
@@ -76,7 +76,7 @@ export default function BirdCard({
                     id="real"
                     onClick={handleAnswer}
                     className="flex-1 py-3.5 px-6 rounded-xl font-[family-name:var(--font-display)] font-semibold text-base
-                      bg-[var(--color-secondary)] text-[var(--color-text)] border-none
+                      bg-[var(--color-secondary)] text-[var(--color-on-secondary)] border-none
                       shadow-[var(--shadow-button)] hover:brightness-110 active:scale-[0.97]
                       transition-all duration-150 cursor-pointer"
                   >

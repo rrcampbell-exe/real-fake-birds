@@ -112,45 +112,64 @@ describe('SoundManager', () => {
     it('loads default settings when localStorage is empty', () => {
       const mgr = SoundManager.getInstance();
       const settings = mgr.getSettings();
-      expect(settings).toEqual({ muted: false, volume: 0.7 });
+      expect(settings).toEqual({
+        sfxMuted: false,
+        sfxVolume: 0.7,
+        musicMuted: false,
+        musicVolume: 1,
+      });
     });
 
     it('loads saved settings from localStorage', () => {
       localStorage.setItem(
         'birdSoundSettings',
+        JSON.stringify({ sfxMuted: true, sfxVolume: 0.4, musicMuted: false, musicVolume: 0.8 })
+      );
+      const mgr = SoundManager.getInstance();
+      expect(mgr.getSettings()).toEqual({ sfxMuted: true, sfxVolume: 0.4, musicMuted: false, musicVolume: 0.8 });
+    });
+
+    it('migrates the old single-volume settings shape', () => {
+      localStorage.setItem(
+        'birdSoundSettings',
         JSON.stringify({ muted: true, volume: 0.4 })
       );
       const mgr = SoundManager.getInstance();
-      expect(mgr.getSettings()).toEqual({ muted: true, volume: 0.4 });
+      expect(mgr.getSettings()).toEqual({
+        sfxMuted: true,
+        sfxVolume: 0.4,
+        musicMuted: true,
+        musicVolume: 1,
+      });
     });
 
-    it('saves settings on setMuted', () => {
+    it('saves settings on setSfxMuted', () => {
       const mgr = SoundManager.getInstance();
-      mgr.setMuted(true);
+      mgr.setSfxMuted(true);
       const stored = JSON.parse(localStorage.getItem('birdSoundSettings')!);
-      expect(stored.muted).toBe(true);
+      expect(stored.sfxMuted).toBe(true);
     });
 
-    it('saves settings on setVolume', () => {
+    it('saves settings on setMusicVolume', () => {
       const mgr = SoundManager.getInstance();
-      mgr.setVolume(0.5);
+      mgr.setMusicVolume(0.85);
       const stored = JSON.parse(localStorage.getItem('birdSoundSettings')!);
-      expect(stored.volume).toBe(0.5);
+      expect(stored.musicVolume).toBe(0.85);
     });
 
-    it('clamps volume between 0 and 1', () => {
+    it('clamps sfx and music volume between 0 and 1', () => {
       const mgr = SoundManager.getInstance();
-      mgr.setVolume(1.5);
-      expect(mgr.getSettings().volume).toBe(1);
-      mgr.setVolume(-0.3);
-      expect(mgr.getSettings().volume).toBe(0);
+      mgr.setSfxVolume(1.5);
+      expect(mgr.getSettings().sfxVolume).toBe(1);
+      mgr.setMusicVolume(-0.3);
+      expect(mgr.getSettings().musicVolume).toBe(0);
     });
   });
 
   describe('play', () => {
     it('does not play when muted', () => {
       const mgr = SoundManager.getInstance();
-      mgr.setMuted(true);
+      mgr.setSfxMuted(true);
       mgr.play('tap');
       // AudioContext is created lazily — if muted, createOscillator should not be called
       // (ensureContext is called by setMuted which sets up the context, but play bails early)
@@ -189,6 +208,23 @@ describe('SoundManager', () => {
       mgr.play('tap');
       expect(mockCtx.resume).toHaveBeenCalled();
     });
+
+    it('plays streak at a reduced per-sound gain', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+        })
+      );
+
+      const mgr = SoundManager.getInstance();
+      mgr.play('streak');
+
+      await flushAsyncAudioWork();
+
+      const fileGainNode = mockCtx.createGain.mock.results.at(-1)?.value;
+      expect(fileGainNode.gain.setValueAtTime).toHaveBeenCalledWith(0.45, 0);
+    });
   });
 
   describe('preloadAll', () => {
@@ -210,6 +246,20 @@ describe('SoundManager', () => {
       expect(fetch).toHaveBeenCalledWith('/sounds/fx/milestone.mp3');
       expect(fetch).toHaveBeenCalledWith('/sounds/fx/error.mp3');
       expect(fetch).toHaveBeenCalledWith('/sounds/fx/loading.mp3');
+    });
+
+    it('preloads additional URLs such as theme songs', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+        })
+      );
+
+      const mgr = SoundManager.getInstance();
+      await mgr.preloadAll(['/sounds/themes/bird-bossa-nova.mp3']);
+
+      expect(fetch).toHaveBeenCalledWith('/sounds/themes/bird-bossa-nova.mp3');
     });
 
     it('silently skips files that fail to fetch', async () => {
@@ -265,11 +315,47 @@ describe('SoundManager', () => {
 
     it('does not start a loop when muted', () => {
       const mgr = SoundManager.getInstance();
-      mgr.setMuted(true);
+      mgr.setSfxMuted(true);
       mgr.startLoop('loadingLoop');
       // createOscillator was called during setMuted (ensureContext) but not for the loop
       // The key thing: no active loop should exist
       mgr.stopLoop('loadingLoop'); // should be a no-op, no error
+    });
+
+    it('starts a dedicated theme-song loop from the provided URL', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+        })
+      );
+
+      const mgr = SoundManager.getInstance();
+      mgr.startThemeSong('/sounds/themes/finch.mp3');
+
+      expect(fetch).toHaveBeenCalledWith('/sounds/themes/finch.mp3');
+      await flushAsyncAudioWork();
+      expect(mockCtx.createBufferSource).toHaveBeenCalled();
+
+      mgr.stopThemeSong();
+    });
+
+    it('reuses a preloaded theme-song buffer without refetching on start', async () => {
+      const fetchSpy = vi.fn().mockResolvedValue({
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+      });
+      vi.stubGlobal('fetch', fetchSpy);
+
+      const mgr = SoundManager.getInstance();
+      await mgr.preloadAll(['/sounds/themes/finch.mp3']);
+
+      fetchSpy.mockClear();
+
+      mgr.startThemeSong('/sounds/themes/finch.mp3');
+      await flushAsyncAudioWork();
+
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(mockCtx.createBufferSource).toHaveBeenCalled();
     });
   });
 

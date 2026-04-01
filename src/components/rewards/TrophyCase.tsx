@@ -5,14 +5,18 @@ import { Lock } from 'lucide-react';
 import { milestones } from '@/lib/constants/milestones';
 import MilestoneBadgeSvg from '@/components/icons/MilestoneBadgeSvg';
 import { finch } from '@/lib/themes';
-import type { Milestone } from '@/types';
+import type { BirdScore } from '@/types';
 import { useStoredJson } from '@/hooks/useStoredValue';
+import { resolveTheme } from '@/lib/utils/theme-handler';
 
 export default function TrophyCase() {
-  const earned = useStoredJson<Milestone[]>('birdMilestonesArray', []);
-  const { textColor } = useStoredJson('birdTheme', finch);
+  const score = useStoredJson<BirdScore | null>('birdScore', null);
+  const { textColor } = resolveTheme(useStoredJson('birdTheme', finch));
 
-  const earnedValues = new Set(earned.map((m) => m.value));
+  const birdsIdentified = score?.birdsIdentified ?? 0;
+  const earnedValues = new Set(
+    milestones.filter((m) => m.value <= birdsIdentified).map((m) => m.value)
+  );
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

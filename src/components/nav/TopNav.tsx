@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Bird, Trophy, Settings } from 'lucide-react';
 import { useStoredBoolean } from '@/hooks/useStoredValue';
 import { useSound } from '@/hooks/useSound';
+import { NEW_THEME_UNLOCK_STORAGE_KEY, UNSEEN_BADGES_STORAGE_KEY } from '@/lib/utils/player-progress';
 
 const links = [
   { href: '/', label: 'Play', icon: Bird },
@@ -14,7 +15,8 @@ const links = [
 
 export default function TopNav() {
   const pathname = usePathname();
-  const hasUnseenBadges = useStoredBoolean('hasUnseenBadges');
+  const hasUnseenBadges = useStoredBoolean(UNSEEN_BADGES_STORAGE_KEY);
+  const hasNewThemeUnlock = useStoredBoolean(NEW_THEME_UNLOCK_STORAGE_KEY);
   const { play } = useSound();
 
   return (
@@ -30,7 +32,7 @@ export default function TopNav() {
       <div className="flex gap-1">
         {links.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
-          const showDot = href === '/rewards' && hasUnseenBadges && !active;
+          const showDot = !active && ((href === '/rewards' && hasUnseenBadges) || (href === '/settings' && hasNewThemeUnlock));
           return (
             <Link
               key={href}
@@ -38,7 +40,7 @@ export default function TopNav() {
               onClick={() => play('navTap')}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 active
-                  ? 'bg-[var(--color-secondary)] text-[var(--color-text)]'
+                  ? 'bg-[var(--color-secondary)] text-[var(--color-on-secondary)]'
                   : 'text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]'
               }`}
             >

@@ -17,6 +17,9 @@ export default function GameSection() {
     isCorrect,
     isStreak,
     isMilestone,
+    seedsEarned,
+    newThemeUnlockName,
+    earnedBadgeName,
     showQuestion,
     handleAnswer,
     tryAgain,
@@ -53,6 +56,9 @@ export default function GameSection() {
               isStreak={isStreak}
               isCorrect={isCorrect}
               isMilestone={isMilestone}
+              seedsEarned={seedsEarned}
+              newThemeUnlockName={newThemeUnlockName}
+              earnedBadgeName={earnedBadgeName}
               onTryAgain={tryAgain}
             />
           }

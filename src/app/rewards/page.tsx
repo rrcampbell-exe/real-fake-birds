@@ -3,14 +3,15 @@
 import { useEffect } from 'react';
 import TrophyCase from '@/components/rewards/TrophyCase';
 import PersonalBests from '@/components/rewards/PersonalBests';
+import { setStoredBoolean, UNSEEN_BADGES_STORAGE_KEY } from '@/lib/utils/player-progress';
 
 export default function RewardsPage() {
   useEffect(() => {
-    localStorage.setItem('hasUnseenBadges', 'false');
+    setStoredBoolean(UNSEEN_BADGES_STORAGE_KEY, false);
   }, []);
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8 flex flex-col gap-8">
+    <div className="w-full max-w-lg mx-auto px-4 py-8 flex flex-col gap-8">
       <div>
         <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold mb-1">
           Rewards

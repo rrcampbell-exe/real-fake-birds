@@ -19,6 +19,7 @@ describe('Answer', () => {
         birdsIdentified: 6,
         currentStreak: 3,
         bestStreak: 3,
+        seeds: 0,
       })
     );
     const onTryAgain = vi.fn();
@@ -30,6 +31,9 @@ describe('Answer', () => {
         isStreak={false}
         isCorrect
         isMilestone={false}
+        seedsEarned={0}
+        newThemeUnlockName={null}
+        earnedBadgeName={null}
         onTryAgain={onTryAgain}
       />
     );
@@ -48,6 +52,7 @@ describe('Answer', () => {
         birdsIdentified: 6,
         currentStreak: 5,
         bestStreak: 5,
+        seeds: 2,
       })
     );
 
@@ -58,10 +63,33 @@ describe('Answer', () => {
         isStreak
         isCorrect
         isMilestone={false}
+        seedsEarned={2}
+        newThemeUnlockName={null}
+        earnedBadgeName={null}
         onTryAgain={vi.fn()}
       />
     );
 
     expect(confettiMock).toHaveBeenCalled();
+  });
+
+  it('shows seed rewards and theme unlock celebrations', () => {
+    render(
+      <Answer
+        birdData="Blue Robin"
+        isReal
+        isStreak={false}
+        isCorrect
+        isMilestone
+        seedsEarned={7}
+        newThemeUnlockName="Raven"
+        earnedBadgeName="Downy Feather"
+        onTryAgain={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Earned the Downy Feather Badge!')).toBeInTheDocument();
+    expect(screen.getByText('+7 seeds')).toBeInTheDocument();
+    expect(screen.getByText('Unlocked Raven Theme!')).toBeInTheDocument();
   });
 });

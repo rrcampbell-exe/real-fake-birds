@@ -24,7 +24,7 @@ export default function Error() {
         <button
           onClick={() => { play('whoosh'); window.location.reload(); }}
           className="py-2.5 px-6 rounded-xl font-[family-name:var(--font-display)] font-semibold text-sm
-            bg-[var(--color-secondary)] text-[var(--color-text)] border-none
+            bg-[var(--color-secondary)] text-[var(--color-on-secondary)] border-none
             shadow-[var(--shadow-button)] hover:brightness-110 active:scale-[0.97]
             transition-all duration-150 cursor-pointer"
         >
