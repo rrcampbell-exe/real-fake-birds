@@ -26,13 +26,10 @@ export default function SettingsPage() {
   const storedTheme = useStoredJson('birdTheme', finch);
   const storedScore = useStoredJson<typeof defaultBirdScore | null>('birdScore', defaultBirdScore);
   const storedUnlockedThemeNames = useStoredJson<string[]>(UNLOCKED_THEMES_STORAGE_KEY, []);
-  const [hasHydrated, setHasHydrated] = useState(false);
-  const score = hasHydrated ? normalizeBirdScore(storedScore) : defaultBirdScore;
-  const currentTheme = hasHydrated ? resolveTheme(storedTheme) : finch;
+  const score = normalizeBirdScore(storedScore);
+  const currentTheme = resolveTheme(storedTheme);
   const unlockedThemeNames = new Set(
-    hasHydrated
-      ? [...getUnlockedThemeNames(score), ...storedUnlockedThemeNames]
-      : [finch.name]
+    [...getUnlockedThemeNames(score), ...storedUnlockedThemeNames]
   );
   const [pendingPurchaseThemeName, setPendingPurchaseThemeName] = useState<string | null>(null);
   const {
@@ -46,10 +43,6 @@ export default function SettingsPage() {
     setMusicVolume,
     play,
   } = useSound();
-
-  useEffect(() => {
-    setHasHydrated(true);
-  }, []);
 
   useEffect(() => {
     setStoredBoolean(NEW_THEME_UNLOCK_STORAGE_KEY, false);
