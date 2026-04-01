@@ -4,7 +4,11 @@ import { useEffect } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { useSound } from '@/hooks/useSound';
 
-export default function Error() {
+interface ErrorProps {
+  onTryAgain: () => void;
+}
+
+export default function Error({ onTryAgain }: ErrorProps) {
   const { play } = useSound();
 
   useEffect(() => {
@@ -22,7 +26,10 @@ export default function Error() {
           No birds found
         </p>
         <button
-          onClick={() => { play('whoosh'); window.location.reload(); }}
+          onClick={() => {
+            play('whoosh');
+            onTryAgain();
+          }}
           className="py-2.5 px-6 rounded-xl font-[family-name:var(--font-display)] font-semibold text-sm
             bg-[var(--color-secondary)] text-[var(--color-on-secondary)] border-none
             shadow-[var(--shadow-button)] hover:brightness-110 active:scale-[0.97]

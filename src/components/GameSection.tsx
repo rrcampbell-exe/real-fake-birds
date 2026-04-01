@@ -41,7 +41,7 @@ export default function GameSection() {
 
       <StatsBar refreshTrigger={hasAnswered} />
 
-      {isError && <Error />}
+      {isError && <Error onTryAgain={tryAgain} />}
 
       {!isError && (
         <BirdCard
