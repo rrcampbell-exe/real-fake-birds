@@ -1,55 +1,68 @@
 import { localStorageCheck } from './local-storage-check';
 import { streakValues } from '../constants/streaks';
-import { milestones } from '../constants/milestones';
-import type { BirdScore } from '@/types';
+import { getThemeUnlockByMilestoneValue } from '../constants/theme-unlocks';
+import {
+  BIRD_MILESTONES_STORAGE_KEY,
+  NEW_THEME_UNLOCK_STORAGE_KEY,
+  UNSEEN_BADGES_STORAGE_KEY,
+  defaultBirdScore,
+  getEarnedMilestonesForBirds,
+  getUnlockedThemeNames,
+  readBirdScore,
+  setStoredBoolean,
+  unlockThemeName,
+  writeBirdScore,
+} from './player-progress';
 
-const streakEval = (
-  currentStreak: number,
-  setIsStreak: (val: boolean) => void
-) => {
-  for (const value of streakValues) {
-    if (currentStreak === value) {
-      setIsStreak(true);
-      localStorage.setItem('birdStreakAchieved', 'true');
-      return;
-    }
-    setIsStreak(false);
-  }
-};
+function calculateSeedReward(currentStreak: number): number {
+  if (!streakValues.includes(currentStreak)) return 0;
 
-const updateMilestonesArray = (
-  allMilestonesAchieved: typeof milestones
-) => {
-  if (localStorage.getItem('birdMilestonesArray')) {
-    localStorage.removeItem('birdMilestonesArray');
-  }
-  return allMilestonesAchieved;
+  return streakValues
+    .filter((value) => value <= currentStreak)
+    .reduce((totalSeeds, value) => totalSeeds + value, 0);
+}
+
+const streakEval = (currentStreak: number, setIsStreak: (val: boolean) => void): number => {
+  const isStreakMilestone = streakValues.includes(currentStreak);
+  setIsStreak(isStreakMilestone);
+  localStorage.setItem('birdStreakAchieved', JSON.stringify(isStreakMilestone));
+
+  return calculateSeedReward(currentStreak);
 };
 
 const milestoneEval = (
-  currentMilestone: number,
+  birdsIdentified: number,
+  existingUnlockedThemeNames: Set<string>,
   setIsMilestone: (val: boolean) => void
-) => {
-  for (const milestone of milestones) {
-    if (currentMilestone === milestone.value) {
-      setIsMilestone(true);
-      localStorage.setItem('birdMilestoneAchieved', 'true');
-      localStorage.setItem('hasUnseenBadges', 'true');
+): { unlockedThemeName: string | null; earnedBadgeName: string | null } => {
+  const earnedMilestones = getEarnedMilestonesForBirds(birdsIdentified);
 
-      const allMilestonesAchieved = milestones.filter(
-        (m) => m.value <= currentMilestone
-      );
+  const stored = localStorage.getItem(BIRD_MILESTONES_STORAGE_KEY);
+  const previousCount = stored ? (JSON.parse(stored) as unknown[]).length : 0;
+  let unlockedThemeName: string | null = null;
+  let earnedBadgeName: string | null = null;
 
-      const milestonesArray = JSON.stringify(
-        updateMilestonesArray(allMilestonesAchieved)
-      );
+  if (earnedMilestones.length > previousCount) {
+    setIsMilestone(true);
+    localStorage.setItem('birdMilestoneAchieved', 'true');
+    setStoredBoolean(UNSEEN_BADGES_STORAGE_KEY, true);
 
-      localStorage.setItem('birdMilestonesArray', milestonesArray);
-
-      return;
+    const latestMilestone = earnedMilestones[earnedMilestones.length - 1];
+    earnedBadgeName = latestMilestone.badge;
+    const themeUnlock = getThemeUnlockByMilestoneValue(latestMilestone.value);
+    if (themeUnlock && !themeUnlock.comingSoon) {
+      if (!existingUnlockedThemeNames.has(themeUnlock.themeName)) {
+        unlockThemeName(themeUnlock.themeName);
+        unlockedThemeName = themeUnlock.themeName;
+        setStoredBoolean(NEW_THEME_UNLOCK_STORAGE_KEY, true);
+      }
     }
+  } else {
     setIsMilestone(false);
   }
+
+  localStorage.setItem(BIRD_MILESTONES_STORAGE_KEY, JSON.stringify(earnedMilestones));
+  return { unlockedThemeName, earnedBadgeName };
 };
 
 const responseEval = (
@@ -58,7 +71,10 @@ const responseEval = (
   chosenResponse: 'real' | 'fake',
   setIsCorrect: (val: boolean) => void,
   setIsStreak: (val: boolean) => void,
-  setIsMilestone: (val: boolean) => void
+  setIsMilestone: (val: boolean) => void,
+  setSeedsEarned: (val: number) => void,
+  setUnlockedThemeName: (val: string | null) => void,
+  setEarnedBadgeName: (val: string | null) => void
 ) => {
   e.preventDefault();
 
@@ -69,21 +85,13 @@ const responseEval = (
   if (isCorrect) setIsCorrect(true);
 
   if (!hasLocalStorage) {
-    const birdScore: BirdScore = {
-      birdsSeen: 0,
-      birdsIdentified: 0,
-      currentStreak: 0,
-      justAchievedStreak: false,
-      bestStreak: 0,
-    };
-    localStorage.setItem('birdScore', JSON.stringify(birdScore));
+    writeBirdScore(defaultBirdScore);
   }
 
   if (isCorrect) {
-    const birdScore: BirdScore = JSON.parse(
-      localStorage.getItem('birdScore')!
-    );
-    let { birdsSeen, birdsIdentified, currentStreak, bestStreak } = birdScore;
+    const birdScore = readBirdScore();
+    const existingUnlockedThemeNames = new Set(getUnlockedThemeNames(birdScore));
+    let { birdsSeen, birdsIdentified, currentStreak, bestStreak, seeds } = birdScore;
     const { justAchievedStreak } = birdScore;
 
     birdsSeen = birdsSeen + 1;
@@ -91,40 +99,52 @@ const responseEval = (
     currentStreak = currentStreak + 1;
     bestStreak = currentStreak > bestStreak ? currentStreak : bestStreak;
 
-    const updatedBirdScore: BirdScore = {
+    const seedsEarned = streakEval(currentStreak, setIsStreak);
+    seeds = seeds + seedsEarned;
+
+    const updatedBirdScore = {
       birdsSeen,
       birdsIdentified,
       currentStreak,
       justAchievedStreak,
       bestStreak,
+      seeds,
     };
 
-    localStorage.setItem('birdScore', JSON.stringify(updatedBirdScore));
+    writeBirdScore(updatedBirdScore);
 
-    streakEval(updatedBirdScore.currentStreak, setIsStreak);
-    milestoneEval(updatedBirdScore.birdsIdentified, setIsMilestone);
+    setSeedsEarned(seedsEarned);
+    const milestoneResult = milestoneEval(
+      updatedBirdScore.birdsIdentified,
+      existingUnlockedThemeNames,
+      setIsMilestone
+    );
+    setUnlockedThemeName(milestoneResult.unlockedThemeName);
+    setEarnedBadgeName(milestoneResult.earnedBadgeName);
 
     return;
   }
 
-  const birdScore: BirdScore = JSON.parse(
-    localStorage.getItem('birdScore')!
-  );
+  const birdScore = readBirdScore();
   let { birdsSeen } = birdScore;
   const { bestStreak } = birdScore;
-  const { birdsIdentified } = birdScore;
+  const { birdsIdentified, seeds } = birdScore;
 
   birdsSeen = birdsSeen + 1;
 
-  const updatedBirdScore: BirdScore = {
+  const updatedBirdScore = {
     birdsSeen,
     birdsIdentified,
     currentStreak: 0,
     bestStreak,
     justAchievedStreak: false,
+    seeds,
   };
 
-  localStorage.setItem('birdScore', JSON.stringify(updatedBirdScore));
+  setSeedsEarned(0);
+  setUnlockedThemeName(null);
+  setEarnedBadgeName(null);
+  writeBirdScore(updatedBirdScore);
 };
 
 export default responseEval;

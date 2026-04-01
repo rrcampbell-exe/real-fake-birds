@@ -13,6 +13,9 @@ export function useGameState() {
   const [isCorrect, setIsCorrect] = useState(false);
   const [isStreak, setIsStreak] = useState(false);
   const [isMilestone, setIsMilestone] = useState(false);
+  const [seedsEarned, setSeedsEarned] = useState(0);
+  const [newThemeUnlockName, setNewThemeUnlockName] = useState<string | null>(null);
+  const [earnedBadgeName, setEarnedBadgeName] = useState<string | null>(null);
   const [fetchKey, setFetchKey] = useState(0);
 
   useEffect(() => {
@@ -23,7 +26,17 @@ export function useGameState() {
     (e: React.MouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
       const chosenResponse = (e.currentTarget.id as 'real' | 'fake');
-      responseEval(e, isReal, chosenResponse, setIsCorrect, setIsStreak, setIsMilestone);
+      responseEval(
+        e,
+        isReal,
+        chosenResponse,
+        setIsCorrect,
+        setIsStreak,
+        setIsMilestone,
+        setSeedsEarned,
+        setNewThemeUnlockName,
+        setEarnedBadgeName
+      );
       setHasAnswered(true);
     },
     [isReal]
@@ -38,6 +51,9 @@ export function useGameState() {
     setIsCorrect(false);
     setIsStreak(false);
     setIsMilestone(false);
+    setSeedsEarned(0);
+    setNewThemeUnlockName(null);
+    setEarnedBadgeName(null);
     setIsError(false);
     setIsLoading(true);
     setBirdData('');
@@ -55,6 +71,9 @@ export function useGameState() {
     isCorrect,
     isStreak,
     isMilestone,
+    seedsEarned,
+    newThemeUnlockName,
+    earnedBadgeName,
     showQuestion,
     handleAnswer,
     tryAgain,

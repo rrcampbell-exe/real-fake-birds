@@ -16,6 +16,7 @@ export interface BirdScore {
   currentStreak: number;
   justAchievedStreak: boolean;
   bestStreak: number;
+  seeds: number;
 }
 
 export interface Theme {
@@ -24,6 +25,7 @@ export interface Theme {
   secondary: string;
   textColor: string;
   realFakeTextColor: string;
+  themeSong?: string;
 }
 
 export interface Milestone {
@@ -41,8 +43,10 @@ export interface Location {
 }
 
 export interface SoundSettings {
-  muted: boolean;
-  volume: number;
+  sfxMuted: boolean;
+  sfxVolume: number;
+  musicMuted: boolean;
+  musicVolume: number;
 }
 
 export interface SvgIconProps {

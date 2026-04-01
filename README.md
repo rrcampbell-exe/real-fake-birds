@@ -21,14 +21,15 @@ The app presents a bird name and asks the player to guess whether it is real or 
 
 - Real birds are fetched from the eBird API through the server route at `src/app/api/bird/route.ts`
 - Fake birds are generated in `src/lib/server/name-generator.ts`
-- Score, streaks, unlocked milestones, unseen rewards, and theme selection are stored in localStorage
+- Score, seeds, streaks, earned badges, unlocked themes, unseen rewards, sound settings, and theme selection are stored in localStorage
 - Rewards and settings live in dedicated routes instead of the old menu page
 
 ## Features
 
 - Responsive play experience with separate desktop and mobile navigation
-- Six selectable visual themes
-- Streak tracking, milestone rewards, and trophy case
+- Ten live visual themes with milestone and seed-based unlocks, plus additional themes marked coming soon
+- Streak tracking, seed rewards, milestone badges, and a trophy case tied to birds identified
+- Split sound controls for effects and music, including per-theme background music for live themes
 - Animated gameplay card transitions and celebration effects
 - Local persistence for progress and preferences
 - Unit and component coverage for core gameplay and server-side helpers
@@ -81,6 +82,11 @@ The app is structured for Next.js serverless deployment. Production runtime beha
 ### Visual Assets
 
 - [Bird SVGs via SVG Repo](https://www.svgrepo.com/)
+
+### Audio
+
+- Theme music created in collaboration with ElevenLabs
+- Theme music planning notes live in `THEME-MUSIC.md`
 
 ## License
 

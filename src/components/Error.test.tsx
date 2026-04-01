@@ -1,23 +1,15 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import Error from './Error';
 
 describe('Error', () => {
-  const reload = vi.fn();
+  it('renders the error state and retries in place on click', () => {
+    const onTryAgain = vi.fn();
 
-  beforeEach(() => {
-    reload.mockReset();
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: { ...window.location, reload },
-    });
-  });
-
-  it('renders the error state and reloads on click', () => {
-    render(<Error />);
+    render(<Error onTryAgain={onTryAgain} />);
 
     expect(screen.getByText('No birds found')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Look Again' }));
-    expect(reload).toHaveBeenCalled();
+    expect(onTryAgain).toHaveBeenCalledTimes(1);
   });
 });

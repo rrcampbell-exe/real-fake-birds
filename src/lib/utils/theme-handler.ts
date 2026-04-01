@@ -1,10 +1,34 @@
 import type { Theme } from '@/types';
 import { finch, themes } from '@/lib/themes';
 import { notifyStoredValueChanged } from '@/hooks/useStoredValue';
+import { getUnlockedThemeNames } from '@/lib/utils/player-progress';
+
+export function resolveTheme(themeLike: Pick<Theme, 'name'> | null | undefined): Theme {
+  if (!themeLike?.name) return finch;
+
+  const theme = themes.find((currentTheme) => currentTheme.name === themeLike.name);
+  if (!theme) return finch;
+
+  if (typeof window !== 'undefined') {
+    const unlockedThemeNames = new Set(getUnlockedThemeNames());
+    if (!unlockedThemeNames.has(theme.name)) {
+      return finch;
+    }
+  }
+
+  return theme;
+}
 
 export function setTheme(theme: Theme): void {
-  localStorage.setItem('birdTheme', JSON.stringify(theme));
+  localStorage.setItem('birdTheme', JSON.stringify(resolveTheme(theme)));
   notifyStoredValueChanged('birdTheme');
+}
+
+export function getUnlockedThemes(): Theme[] {
+  if (typeof window === 'undefined') return [finch];
+
+  const unlockedThemeNames = new Set(getUnlockedThemeNames());
+  return themes.filter((theme) => unlockedThemeNames.has(theme.name));
 }
 
 export function getTheme(): Theme {
@@ -13,8 +37,7 @@ export function getTheme(): Theme {
   if (stored) {
     try {
       const parsed = JSON.parse(stored) as Theme;
-      // Validate that the theme name is one we recognize
-      if (themes.some((t) => t.name === parsed.name)) return parsed;
+      return resolveTheme(parsed);
     } catch {
       // fall through to default
     }

@@ -9,11 +9,39 @@ const themeBootstrapScript = `
   (() => {
     try {
       const stored = window.localStorage.getItem('birdTheme');
-      if (!stored) return;
-      const parsed = JSON.parse(stored);
-      if (parsed && typeof parsed.name === 'string') {
-        document.documentElement.setAttribute('data-theme', parsed.name);
+      const score = JSON.parse(window.localStorage.getItem('birdScore') || '{}');
+      const birdsIdentified = typeof score?.birdsIdentified === 'number' ? score.birdsIdentified : 0;
+      const purchased = JSON.parse(window.localStorage.getItem('unlockedThemes') || '[]');
+      const unlockThresholds = [
+        ['Raven', 10],
+        ['Robin', 25],
+        ['Gull', 50],
+        ['Crane', 75],
+        ['Woodpecker', 100],
+        ['Blue Jay', 150],
+        ['Oriole', 200],
+        ['Heron', 275],
+        ['Cardinal', 350],
+      ];
+      const unlocked = new Set(['Finch']);
+      unlockThresholds.forEach(([name, threshold]) => {
+        if (birdsIdentified >= threshold) unlocked.add(name);
+      });
+      if (Array.isArray(purchased)) {
+        purchased.forEach((name) => {
+          if (typeof name === 'string') unlocked.add(name);
+        });
       }
+      if (!stored) {
+        document.documentElement.setAttribute('data-theme', 'Finch');
+        return;
+      }
+      const parsed = JSON.parse(stored);
+      if (parsed && typeof parsed.name === 'string' && unlocked.has(parsed.name)) {
+        document.documentElement.setAttribute('data-theme', parsed.name);
+        return;
+      }
+      document.documentElement.setAttribute('data-theme', 'Finch');
     } catch {}
   })();
 `;
