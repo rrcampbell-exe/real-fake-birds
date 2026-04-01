@@ -1,6 +1,5 @@
 import { localStorageCheck } from './local-storage-check';
 import { streakValues } from '../constants/streaks';
-import { milestones } from '../constants/milestones';
 import { getThemeUnlockByMilestoneValue } from '../constants/theme-unlocks';
 import {
   BIRD_MILESTONES_STORAGE_KEY,

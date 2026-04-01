@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import HintButton from './HintButton';
+// import HintButton from './HintButton';
 import { useSound } from '@/hooks/useSound';
 
 interface BirdCardProps {

@@ -1,6 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SoundManager } from '@/lib/sound/sound-manager';
 
 // Mock SoundManager so we can spy on it without real AudioContext
 const mockPlay = vi.fn();
