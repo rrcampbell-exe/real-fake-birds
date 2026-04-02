@@ -34,7 +34,7 @@ const hintOptions: HintOption[] = [
   },
   {
     type: 'fact',
-    title: 'Fact Hint',
+    title: 'Request a Fact',
     description: 'One short clue about this bird.',
     cost: FACT_HINT_COST,
     Icon: BookOpenText,
@@ -71,7 +71,7 @@ function FactHintPreview({ content }: { content: string }) {
   return (
     <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-4 text-sm leading-6 text-[var(--color-text)]">
       <div className="mb-2 font-[family-name:var(--font-display)] text-sm font-semibold text-[var(--color-text)]">
-        Fact Hint
+        Real Fake Fact
       </div>
       <p>{content}</p>
     </div>
