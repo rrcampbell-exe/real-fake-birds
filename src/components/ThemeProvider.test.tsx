@@ -15,6 +15,10 @@ vi.mock('@/hooks/useSound', () => ({
   }),
 }));
 
+vi.mock('@/components/IosWebAudioNotice', () => ({
+  default: () => <div>Audio Notice</div>,
+}));
+
 describe('ThemeProvider', () => {
   it('renders children, applies the stored theme, and starts the theme song', () => {
     localStorage.setItem(
@@ -38,6 +42,7 @@ describe('ThemeProvider', () => {
     );
 
     expect(screen.getByText('Bird Child')).toBeInTheDocument();
+    expect(screen.getByText('Audio Notice')).toBeInTheDocument();
     expect(document.documentElement.getAttribute('data-theme')).toBe('Cardinal');
     expect(startThemeSong).toHaveBeenCalledWith('/sounds/themes/cardinal.mp3');
   });
