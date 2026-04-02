@@ -39,18 +39,24 @@ export function useSound() {
   // Resume AudioContext on first user gesture (iOS / Android requirement)
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const touch = () => {
-      SoundManager.getInstance().resume();
-      window.removeEventListener('touchstart', touch);
-      window.removeEventListener('click', touch);
+    const unlock = () => {
+      void SoundManager.getInstance().unlock();
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('touchstart', unlock);
+      window.removeEventListener('click', unlock);
+      window.removeEventListener('keydown', unlock);
     };
 
-    window.addEventListener('touchstart', touch, { once: true });
-    window.addEventListener('click', touch, { once: true });
+    window.addEventListener('pointerdown', unlock, { once: true });
+    window.addEventListener('touchstart', unlock, { once: true });
+    window.addEventListener('click', unlock, { once: true });
+    window.addEventListener('keydown', unlock, { once: true });
 
     return () => {
-      window.removeEventListener('touchstart', touch);
-      window.removeEventListener('click', touch);
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('touchstart', unlock);
+      window.removeEventListener('click', unlock);
+      window.removeEventListener('keydown', unlock);
     };
   }, []);
 

@@ -228,7 +228,7 @@ describe('SoundManager', () => {
   });
 
   describe('preloadAll', () => {
-    it('fetches and decodes file-based sounds', async () => {
+    it('queues file-based sounds until audio is unlocked', async () => {
       vi.stubGlobal(
         'fetch',
         vi.fn().mockResolvedValue({
@@ -239,12 +239,15 @@ describe('SoundManager', () => {
       const mgr = SoundManager.getInstance();
       await mgr.preloadAll();
 
+      expect(fetch).not.toHaveBeenCalled();
+
+      await mgr.unlock();
+
       // Should have fetched all file-backed sounds, including the loading loop
       expect(fetch).toHaveBeenCalledWith('/sounds/fx/correct.mp3');
       expect(fetch).toHaveBeenCalledWith('/sounds/fx/wrong.mp3');
       expect(fetch).toHaveBeenCalledWith('/sounds/fx/streak.mp3');
       expect(fetch).toHaveBeenCalledWith('/sounds/fx/milestone.mp3');
-      expect(fetch).toHaveBeenCalledWith('/sounds/fx/error.mp3');
       expect(fetch).toHaveBeenCalledWith('/sounds/fx/loading.mp3');
     });
 
@@ -259,6 +262,10 @@ describe('SoundManager', () => {
       const mgr = SoundManager.getInstance();
       await mgr.preloadAll(['/sounds/themes/bird-bossa-nova.mp3']);
 
+      expect(fetch).not.toHaveBeenCalled();
+
+      await mgr.unlock();
+
       expect(fetch).toHaveBeenCalledWith('/sounds/themes/bird-bossa-nova.mp3');
     });
 
@@ -272,7 +279,7 @@ describe('SoundManager', () => {
   });
 
   describe('loops', () => {
-    it('starts and stops a loading loop from the loading.mp3 file', async () => {
+    it('starts and stops a loading loop from the loading.mp3 file after unlock', async () => {
       vi.stubGlobal(
         'fetch',
         vi.fn().mockResolvedValue({
@@ -282,6 +289,10 @@ describe('SoundManager', () => {
 
       const mgr = SoundManager.getInstance();
       mgr.startLoop('loadingLoop');
+
+      expect(fetch).not.toHaveBeenCalled();
+
+      await mgr.unlock();
 
       expect(fetch).toHaveBeenCalledWith('/sounds/fx/loading.mp3');
       await flushAsyncAudioWork();
@@ -301,6 +312,8 @@ describe('SoundManager', () => {
 
       const mgr = SoundManager.getInstance();
       mgr.startLoop('loadingLoop');
+
+      await mgr.unlock();
 
       await flushAsyncAudioWork();
       expect(mockCtx.createBufferSource).toHaveBeenCalledTimes(1);
@@ -322,7 +335,7 @@ describe('SoundManager', () => {
       mgr.stopLoop('loadingLoop'); // should be a no-op, no error
     });
 
-    it('starts a dedicated theme-song loop from the provided URL', async () => {
+    it('starts a dedicated theme-song loop from the provided URL after unlock', async () => {
       vi.stubGlobal(
         'fetch',
         vi.fn().mockResolvedValue({
@@ -332,6 +345,10 @@ describe('SoundManager', () => {
 
       const mgr = SoundManager.getInstance();
       mgr.startThemeSong('/sounds/themes/finch.mp3');
+
+      expect(fetch).not.toHaveBeenCalled();
+
+      await mgr.unlock();
 
       expect(fetch).toHaveBeenCalledWith('/sounds/themes/finch.mp3');
       await flushAsyncAudioWork();
@@ -348,6 +365,7 @@ describe('SoundManager', () => {
 
       const mgr = SoundManager.getInstance();
       await mgr.preloadAll(['/sounds/themes/finch.mp3']);
+      await mgr.unlock();
 
       fetchSpy.mockClear();
 

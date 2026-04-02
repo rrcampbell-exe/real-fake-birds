@@ -18,7 +18,7 @@ const mockGetSettings = vi.fn().mockReturnValue({
   musicMuted: false,
   musicVolume: 1,
 });
-const mockResume = vi.fn();
+const mockUnlock = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@/lib/sound/sound-manager', () => ({
   SoundManager: {
@@ -34,7 +34,7 @@ vi.mock('@/lib/sound/sound-manager', () => ({
       setMusicVolume: mockSetMusicVolume,
       preloadAll: mockPreloadAll,
       getSettings: mockGetSettings,
-      resume: mockResume,
+      unlock: mockUnlock,
     })),
   },
 }));
@@ -168,5 +168,15 @@ describe('useSound', () => {
 
     renderHook(() => useSound());
     expect(mockSetMusicVolume).toHaveBeenCalledWith(0.8);
+  });
+
+  it('unlocks audio on the first user gesture', () => {
+    renderHook(() => useSound());
+
+    act(() => {
+      window.dispatchEvent(new PointerEvent('pointerdown'));
+    });
+
+    expect(mockUnlock).toHaveBeenCalledTimes(1);
   });
 });
