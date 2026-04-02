@@ -1,6 +1,7 @@
 export interface BirdResponse {
   birdName: string;
   isReal: boolean;
+  sciName?: string;
   url?: string;
 }
 
@@ -9,6 +10,32 @@ export interface BirdErrorResponse {
 }
 
 export type BirdApiResult = BirdResponse | BirdErrorResponse;
+
+export type HintType = 'fact' | 'image';
+
+export interface HintResponse {
+  type: HintType;
+  content: string;
+}
+
+export interface HintErrorResponse {
+  error: string;
+}
+
+export type HintApiResult = HintResponse | HintErrorResponse;
+
+export interface HintRequest {
+  birdName: string;
+  isReal: boolean;
+  type: HintType;
+  sciName?: string;
+  factHintContent?: string;
+}
+
+export interface HintState {
+  fact: HintResponse | null;
+  image: HintResponse | null;
+}
 
 export interface BirdScore {
   birdsSeen: number;

@@ -10,18 +10,20 @@ describe('fetchData', () => {
     vi.useFakeTimers();
     localStorage.setItem(
       'birdData',
-      JSON.stringify({ birdName: 'Blue Finch', isReal: true })
+      JSON.stringify({ birdName: 'Blue Finch', isReal: true, sciName: 'Fringilla caerulea' })
     );
 
     const setIsReal = vi.fn();
     const setIsLoading = vi.fn();
     const setBirdData = vi.fn();
+    const setSciName = vi.fn();
     const setIsError = vi.fn();
 
-    await fetchData(setIsReal, setIsLoading, setBirdData, setIsError);
+    await fetchData(setIsReal, setIsLoading, setBirdData, setSciName, setIsError);
     await vi.runAllTimersAsync();
 
     expect(setIsReal).toHaveBeenCalledWith(true);
+    expect(setSciName).toHaveBeenCalledWith('Fringilla caerulea');
     expect(setIsLoading).toHaveBeenCalledWith(false);
     expect(setBirdData).toHaveBeenCalledWith('Blue Finch');
     expect(setIsError).not.toHaveBeenCalled();
@@ -37,16 +39,18 @@ describe('fetchData', () => {
     const setIsReal = vi.fn();
     const setIsLoading = vi.fn();
     const setBirdData = vi.fn();
+    const setSciName = vi.fn();
     const setIsError = vi.fn();
 
-    await fetchData(setIsReal, setIsLoading, setBirdData, setIsError);
+    await fetchData(setIsReal, setIsLoading, setBirdData, setSciName, setIsError);
     await vi.runAllTimersAsync();
 
     expect(fetchMock).toHaveBeenCalledWith('/api/bird');
     expect(localStorage.getItem('birdData')).toBe(
-      JSON.stringify({ birdName: 'Copper Heron', isReal: false })
+      JSON.stringify({ birdName: 'Copper Heron', isReal: false, sciName: undefined })
     );
     expect(setIsReal).toHaveBeenCalledWith(false);
+    expect(setSciName).toHaveBeenCalledWith(null);
     expect(setIsLoading).toHaveBeenCalledWith(false);
     expect(setBirdData).toHaveBeenCalledWith('Copper Heron');
     expect(setIsError).not.toHaveBeenCalled();
@@ -61,9 +65,10 @@ describe('fetchData', () => {
     const setIsReal = vi.fn();
     const setIsLoading = vi.fn();
     const setBirdData = vi.fn();
+    const setSciName = vi.fn();
     const setIsError = vi.fn();
 
-    await fetchData(setIsReal, setIsLoading, setBirdData, setIsError);
+    await fetchData(setIsReal, setIsLoading, setBirdData, setSciName, setIsError);
 
     expect(setIsError).toHaveBeenCalledWith(true);
     expect(setIsLoading).toHaveBeenCalledWith(false);
@@ -78,10 +83,12 @@ describe('fetchData', () => {
     const setIsReal = vi.fn();
     const setIsLoading = vi.fn();
     const setBirdData = vi.fn();
+    const setSciName = vi.fn();
     const setIsError = vi.fn();
 
-    await fetchData(setIsReal, setIsLoading, setBirdData, setIsError);
+    await fetchData(setIsReal, setIsLoading, setBirdData, setSciName, setIsError);
 
+    expect(setSciName).toHaveBeenCalledWith(null);
     expect(setIsError).toHaveBeenCalledWith(true);
     expect(setIsLoading).toHaveBeenCalledWith(false);
     expect(setBirdData).not.toHaveBeenCalled();

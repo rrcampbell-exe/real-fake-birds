@@ -20,8 +20,14 @@ export default function GameSection() {
     seedsEarned,
     newThemeUnlockName,
     earnedBadgeName,
+    hints,
+    hintError,
+    hintErrorType,
+    hintLoading,
+    seedsBalance,
     showQuestion,
     handleAnswer,
+    requestHint,
     tryAgain,
   } = useGameState();
 
@@ -46,7 +52,13 @@ export default function GameSection() {
       {!isError && (
         <BirdCard
           birdName={birdData}
+          hintError={hintError}
+          hintErrorType={hintErrorType}
+          hintLoading={hintLoading}
+          hints={hints}
+          onRequestHint={requestHint}
           state={cardState}
+          seedsBalance={seedsBalance}
           onAnswer={handleAnswer}
           loadingContent={<LoadingState />}
           answerContent={
