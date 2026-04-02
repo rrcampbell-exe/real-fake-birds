@@ -5,6 +5,7 @@ export default async function fetchHint(
   isReal: boolean,
   type: HintType,
   sciName?: string,
+  regionLabel?: string,
   factHintContent?: string
 ): Promise<HintResponse> {
   const requestBody: HintRequest = {
@@ -12,6 +13,7 @@ export default async function fetchHint(
     isReal,
     type,
     ...(sciName ? { sciName } : {}),
+    ...(regionLabel ? { regionLabel } : {}),
     ...(factHintContent ? { factHintContent } : {}),
   };
 

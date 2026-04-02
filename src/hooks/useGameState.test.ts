@@ -26,6 +26,7 @@ import fetchData from '@/lib/utils/fetch-data';
 import fetchHint from '@/lib/utils/fetch-hint';
 import responseEval from '@/lib/utils/response-eval';
 import { refundSeeds, spendSeeds } from '@/lib/utils/seed-spend';
+import { FACT_HINT_COST } from '@/lib/constants/hints';
 import { useGameState } from './useGameState';
 import { useStoredJson } from './useStoredValue';
 
@@ -40,11 +41,12 @@ describe('useGameState', () => {
       seeds: 100,
     });
 
-    vi.mocked(fetchData).mockImplementation((setIsReal, setIsLoading, setBirdData, setSciName) => {
+    vi.mocked(fetchData).mockImplementation((setIsReal, setIsLoading, setBirdData, setSciName, setRegionLabel) => {
       setIsReal(true);
       setIsLoading(false);
       setBirdData('Blue Jay');
       setSciName('Cyanocitta cristata');
+      setRegionLabel('Algeria');
     });
 
     vi.mocked(spendSeeds).mockReturnValue(true);
@@ -82,12 +84,13 @@ describe('useGameState', () => {
       await result.current.requestHint('fact');
     });
 
-    expect(spendSeeds).toHaveBeenCalledWith(25);
+    expect(spendSeeds).toHaveBeenCalledWith(FACT_HINT_COST);
     expect(fetchHint).toHaveBeenCalledWith(
       'Blue Jay',
       true,
       'fact',
       'Cyanocitta cristata',
+      'Algeria',
       undefined
     );
     expect(result.current.hints.fact).toEqual({
@@ -132,13 +135,22 @@ describe('useGameState', () => {
       await result.current.requestHint('image');
     });
 
-    expect(fetchHint).toHaveBeenNthCalledWith(1, 'Blue Jay', true, 'fact', 'Cyanocitta cristata', undefined);
+    expect(fetchHint).toHaveBeenNthCalledWith(
+      1,
+      'Blue Jay',
+      true,
+      'fact',
+      'Cyanocitta cristata',
+      'Algeria',
+      undefined
+    );
     expect(fetchHint).toHaveBeenNthCalledWith(
       2,
       'Blue Jay',
       true,
       'image',
       'Cyanocitta cristata',
+      'Algeria',
       'Its chest is striped amber and its tail feathers flare like coals.'
     );
   });
