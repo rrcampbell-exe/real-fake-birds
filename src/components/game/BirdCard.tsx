@@ -1,12 +1,19 @@
 'use client';
 
+import type { HintState, HintType } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
-// import HintButton from './HintButton';
+import HintPanel from './HintPanel';
 import { useSound } from '@/hooks/useSound';
 
 interface BirdCardProps {
   birdName: string;
+  hintError: string | null;
+  hintErrorType: HintType | null;
+  hintLoading: Record<HintType, boolean>;
+  hints: HintState;
+  onRequestHint: (type: HintType) => void;
   state: 'loading' | 'question' | 'answer';
+  seedsBalance: number;
   onAnswer: (e: React.MouseEvent<HTMLButtonElement>) => void;
   loadingContent?: React.ReactNode;
   answerContent?: React.ReactNode;
@@ -14,7 +21,13 @@ interface BirdCardProps {
 
 export default function BirdCard({
   birdName,
+  hintError,
+  hintErrorType,
+  hintLoading,
+  hints,
+  onRequestHint,
   state,
+  seedsBalance,
   onAnswer,
   loadingContent,
   answerContent,
@@ -60,11 +73,6 @@ export default function BirdCard({
                 transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
                 className="flex flex-col items-center gap-6"
               >
-                {/* Hint button placeholder */}
-                {/* <div className="self-end">
-                  <HintButton disabled />
-                </div> */}
-
                 {/* Bird name */}
                 <h2 className="font-[family-name:var(--font-display)] text-2xl md:text-4xl font-bold text-center leading-tight">
                   {birdName}
@@ -93,6 +101,16 @@ export default function BirdCard({
                     Fake Bird
                   </button>
                 </div>
+
+                <HintPanel
+                  birdName={birdName}
+                  hintError={hintError}
+                  hintErrorType={hintErrorType}
+                  hintLoading={hintLoading}
+                  hints={hints}
+                  onRequestHint={onRequestHint}
+                  seedsBalance={seedsBalance}
+                />
               </motion.div>
             ) : (
               <motion.div
