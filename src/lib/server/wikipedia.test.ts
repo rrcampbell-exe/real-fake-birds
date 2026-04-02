@@ -31,6 +31,34 @@ describe('wikipedia', () => {
     await expect(fetchWikipediaFact('Rare Bird', 'Aves rarus')).resolves.toBe('Fallback fact.');
   });
 
+  it('falls back to a wikipedia search result when direct titles fail', async () => {
+    vi.spyOn(global, 'fetch')
+      .mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({}),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({}),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          query: {
+            search: [{ title: 'Blue Jay' }],
+          },
+        }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ extract: 'Recovered by search. Another sentence.' }),
+      } as Response);
+
+    await expect(fetchWikipediaFact('Blue Jay bird', 'Cyanocitta cristata')).resolves.toBe(
+      'Recovered by search. Another sentence.'
+    );
+  });
+
   it('returns the best available image url', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,
@@ -45,10 +73,11 @@ describe('wikipedia', () => {
   });
 
   it('returns null when no summary can be found', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({
-      ok: false,
-      json: async () => ({}),
-    } as Response);
+    vi.spyOn(global, 'fetch')
+      .mockResolvedValueOnce({ ok: false, json: async () => ({}) } as Response)
+      .mockResolvedValueOnce({ ok: false, json: async () => ({}) } as Response)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ query: { search: [] } }) } as Response)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ query: { search: [] } }) } as Response);
 
     await expect(fetchWikipediaFact('Missing Bird')).resolves.toBeNull();
   });

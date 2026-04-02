@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { generateFakeFact, generateFakeImage } from './openai';
+import { generateFakeFact, generateFakeImage, generateRealBirdFact } from './openai';
 
 describe('openai helpers', () => {
   beforeEach(() => {
@@ -12,7 +12,8 @@ describe('openai helpers', () => {
   });
 
   it('returns generated fact text when the chat completion succeeds', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({
+    vi.spyOn(Math, 'random').mockReturnValue(0.3);
+    const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => ({
         choices: [
@@ -29,6 +30,50 @@ describe('openai helpers', () => {
     await expect(generateFakeFact('Blue Ember Finch')).resolves.toBe(
       'This fictional bird migrates at dawn. It roosts in reeds.'
     );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.openai.com/v1/chat/completions',
+      expect.objectContaining({
+        body: expect.stringContaining('Focus on habitat and range.'),
+      })
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.openai.com/v1/chat/completions',
+      expect.objectContaining({
+        body: expect.stringContaining('Do not default to plumage descriptions'),
+      })
+    );
+  });
+
+  it('biases fake-bird fact prompts away from recently used categories', async () => {
+    const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: 'A concise fake bird fact.',
+            },
+          },
+        ],
+      }),
+    } as Response);
+
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+
+    await generateFakeFact('Blue Ember Finch');
+    await generateFakeFact('Blue Ember Finch');
+
+    const firstCallBody = String(fetchMock.mock.calls[0]?.[1] && 'body' in fetchMock.mock.calls[0][1]
+      ? fetchMock.mock.calls[0][1].body
+      : '');
+    const secondCallBody = String(fetchMock.mock.calls[1]?.[1] && 'body' in fetchMock.mock.calls[1][1]
+      ? fetchMock.mock.calls[1][1].body
+      : '');
+
+    expect(firstCallBody).toContain('Focus on diet and foraging.');
+    expect(secondCallBody).toContain('Focus on breeding and nesting.');
   });
 
   it('returns an image url when the image generation succeeds', async () => {
@@ -102,9 +147,54 @@ describe('openai helpers', () => {
     );
   });
 
+  it('turns structured real-bird metadata into a short fact', async () => {
+    const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: 'The Blue Jay can be found in Algeria, and its scientific name is Cyanocitta cristata.',
+            },
+          },
+        ],
+      }),
+    } as Response);
+
+    await expect(
+      generateRealBirdFact({
+        birdName: 'Blue Jay',
+        regionLabel: 'Algeria',
+        sciName: 'Cyanocitta cristata',
+      })
+    ).resolves.toBe('The Blue Jay can be found in Algeria, and its scientific name is Cyanocitta cristata.');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.openai.com/v1/chat/completions',
+      expect.objectContaining({
+        body: expect.stringContaining('Do not mention eBird, APIs, databases'),
+      })
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.openai.com/v1/chat/completions',
+      expect.objectContaining({
+        body: expect.stringContaining('Region: Algeria.'),
+      })
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.openai.com/v1/chat/completions',
+      expect.objectContaining({
+        body: expect.stringContaining('Scientific name: Cyanocitta cristata.'),
+      })
+    );
+  });
+
   it('returns null when the api key is missing', async () => {
     vi.unstubAllEnvs();
 
     await expect(generateFakeFact('Blue Ember Finch')).resolves.toBeNull();
+    await expect(generateRealBirdFact({ birdName: 'Blue Jay' })).resolves.toBeNull();
   });
 });
