@@ -12,7 +12,7 @@ export default function Error({ onTryAgain }: ErrorProps) {
   const { play } = useSound();
 
   useEffect(() => {
-    play('error');
+    play('wrong');
   }, [play]);
 
   return (
