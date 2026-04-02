@@ -49,13 +49,13 @@ export default function Answer({
   useEffect(() => {
     if (isMilestone) {
       play('milestone');
-    } else if (isStreak || seedsEarned > 0) {
+    } else if (isStreak) {
       play('streak');
     }
-  }, [isStreak, isMilestone, play, seedsEarned]);
+  }, [isStreak, isMilestone, play]);
 
   useEffect(() => {
-    if (isStreak || isMilestone || seedsEarned > 0 || newThemeUnlockName) {
+    if (isStreak || isMilestone || newThemeUnlockName) {
       const duration = 2500;
       const end = Date.now() + duration;
 
@@ -66,7 +66,7 @@ export default function Answer({
       };
       frame();
     }
-  }, [isStreak, isMilestone, newThemeUnlockName, seedsEarned]);
+  }, [isStreak, isMilestone, newThemeUnlockName]);
 
   return (
     <div className="flex flex-col items-center gap-5">
@@ -85,7 +85,7 @@ export default function Answer({
       </motion.div>
 
       {/* Feedback text */}
-      <p className="text-sm font-medium text-[var(--color-muted)]">
+      <p className="whitespace-pre-line text-sm font-medium text-[var(--color-muted)] text-center">
         {correctnessText(isCorrect, isStreak, isMilestone)}
       </p>
 
@@ -112,7 +112,7 @@ export default function Answer({
               className="inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1 text-xs font-semibold"
             >
               <SeedIcon size={16} color="var(--color-secondary)" />
-              <span>+{seedsEarned} seeds</span>
+              <span>+{seedsEarned} {seedsEarned === 1 ? 'seed' : 'seeds'}</span>
             </motion.div>
           )}
 

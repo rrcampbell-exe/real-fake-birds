@@ -92,4 +92,41 @@ describe('Answer', () => {
     expect(screen.getByText('+7 seeds')).toBeInTheDocument();
     expect(screen.getByText('Unlocked Raven Theme!')).toBeInTheDocument();
   });
+
+  it('uses the singular seed label when exactly one seed is earned', () => {
+    render(
+      <Answer
+        birdData="Blue Robin"
+        isReal
+        isStreak={false}
+        isCorrect
+        isMilestone={false}
+        seedsEarned={1}
+        newThemeUnlockName={null}
+        earnedBadgeName={null}
+        onTryAgain={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('+1 seed')).toBeInTheDocument();
+    expect(screen.queryByText('+1 seeds')).not.toBeInTheDocument();
+  });
+
+  it('does not fire confetti for a plain correct answer with only the base seed reward', () => {
+    render(
+      <Answer
+        birdData="Blue Robin"
+        isReal
+        isStreak={false}
+        isCorrect
+        isMilestone={false}
+        seedsEarned={1}
+        newThemeUnlockName={null}
+        earnedBadgeName={null}
+        onTryAgain={vi.fn()}
+      />
+    );
+
+    expect(confettiMock).not.toHaveBeenCalled();
+  });
 });
