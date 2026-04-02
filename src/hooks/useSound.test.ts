@@ -1,7 +1,8 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetSoundController } from '@/lib/sound/sound-platform';
 
-// Mock SoundManager so we can spy on it without real AudioContext
+// Mock the platform sound controller so hooks stay decoupled from the web implementation.
 const mockPlay = vi.fn();
 const mockStartLoop = vi.fn();
 const mockStopLoop = vi.fn();
@@ -18,25 +19,24 @@ const mockGetSettings = vi.fn().mockReturnValue({
   musicMuted: false,
   musicVolume: 1,
 });
-const mockResume = vi.fn();
+const mockUnlock = vi.fn().mockResolvedValue(undefined);
 
-vi.mock('@/lib/sound/sound-manager', () => ({
-  SoundManager: {
-    getInstance: vi.fn(() => ({
-      play: mockPlay,
-      startLoop: mockStartLoop,
-      stopLoop: mockStopLoop,
-      startThemeSong: mockStartThemeSong,
-      stopThemeSong: mockStopThemeSong,
-      setSfxMuted: mockSetSfxMuted,
-      setSfxVolume: mockSetSfxVolume,
-      setMusicMuted: mockSetMusicMuted,
-      setMusicVolume: mockSetMusicVolume,
-      preloadAll: mockPreloadAll,
-      getSettings: mockGetSettings,
-      resume: mockResume,
-    })),
-  },
+vi.mock('@/lib/sound/sound-platform', () => ({
+  getSoundController: vi.fn(() => ({
+    play: mockPlay,
+    startLoop: mockStartLoop,
+    stopLoop: mockStopLoop,
+    startThemeSong: mockStartThemeSong,
+    stopThemeSong: mockStopThemeSong,
+    setSfxMuted: mockSetSfxMuted,
+    setSfxVolume: mockSetSfxVolume,
+    setMusicMuted: mockSetMusicMuted,
+    setMusicVolume: mockSetMusicVolume,
+    preloadAll: mockPreloadAll,
+    getSettings: mockGetSettings,
+    unlock: mockUnlock,
+  })),
+  resetSoundController: vi.fn(),
 }));
 
 import { useSound } from './useSound';
@@ -47,6 +47,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  resetSoundController();
 });
 
 describe('useSound', () => {
@@ -168,5 +169,15 @@ describe('useSound', () => {
 
     renderHook(() => useSound());
     expect(mockSetMusicVolume).toHaveBeenCalledWith(0.8);
+  });
+
+  it('unlocks audio on the first user gesture', () => {
+    renderHook(() => useSound());
+
+    act(() => {
+      window.dispatchEvent(new PointerEvent('pointerdown'));
+    });
+
+    expect(mockUnlock).toHaveBeenCalledTimes(1);
   });
 });

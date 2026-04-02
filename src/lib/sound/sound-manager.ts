@@ -1,5 +1,6 @@
 import { notifyStoredValueChanged } from '@/hooks/useStoredValue';
 import type { SoundSettings } from '@/types';
+import type { SoundController, SoundKey } from '@/lib/sound/types';
 
 const SETTINGS_KEY = 'birdSoundSettings';
 const DEFAULT_SETTINGS: SoundSettings = {
@@ -8,18 +9,6 @@ const DEFAULT_SETTINGS: SoundSettings = {
   musicMuted: false,
   musicVolume: 1,
 };
-
-type SoundKey =
-  | 'tap'
-  | 'correct'
-  | 'wrong'
-  | 'streak'
-  | 'milestone'
-  | 'whoosh'
-  | 'navTap'
-  | 'themeChange'
-  | 'error'
-  | 'loadingLoop';
 
 interface SoundDef {
   type: 'file' | 'synth';
@@ -37,7 +26,6 @@ const SOUND_DEFS: Record<SoundKey, SoundDef> = {
   whoosh: { type: 'synth', synthFn: synthWhoosh },
   navTap: { type: 'synth', synthFn: synthNavTap },
   themeChange: { type: 'synth', synthFn: synthThemeChange },
-  error: { type: 'file', url: '/sounds/fx/error.mp3' },
   loadingLoop: { type: 'file', url: '/sounds/fx/loading.mp3' },
 };
 
@@ -111,9 +99,9 @@ function synthThemeChange(ctx: AudioContext, dest: AudioNode) {
   });
 }
 
-// --- SoundManager class ---
+// Browser default implementation. Future native builds can provide a different SoundController.
 
-export class SoundManager {
+export class SoundManager implements SoundController {
   private static instance: SoundManager | null = null;
 
   private ctx: AudioContext | null = null;
@@ -124,6 +112,9 @@ export class SoundManager {
   private settings: SoundSettings;
   private activeLoops = new Map<string, { stop: () => void }>();
   private activeThemeSongKey: string | null = null;
+  private pendingPreloadUrls = new Set<string>();
+  private pendingLoops = new Set<SoundKey>();
+  private pendingThemeSongUrl: string | null = null;
 
   private constructor() {
     this.settings = this.loadSettings();
@@ -161,35 +152,39 @@ export class SoundManager {
         return null;
       }
     }
-
-    if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
-    }
-
     return this.ctx;
   }
 
-  resume(): void {
-    const ctx = this.ensureContext();
-    if (!ctx || ctx.state !== 'suspended') return;
-    void ctx.resume();
-  }
-
-  async preloadAll(extraUrls: string[] = []): Promise<void> {
+  async unlock(): Promise<void> {
     const ctx = this.ensureContext();
     if (!ctx) return;
 
-    const fileUrls = Object.values(SOUND_DEFS)
-      .filter((def): def is SoundDef & { url: string } => def.type === 'file' && !!def.url)
-      .map((def) => def.url);
+    if (ctx.state === 'suspended') {
+      try {
+        await ctx.resume();
+      } catch {
+        return;
+      }
+    }
 
-    const urls = [...new Set([...fileUrls, ...extraUrls])];
+    if (ctx.state !== 'running') return;
 
-    await Promise.all(
-      urls.map(async (url) => {
-        await this.loadBuffer(ctx, url);
-      })
-    );
+    this.flushDeferredAudio();
+    await this.preloadAll();
+  }
+
+  async preloadAll(extraUrls: string[] = []): Promise<void> {
+    this.queuePreloadUrls(extraUrls);
+
+    const ctx = this.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+
+    const urls = [...this.pendingPreloadUrls];
+    this.pendingPreloadUrls.clear();
+
+    await Promise.all(urls.map(async (url) => {
+      await this.loadBuffer(ctx, url);
+    }));
   }
 
   private async loadBuffer(ctx: AudioContext, url: string): Promise<AudioBuffer | null> {
@@ -216,43 +211,60 @@ export class SoundManager {
     const def = SOUND_DEFS[key];
     if (!def) return;
 
-    if (def.type === 'synth' && def.synthFn) {
-      def.synthFn(ctx, this.sfxGain);
-      return;
-    }
+    const runPlayback = () => {
+      if (!this.sfxGain) return;
 
-    if (def.type === 'file') {
-      if (def.url) {
+      if (def.type === 'synth' && def.synthFn) {
+        def.synthFn(ctx, this.sfxGain);
+        return;
+      }
+
+      if (def.type === 'file' && def.url) {
         const buffer = this.bufferCache.get(def.url);
         if (buffer) {
           this.playBufferedFile(ctx, buffer, this.sfxGain, def.gain ?? 1);
         } else {
-          // Lazy-load and play
-          this.loadAndPlay(def.url, def.gain ?? 1);
+          void this.loadAndPlay(def.url, def.gain ?? 1);
         }
       }
-    }
+    };
+
+    this.runWhenReady(ctx, runPlayback);
   }
 
   startLoop(key: SoundKey): void {
     if (this.settings.sfxMuted) return;
     if (this.activeLoops.has(key)) return;
 
-    const ctx = this.ensureContext();
-    if (!ctx || !this.sfxGain) return;
-
-    const def = SOUND_DEFS[key];
-    if (def.type === 'file' && def.url) {
-      this.startFileLoop(key, def.url, this.sfxGain, 0.08);
+    if (!this.ctx || !this.sfxGain) {
+      this.pendingLoops.add(key);
       return;
     }
 
-    if (def.type === 'synth' && def.synthFn) {
-      def.synthFn(ctx, this.sfxGain);
-    }
+    const ctx = this.ctx;
+
+    const def = SOUND_DEFS[key];
+    const startLoop = () => {
+      if (!this.sfxGain) return;
+      this.pendingLoops.delete(key);
+
+      if (def.type === 'file' && def.url) {
+        void this.startFileLoop(key, def.url, this.sfxGain, 0.08);
+        return;
+      }
+
+      if (def.type === 'synth' && def.synthFn) {
+        def.synthFn(ctx, this.sfxGain);
+      }
+    };
+
+    this.runWhenReady(ctx, startLoop, () => {
+      this.pendingLoops.add(key);
+    });
   }
 
   stopLoop(key: SoundKey | string): void {
+    this.pendingLoops.delete(key as SoundKey);
     const loop = this.activeLoops.get(key);
     if (loop) {
       loop.stop();
@@ -261,23 +273,34 @@ export class SoundManager {
   }
 
   startThemeSong(url: string): void {
+    const loopKey = `theme-song:${url}`;
+
     if (this.settings.musicMuted) return;
 
-    const loopKey = `theme-song:${url}`;
     if (this.activeThemeSongKey === loopKey && this.activeLoops.has(loopKey)) {
       return;
     }
 
-    this.stopThemeSong();
-    this.activeThemeSongKey = loopKey;
-    if (!this.musicGain) {
-      this.ensureContext();
+    if (!this.ctx || !this.musicGain) {
+      this.pendingThemeSongUrl = url;
+      return;
     }
-    if (!this.musicGain) return;
-    void this.startFileLoop(loopKey, url, this.musicGain, 0.18);
+
+    const ctx = this.ctx;
+    const startThemeSong = () => {
+      if (!this.musicGain) return;
+      this.stopThemeSong();
+      this.activeThemeSongKey = loopKey;
+      void this.startFileLoop(loopKey, url, this.musicGain, 0.18);
+    };
+
+    this.runWhenReady(ctx, startThemeSong, () => {
+      this.pendingThemeSongUrl = url;
+    });
   }
 
   stopThemeSong(): void {
+    this.pendingThemeSongUrl = null;
     if (!this.activeThemeSongKey) return;
     this.stopLoop(this.activeThemeSongKey);
     this.activeThemeSongKey = null;
@@ -293,7 +316,7 @@ export class SoundManager {
   }
 
   private async loadAndPlay(url: string, gainValue = 1): Promise<void> {
-    const ctx = this.ensureContext();
+    const ctx = this.ctx;
     if (!ctx || !this.sfxGain) return;
 
     const audioBuffer = await this.loadBuffer(ctx, url);
@@ -302,7 +325,7 @@ export class SoundManager {
   }
 
   private async startFileLoop(key: string, url: string, destination: GainNode, volume = 0.08): Promise<void> {
-    const ctx = this.ensureContext();
+    const ctx = this.ctx;
     if (!ctx || this.activeLoops.has(key)) return;
 
     const buffer = await this.loadBuffer(ctx, url);
@@ -423,6 +446,55 @@ export class SoundManager {
       this.musicGain = null;
     }
   }
-}
 
-export type { SoundKey };
+  private queuePreloadUrls(extraUrls: string[] = []): void {
+    const fileUrls = Object.values(SOUND_DEFS)
+      .filter((def): def is SoundDef & { url: string } => def.type === 'file' && !!def.url)
+      .map((def) => def.url);
+
+    for (const url of [...fileUrls, ...extraUrls]) {
+      this.pendingPreloadUrls.add(url);
+    }
+  }
+
+  private flushDeferredAudio(): void {
+    if (!this.ctx || this.ctx.state !== 'running') return;
+
+    const pendingThemeSongUrl = this.pendingThemeSongUrl;
+    const pendingLoops = [...this.pendingLoops];
+
+    this.pendingThemeSongUrl = null;
+    this.pendingLoops.clear();
+
+    if (pendingThemeSongUrl && !this.settings.musicMuted) {
+      this.startThemeSong(pendingThemeSongUrl);
+    }
+
+    for (const key of pendingLoops) {
+      if (this.settings.sfxMuted) break;
+      this.startLoop(key);
+    }
+  }
+
+  private runWhenReady(ctx: AudioContext, task: () => void, onBlocked?: () => void): void {
+    const runTask = () => {
+      if (ctx.state !== 'running') {
+        onBlocked?.();
+        return;
+      }
+
+      task();
+      this.flushDeferredAudio();
+      void this.preloadAll();
+    };
+
+    if (ctx.state === 'running') {
+      runTask();
+      return;
+    }
+
+    void ctx.resume().then(runTask).catch(() => {
+      onBlocked?.();
+    });
+  }
+}

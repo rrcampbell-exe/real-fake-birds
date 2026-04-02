@@ -6,7 +6,7 @@ export function correctnessText(
   isMilestone: boolean
 ): string {
   const stored = localStorage.getItem('birdScore');
-  if (!stored) return isCorrect ? 'Correct! 👏' : 'Incorrect. 😬';
+  if (!stored) return isCorrect ? 'Correct!' : 'Incorrect.';
 
   const { currentStreak, birdsIdentified } = JSON.parse(stored) as BirdScore;
 
@@ -15,16 +15,17 @@ export function correctnessText(
     : '';
 
   if (isStreak && currentStreak !== 2) {
-    return `That's ${currentStreak} correct in a row${milestoneAddedText}! 🦅`;
+    return `That's ${currentStreak} correct in a row${milestoneAddedText}!
+Have some bonus seeds as a treat.`;
   }
   if (isMilestone) {
-    return `Wow! You've correctly identified real fake birds ${birdsIdentified} times! 🐧`;
+    return `Wow! You've correctly identified real fake birds ${birdsIdentified} times!`;
   }
   if (isStreak) {
-    return 'New streak! 🐣';
+    return 'Bonus seeds!';
   }
   if (isCorrect) {
-    return 'Correct! 👏';
+    return 'Correct!';
   }
-  return 'Incorrect. 😬';
+  return 'Incorrect.';
 }

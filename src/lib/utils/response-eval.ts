@@ -14,7 +14,9 @@ import {
   writeBirdScore,
 } from './player-progress';
 
-function calculateSeedReward(currentStreak: number): number {
+const BASE_CORRECT_SEED_REWARD = 1;
+
+function calculateStreakSeedReward(currentStreak: number): number {
   if (!streakValues.includes(currentStreak)) return 0;
 
   return streakValues
@@ -27,7 +29,7 @@ const streakEval = (currentStreak: number, setIsStreak: (val: boolean) => void):
   setIsStreak(isStreakMilestone);
   localStorage.setItem('birdStreakAchieved', JSON.stringify(isStreakMilestone));
 
-  return calculateSeedReward(currentStreak);
+  return calculateStreakSeedReward(currentStreak);
 };
 
 const milestoneEval = (
@@ -99,7 +101,8 @@ const responseEval = (
     currentStreak = currentStreak + 1;
     bestStreak = currentStreak > bestStreak ? currentStreak : bestStreak;
 
-    const seedsEarned = streakEval(currentStreak, setIsStreak);
+    const streakSeedsEarned = streakEval(currentStreak, setIsStreak);
+    const seedsEarned = BASE_CORRECT_SEED_REWARD + streakSeedsEarned;
     seeds = seeds + seedsEarned;
 
     const updatedBirdScore = {

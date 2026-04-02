@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { finch } from '@/lib/themes';
 import { useSound } from '@/hooks/useSound';
 import { useStoredJson } from '@/hooks/useStoredValue';
+import IosWebAudioNotice from '@/components/IosWebAudioNotice';
 import { migrateStoredPlayerProgress } from '@/lib/utils/player-progress';
 import { resolveTheme, setTheme } from '@/lib/utils/theme-handler';
 
@@ -37,5 +38,10 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
 
   useEffect(() => () => stopThemeSong(), [stopThemeSong]);
 
-  return <>{children}</>;
+  return (
+    <>
+      <IosWebAudioNotice />
+      {children}
+    </>
+  );
 }

@@ -3,11 +3,11 @@ import { correctnessText } from './correctness-text';
 
 describe('correctnessText', () => {
   it('returns default correct copy when no bird score is stored', () => {
-    expect(correctnessText(true, false, false)).toBe('Correct! 👏');
+    expect(correctnessText(true, false, false)).toBe('Correct!');
   });
 
   it('returns default incorrect copy when no bird score is stored', () => {
-    expect(correctnessText(false, false, false)).toBe('Incorrect. 😬');
+    expect(correctnessText(false, false, false)).toBe('Incorrect.');
   });
 
   it('returns streak copy with current streak from storage', () => {
@@ -17,7 +17,7 @@ describe('correctnessText', () => {
     );
 
     expect(correctnessText(true, true, false)).toBe(
-      "That's 5 correct in a row! 🦅"
+      "That's 5 correct in a row!\nHave some bonus seeds as a treat."
     );
   });
 
@@ -28,7 +28,7 @@ describe('correctnessText', () => {
     );
 
     expect(correctnessText(true, false, true)).toBe(
-      "Wow! You've correctly identified real fake birds 25 times! 🐧"
+      "Wow! You've correctly identified real fake birds 25 times!"
     );
   });
 });

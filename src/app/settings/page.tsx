@@ -23,6 +23,7 @@ import {
 } from '@/lib/utils/player-progress';
 
 export default function SettingsPage() {
+  const [showIosAudioNotice, setShowIosAudioNotice] = useState(false);
   const storedTheme = useStoredJson('birdTheme', finch);
   const storedScore = useStoredJson<typeof defaultBirdScore | null>('birdScore', defaultBirdScore);
   const storedUnlockedThemeNames = useStoredJson<string[]>(UNLOCKED_THEMES_STORAGE_KEY, []);
@@ -43,6 +44,16 @@ export default function SettingsPage() {
     setMusicVolume,
     play,
   } = useSound();
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const { userAgent, platform, maxTouchPoints } = window.navigator;
+    const isIosDevice = /iPad|iPhone|iPod/.test(userAgent)
+      || (platform === 'MacIntel' && maxTouchPoints > 1);
+
+    setShowIosAudioNotice(isIosDevice);
+  }, []);
 
   useEffect(() => {
     setStoredBoolean(NEW_THEME_UNLOCK_STORAGE_KEY, false);
@@ -132,6 +143,12 @@ export default function SettingsPage() {
           Sound
         </h2>
         <div className="p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-surface-border)] flex flex-col gap-4">
+          {showIosAudioNotice && (
+            <p className="rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-3 py-2 text-xs leading-relaxed text-[var(--color-muted)]">
+              iPhone audio respects Silent Mode in Safari and Chrome. If sound is missing, turn Silent Mode off.
+            </p>
+          )}
+
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {isSfxMuted ? (

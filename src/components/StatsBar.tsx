@@ -23,7 +23,7 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
   const { birdsSeen, birdsIdentified, currentStreak, bestStreak, seeds } = normalizeBirdScore(storedStats);
   const accuracy = birdsSeen > 0 ? Math.floor((birdsIdentified / birdsSeen) * 100) : 0;
   const nextStreak = isNextStreakEval(streakValues, currentStreak);
-  const streakCountdown = nextStreak ? `${nextStreak - currentStreak} to streak` : 'max streak tier';
+  const streakCountdown = nextStreak ? `${nextStreak - currentStreak} to bonus` : 'max streak tier';
   const milestoneValues = milestones.map((milestone) => milestone.value);
   const nextMilestone = isNextMilestoneEval(milestoneValues, birdsIdentified);
   const previousMilestone = [...milestoneValues].reverse().find((value) => value <= birdsIdentified) ?? 0;

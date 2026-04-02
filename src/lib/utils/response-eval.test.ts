@@ -31,13 +31,14 @@ describe('responseEval', () => {
     expect(setIsCorrect).toHaveBeenCalledWith(true);
     expect(setIsStreak).toHaveBeenLastCalledWith(false);
     expect(setIsMilestone).toHaveBeenLastCalledWith(false);
+    expect(setSeedsEarned).toHaveBeenCalledWith(1);
     expect(JSON.parse(localStorage.getItem('birdScore')!)).toEqual({
       birdsSeen: 1,
       birdsIdentified: 1,
       currentStreak: 1,
       justAchievedStreak: false,
       bestStreak: 1,
-      seeds: 0,
+      seeds: 1,
     });
   });
 
@@ -74,8 +75,8 @@ describe('responseEval', () => {
     );
 
     expect(setIsStreak).toHaveBeenCalledWith(true);
-    expect(setSeedsEarned).toHaveBeenCalledWith(2);
-    expect(JSON.parse(localStorage.getItem('birdScore')!)).toMatchObject({ seeds: 2 });
+    expect(setSeedsEarned).toHaveBeenCalledWith(3);
+    expect(JSON.parse(localStorage.getItem('birdScore')!)).toMatchObject({ seeds: 3 });
     expect(localStorage.getItem('birdStreakAchieved')).toBe('true');
   });
 
@@ -154,8 +155,8 @@ describe('responseEval', () => {
       setEarnedBadgeName
     );
 
-    expect(setSeedsEarned).toHaveBeenCalledWith(17);
-    expect(JSON.parse(localStorage.getItem('birdScore')!)).toMatchObject({ seeds: 20 });
+    expect(setSeedsEarned).toHaveBeenCalledWith(18);
+    expect(JSON.parse(localStorage.getItem('birdScore')!)).toMatchObject({ seeds: 21 });
   });
 
   it('does not re-announce theme unlock when milestone theme was already purchased', () => {
