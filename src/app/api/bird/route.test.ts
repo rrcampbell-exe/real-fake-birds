@@ -7,6 +7,7 @@ vi.mock('@/lib/server/name-generator', () => ({
 vi.mock('@/lib/server/openai', () => ({
   generateFakeFact: vi.fn(),
   generateFakeImage: vi.fn(),
+  generateRealBirdFact: vi.fn(),
 }));
 
 vi.mock('@/lib/server/utils/percent-of-time', () => ({
@@ -19,7 +20,7 @@ vi.mock('@/lib/server/wikipedia', () => ({
 }));
 
 import { nameGenerator } from '@/lib/server/name-generator';
-import { generateFakeFact, generateFakeImage } from '@/lib/server/openai';
+import { generateFakeFact, generateFakeImage, generateRealBirdFact } from '@/lib/server/openai';
 import { percentOfTime } from '@/lib/server/utils/percent-of-time';
 import { fetchWikipediaFact, fetchWikipediaImage } from '@/lib/server/wikipedia';
 import { GET, POST } from './route';
@@ -50,6 +51,7 @@ describe('bird route', () => {
     await expect(response.json()).resolves.toMatchObject({
       birdName: 'Blue Jay',
       isReal: true,
+      regionLabel: 'Algeria',
       sciName: 'Cyanocitta cristata',
     });
   });
@@ -65,6 +67,7 @@ describe('bird route', () => {
           birdName: 'Blue Jay',
           isReal: true,
           type: 'fact',
+          regionLabel: 'Algeria',
           sciName: 'Cyanocitta cristata',
         }),
         headers: {
@@ -77,6 +80,67 @@ describe('bird route', () => {
     await expect(response.json()).resolves.toEqual({
       type: 'fact',
       content: 'Verified bird fact.',
+    });
+  });
+
+  it('falls back to a structured OpenAI fact when wikipedia has no fact', async () => {
+    vi.spyOn(Date, 'now').mockReturnValueOnce(0).mockReturnValueOnce(5000);
+    vi.mocked(fetchWikipediaFact).mockResolvedValue(null);
+    vi.mocked(generateRealBirdFact).mockResolvedValue(
+      'The Blue Jay can be found in Algeria, and its scientific name is Cyanocitta cristata.'
+    );
+
+    const response = await POST(
+      new Request('http://localhost/api/bird', {
+        method: 'POST',
+        body: JSON.stringify({
+          birdName: 'Blue Jay',
+          isReal: true,
+          type: 'fact',
+          regionLabel: 'Algeria',
+          sciName: 'Cyanocitta cristata',
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }) as never
+    );
+
+    expect(generateRealBirdFact).toHaveBeenCalledWith({
+      birdName: 'Blue Jay',
+      regionLabel: 'Algeria',
+      sciName: 'Cyanocitta cristata',
+    });
+    await expect(response.json()).resolves.toEqual({
+      type: 'fact',
+      content: 'The Blue Jay can be found in Algeria, and its scientific name is Cyanocitta cristata.',
+    });
+  });
+
+  it('falls back to a templated real-bird fact when wikipedia and OpenAI both miss', async () => {
+    vi.spyOn(Date, 'now').mockReturnValueOnce(0).mockReturnValueOnce(5000);
+    vi.mocked(fetchWikipediaFact).mockResolvedValue(null);
+    vi.mocked(generateRealBirdFact).mockResolvedValue(null);
+
+    const response = await POST(
+      new Request('http://localhost/api/bird', {
+        method: 'POST',
+        body: JSON.stringify({
+          birdName: 'Blue Jay',
+          isReal: true,
+          type: 'fact',
+          regionLabel: 'Algeria',
+          sciName: 'Cyanocitta cristata',
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }) as never
+    );
+
+    await expect(response.json()).resolves.toEqual({
+      type: 'fact',
+      content: 'In Algeria, the Blue Jay is known by the scientific name Cyanocitta cristata.',
     });
   });
 
@@ -120,6 +184,7 @@ describe('bird route', () => {
           birdName: 'Blue Jay',
           isReal: true,
           type: 'image',
+          regionLabel: 'Algeria',
           sciName: 'Cyanocitta cristata',
         }),
         headers: {

@@ -42,6 +42,7 @@ function getHintCost(type: HintType): number {
 export function useGameState() {
   const [birdData, setBirdData] = useState('');
   const [isReal, setIsReal] = useState(false);
+  const [regionLabel, setRegionLabel] = useState<string | null>(null);
   const [sciName, setSciName] = useState<string | null>(null);
   const [hasAnswered, setHasAnswered] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,7 +64,7 @@ export function useGameState() {
   const birdScore = useStoredJson(BIRD_SCORE_STORAGE_KEY, defaultBirdScore);
 
   useEffect(() => {
-    fetchData(setIsReal, setIsLoading, setBirdData, setSciName, setIsError);
+    fetchData(setIsReal, setIsLoading, setBirdData, setSciName, setRegionLabel, setIsError);
   }, [fetchKey]);
 
   const handleAnswer = useCallback(
@@ -112,6 +113,7 @@ export function useGameState() {
           isReal,
           type,
           sciName ?? undefined,
+          regionLabel ?? undefined,
           type === 'image' ? hints.fact?.content ?? undefined : undefined
         );
 
@@ -134,7 +136,7 @@ export function useGameState() {
         }));
       }
     },
-    [birdData, birdScore.seeds, hasAnswered, hintLoading, hints, isError, isLoading, isReal, sciName]
+    [birdData, birdScore.seeds, hasAnswered, hintLoading, hints, isError, isLoading, isReal, regionLabel, sciName]
   );
 
   const tryAgain = useCallback(() => {
@@ -153,6 +155,7 @@ export function useGameState() {
     setIsError(false);
     setIsLoading(true);
     setBirdData('');
+    setRegionLabel(null);
     setSciName(null);
     setHints(emptyHintState);
     setHintError(null);

@@ -1,6 +1,7 @@
 export interface BirdResponse {
   birdName: string;
   isReal: boolean;
+  regionLabel?: string;
   sciName?: string;
   url?: string;
 }
@@ -28,6 +29,7 @@ export interface HintRequest {
   birdName: string;
   isReal: boolean;
   type: HintType;
+  regionLabel?: string;
   sciName?: string;
   factHintContent?: string;
 }
