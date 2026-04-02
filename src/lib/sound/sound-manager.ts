@@ -1,5 +1,6 @@
 import { notifyStoredValueChanged } from '@/hooks/useStoredValue';
 import type { SoundSettings } from '@/types';
+import type { SoundController, SoundKey } from '@/lib/sound/types';
 
 const SETTINGS_KEY = 'birdSoundSettings';
 const DEFAULT_SETTINGS: SoundSettings = {
@@ -8,17 +9,6 @@ const DEFAULT_SETTINGS: SoundSettings = {
   musicMuted: false,
   musicVolume: 1,
 };
-
-type SoundKey =
-  | 'tap'
-  | 'correct'
-  | 'wrong'
-  | 'streak'
-  | 'milestone'
-  | 'whoosh'
-  | 'navTap'
-  | 'themeChange'
-  | 'loadingLoop';
 
 interface SoundDef {
   type: 'file' | 'synth';
@@ -109,9 +99,9 @@ function synthThemeChange(ctx: AudioContext, dest: AudioNode) {
   });
 }
 
-// --- SoundManager class ---
+// Browser default implementation. Future native builds can provide a different SoundController.
 
-export class SoundManager {
+export class SoundManager implements SoundController {
   private static instance: SoundManager | null = null;
 
   private ctx: AudioContext | null = null;
@@ -508,5 +498,3 @@ export class SoundManager {
     });
   }
 }
-
-export type { SoundKey };

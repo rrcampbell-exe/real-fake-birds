@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect } from 'react';
-import { SoundManager } from '@/lib/sound/sound-manager';
-import type { SoundKey } from '@/lib/sound/sound-manager';
+import { getSoundController } from '@/lib/sound/sound-platform';
+import type { SoundKey } from '@/lib/sound/types';
 import { themes } from '@/lib/themes';
 import type { SoundSettings } from '@/types';
 import { useStoredJson } from '@/hooks/useStoredValue';
@@ -22,25 +22,25 @@ export function useSound() {
   // Sync reactive stored settings into the SoundManager singleton
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const mgr = SoundManager.getInstance();
-    const current = mgr.getSettings();
-    if (current.sfxMuted !== settings.sfxMuted) mgr.setSfxMuted(settings.sfxMuted);
-    if (current.sfxVolume !== settings.sfxVolume) mgr.setSfxVolume(settings.sfxVolume);
-    if (current.musicMuted !== settings.musicMuted) mgr.setMusicMuted(settings.musicMuted);
-    if (current.musicVolume !== settings.musicVolume) mgr.setMusicVolume(settings.musicVolume);
+    const controller = getSoundController();
+    const current = controller.getSettings();
+    if (current.sfxMuted !== settings.sfxMuted) controller.setSfxMuted(settings.sfxMuted);
+    if (current.sfxVolume !== settings.sfxVolume) controller.setSfxVolume(settings.sfxVolume);
+    if (current.musicMuted !== settings.musicMuted) controller.setMusicMuted(settings.musicMuted);
+    if (current.musicVolume !== settings.musicVolume) controller.setMusicVolume(settings.musicVolume);
   }, [settings.musicMuted, settings.musicVolume, settings.sfxMuted, settings.sfxVolume]);
 
   // Preload file-based sounds once on mount
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    SoundManager.getInstance().preloadAll(THEME_SONG_URLS);
+    void getSoundController().preloadAll(THEME_SONG_URLS);
   }, []);
 
   // Resume AudioContext on first user gesture (iOS / Android requirement)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const unlock = () => {
-      void SoundManager.getInstance().unlock();
+      void getSoundController().unlock();
       window.removeEventListener('pointerdown', unlock);
       window.removeEventListener('touchstart', unlock);
       window.removeEventListener('click', unlock);
@@ -61,39 +61,39 @@ export function useSound() {
   }, []);
 
   const play = useCallback((key: SoundKey) => {
-    SoundManager.getInstance().play(key);
+    getSoundController().play(key);
   }, []);
 
   const startLoop = useCallback((key: SoundKey) => {
-    SoundManager.getInstance().startLoop(key);
+    getSoundController().startLoop(key);
   }, []);
 
   const stopLoop = useCallback((key: SoundKey) => {
-    SoundManager.getInstance().stopLoop(key);
+    getSoundController().stopLoop(key);
   }, []);
 
   const startThemeSong = useCallback((url: string) => {
-    SoundManager.getInstance().startThemeSong(url);
+    getSoundController().startThemeSong(url);
   }, []);
 
   const stopThemeSong = useCallback(() => {
-    SoundManager.getInstance().stopThemeSong();
+    getSoundController().stopThemeSong();
   }, []);
 
   const setSfxMuted = useCallback((muted: boolean) => {
-    SoundManager.getInstance().setSfxMuted(muted);
+    getSoundController().setSfxMuted(muted);
   }, []);
 
   const setSfxVolume = useCallback((volume: number) => {
-    SoundManager.getInstance().setSfxVolume(volume);
+    getSoundController().setSfxVolume(volume);
   }, []);
 
   const setMusicMuted = useCallback((muted: boolean) => {
-    SoundManager.getInstance().setMusicMuted(muted);
+    getSoundController().setMusicMuted(muted);
   }, []);
 
   const setMusicVolume = useCallback((volume: number) => {
-    SoundManager.getInstance().setMusicVolume(volume);
+    getSoundController().setMusicVolume(volume);
   }, []);
 
   return {
