@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Volume2, X } from 'lucide-react';
 import { useStoredBoolean } from '@/hooks/useStoredValue';
 import { setStoredBoolean } from '@/lib/utils/player-progress';
@@ -24,11 +23,7 @@ function isIosWebBrowser(): boolean {
 
 export default function IosWebAudioNotice() {
   const dismissed = useStoredBoolean(IOS_WEB_AUDIO_NOTICE_DISMISSED_STORAGE_KEY, false);
-  const [shouldRender, setShouldRender] = useState(false);
-
-  useEffect(() => {
-    setShouldRender(isIosWebBrowser());
-  }, []);
+  const shouldRender = isIosWebBrowser();
 
   if (!shouldRender || dismissed) {
     return null;

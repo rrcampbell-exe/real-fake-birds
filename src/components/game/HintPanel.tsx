@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertCircle, BookOpenText, ChevronDown, ImageIcon, LoaderCircle, Sparkles } from 'lucide-react';
 import type { HintState, HintType } from '@/types';
@@ -186,18 +186,15 @@ export default function HintPanel({
   onRequestHint,
   seedsBalance,
 }: HintPanelProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  useEffect(() => {
-    setIsExpanded(Boolean(hints.fact || hintLoading.fact || hintErrorType === 'fact'));
-  }, [birdName, hintErrorType, hintLoading.fact, hints.fact]);
+  const [isManuallyExpanded, setIsManuallyExpanded] = useState(false);
+  const isExpanded = isManuallyExpanded || Boolean(hints.fact || hintLoading.fact || hintErrorType === 'fact');
 
   return (
     <div className="w-full">
       <button
         type="button"
         aria-expanded={isExpanded}
-        onClick={() => setIsExpanded((current) => !current)}
+        onClick={() => setIsManuallyExpanded((current) => !current)}
         className="flex w-full items-center justify-between rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-primary-light)] px-4 py-3 text-left transition-colors hover:bg-[var(--color-surface-hover)]"
       >
         <span className="flex items-center gap-2 font-[family-name:var(--font-display)] text-sm font-semibold tracking-[0.02em]">
