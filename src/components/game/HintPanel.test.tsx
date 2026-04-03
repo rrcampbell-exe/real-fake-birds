@@ -18,7 +18,7 @@ describe('HintPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /get a hint/i }));
 
-    expect(screen.getByRole('button', { name: /fact hint/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /request a fact/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /image hint/i })).not.toBeInTheDocument();
   });
 
@@ -37,7 +37,7 @@ describe('HintPanel', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /get a hint/i }));
-    fireEvent.click(screen.getByRole('button', { name: /fact hint/i }));
+    fireEvent.click(screen.getByRole('button', { name: /request a fact/i }));
 
     expect(onRequestHint).toHaveBeenCalledWith('fact');
   });
@@ -59,7 +59,7 @@ describe('HintPanel', () => {
     );
 
     expect(screen.getByText('A fact about this bird.')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /fact hint/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /request a fact/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /image hint/i })).not.toBeInTheDocument();
   });
 
@@ -72,13 +72,13 @@ describe('HintPanel', () => {
         hintLoading={{ fact: false, image: false }}
         hints={{ fact: null, image: null }}
         onRequestHint={vi.fn()}
-        seedsBalance={20}
+        seedsBalance={5}
       />
     );
 
     fireEvent.click(screen.getByRole('button', { name: /get a hint/i }));
 
-    expect(screen.getByRole('button', { name: /fact hint/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /request a fact/i })).toBeDisabled();
     expect(screen.queryByRole('button', { name: /image hint/i })).not.toBeInTheDocument();
   });
 
@@ -96,7 +96,7 @@ describe('HintPanel', () => {
     );
 
     expect(screen.getByText('Consulting a real fake ornithologist...')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /fact hint/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /request a fact/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /image hint/i })).not.toBeInTheDocument();
   });
 
@@ -137,7 +137,7 @@ describe('HintPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /get a hint/i }));
 
     expect(screen.queryByAltText('Hint image for Blue Jay')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /fact hint/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /request a fact/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /image hint/i })).not.toBeInTheDocument();
   });
 
@@ -158,7 +158,7 @@ describe('HintPanel', () => {
 
     expect(screen.getByText('Fact request failed')).toBeInTheDocument();
     expect(screen.getByText('Request failed. Your seeds were refunded.')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /fact hint/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /request a fact/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /image hint/i })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /try again/i }));
