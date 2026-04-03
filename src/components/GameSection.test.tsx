@@ -10,6 +10,10 @@ vi.mock('./game/BirdCard', () => ({
   default: ({ state }: { state: string }) => <div>BirdCard:{state}</div>,
 }));
 
+vi.mock('./game/DailyPrompt', () => ({
+  default: () => <div>DailyPrompt</div>,
+}));
+
 vi.mock('./LoadingState', () => ({
   default: () => <div>LoadingState</div>,
 }));
@@ -58,6 +62,7 @@ describe('GameSection', () => {
     render(<GameSection />);
 
     expect(screen.getByText('StatsBar')).toBeInTheDocument();
+    expect(screen.getByText('DailyPrompt')).toBeInTheDocument();
     expect(screen.getByText('BirdCard:loading')).toBeInTheDocument();
   });
 
@@ -88,6 +93,7 @@ describe('GameSection', () => {
     render(<GameSection />);
 
     expect(screen.getByText('ErrorState')).toBeInTheDocument();
+    expect(screen.getByText('DailyPrompt')).toBeInTheDocument();
     expect(screen.queryByText(/BirdCard:/)).not.toBeInTheDocument();
   });
 
@@ -117,6 +123,7 @@ describe('GameSection', () => {
 
     render(<GameSection />);
 
+    expect(screen.getByText('DailyPrompt')).toBeInTheDocument();
     expect(screen.getByText('BirdCard:question')).toBeInTheDocument();
   });
 });
