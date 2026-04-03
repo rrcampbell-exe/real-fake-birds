@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { Fredoka, DM_Sans } from "next/font/google";
+import { Analytics } from '@vercel/analytics/next';
 import "./globals.css";
 import ThemeProvider from "@/components/ThemeProvider";
 import TopNav from "@/components/nav/TopNav";
 import BottomNav from "@/components/nav/BottomNav";
+import AnalyticsProvider from '@/components/analytics/AnalyticsProvider';
 
 const themeBootstrapScript = `
   (() => {
@@ -75,12 +77,14 @@ export default function RootLayout({
       </head>
       <body className="flex min-h-dvh flex-col font-[family-name:var(--font-body)]">
         <ThemeProvider>
+          <AnalyticsProvider />
           <TopNav />
           <main className="flex flex-1 flex-col pb-16 md:pb-0">
             {children}
           </main>
           <BottomNav />
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
