@@ -12,5 +12,6 @@ export const birdTypes: string[] = [
   'Frogmouth', 'Oilbird', 'Cassowary', 'Emu', 'Mousebird', 'Bee-eater',
   'Motmot', 'Roadrunner', 'Koel', 'Coucal', 'Sunbittern', 'Skylark',
   'Starling', 'Flamingo', 'Gannet', 'Merganser', 'Bufflehead', 'Spadebill', 
-  'Longtail', 'Bishop', 'Penguin'
+  'Longtail', 'Bishop', 'Penguin', 'Grouse', 'Myna', 'Kingfisher', 'Harrier', 
+  'Whimbrel', 'Pochard', 'Martin'
 ];
