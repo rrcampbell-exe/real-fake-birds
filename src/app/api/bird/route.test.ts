@@ -20,7 +20,8 @@ vi.mock('@/lib/server/wikipedia', () => ({
 }));
 
 import { nameGenerator } from '@/lib/server/name-generator';
-import { generateFakeFact, generateFakeImage, generateRealBirdFact } from '@/lib/server/openai';
+import { generateFakeImage, generateRealBirdFact } from '@/lib/server/openai';
+import { resetRateLimitStore } from '@/lib/server/rate-limiter';
 import { percentOfTime } from '@/lib/server/utils/percent-of-time';
 import { fetchWikipediaFact, fetchWikipediaImage } from '@/lib/server/wikipedia';
 import { GET, POST } from './route';
@@ -28,31 +29,34 @@ import { GET, POST } from './route';
 describe('bird route', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    resetRateLimitStore();
   });
 
   it('returns a fake bird immediately when fake mode is selected', async () => {
     vi.mocked(percentOfTime).mockReturnValue(true);
     vi.mocked(nameGenerator).mockResolvedValue({ birdName: 'Blue Robin', isReal: false });
 
-    const response = await GET();
+    const response = await GET(new Request('http://localhost/api/bird') as never);
 
     await expect(response.json()).resolves.toEqual({ birdName: 'Blue Robin', isReal: false });
   });
 
   it('returns a real bird with sciName from eBird data', async () => {
     vi.mocked(percentOfTime).mockReturnValue(false);
+    vi.mocked(fetchWikipediaFact).mockResolvedValue('A widespread songbird.');
     vi.spyOn(Math, 'random').mockReturnValue(0);
     vi.spyOn(global, 'fetch').mockResolvedValue({
       json: async () => [{ comName: 'Blue Jay', sciName: 'Cyanocitta cristata' }],
     } as Response);
 
-    const response = await GET();
+    const response = await GET(new Request('http://localhost/api/bird') as never);
 
     await expect(response.json()).resolves.toMatchObject({
       birdName: 'Blue Jay',
       isReal: true,
       regionLabel: 'Algeria',
       sciName: 'Cyanocitta cristata',
+      fact: 'A widespread songbird.',
     });
   });
 
@@ -210,5 +214,28 @@ describe('bird route', () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ error: 'invalid_request' });
+  });
+
+  it('returns 429 when the GET rate limit is exceeded', async () => {
+    vi.mocked(percentOfTime).mockReturnValue(true);
+    vi.mocked(nameGenerator).mockResolvedValue({ birdName: 'Blue Robin', isReal: false });
+
+    for (let index = 0; index < 60; index += 1) {
+      const response = await GET(
+        new Request('http://localhost/api/bird', {
+          headers: { 'x-forwarded-for': '1.2.3.4' },
+        }) as never
+      );
+      expect(response.status).toBe(200);
+    }
+
+    const response = await GET(
+      new Request('http://localhost/api/bird', {
+        headers: { 'x-forwarded-for': '1.2.3.4' },
+      }) as never
+    );
+
+    expect(response.status).toBe(429);
+    await expect(response.json()).resolves.toEqual({ error: 'rate_limited' });
   });
 });

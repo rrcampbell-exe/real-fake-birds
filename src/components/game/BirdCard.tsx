@@ -103,6 +103,7 @@ export default function BirdCard({
                 </div>
 
                 <HintPanel
+                  key={birdName}
                   birdName={birdName}
                   hintError={hintError}
                   hintErrorType={hintErrorType}

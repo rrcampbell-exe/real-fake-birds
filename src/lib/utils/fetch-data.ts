@@ -6,14 +6,16 @@ const fetchData = async (
   setBirdData: (val: string) => void,
   setSciName: (val: string | null) => void,
   setRegionLabel: (val: string | null) => void,
+  setFact: (val: string | null) => void,
   setIsError: (val: boolean) => void
 ) => {
   const cached = localStorage.getItem('birdData');
   if (cached) {
-    const { birdName, isReal, sciName, regionLabel } = JSON.parse(cached) as BirdResponse;
+    const { birdName, isReal, sciName, regionLabel, fact } = JSON.parse(cached) as BirdResponse;
     setIsReal(isReal);
     setSciName(sciName ?? null);
     setRegionLabel(regionLabel ?? null);
+    setFact(fact ?? null);
     setTimeout(() => setIsLoading(false), 1000);
     setTimeout(() => setBirdData(birdName), 1000);
     return;
@@ -34,17 +36,20 @@ const fetchData = async (
       isReal: data.isReal,
       regionLabel: data.regionLabel,
       sciName: data.sciName,
+      fact: data.fact,
     };
     localStorage.setItem('birdData', JSON.stringify(birdData));
 
     setIsReal(data.isReal);
     setSciName(data.sciName ?? null);
     setRegionLabel(data.regionLabel ?? null);
+    setFact(data.fact ?? null);
     setTimeout(() => setIsLoading(false), 1000);
     setTimeout(() => setBirdData(data.birdName), 1000);
   } catch {
     setSciName(null);
     setRegionLabel(null);
+    setFact(null);
     setIsError(true);
     setIsLoading(false);
   }

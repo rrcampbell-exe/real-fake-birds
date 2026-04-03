@@ -21,4 +21,17 @@ describe('generalAdjectiveSelect', () => {
       error: 'adjective call timed out',
     });
   });
+
+  it('returns an error object when datamuse returns no adjectives', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue([]),
+      })
+    );
+
+    await expect(generalAdjectiveSelect('Robin')).resolves.toEqual({
+      error: 'adjective call timed out',
+    });
+  });
 });

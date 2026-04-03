@@ -8,6 +8,9 @@ export async function generalAdjectiveSelect(
       { signal: AbortSignal.timeout(8000) }
     );
     const data: { word: string }[] = await response.json();
+    if (data.length === 0) {
+      return { error: 'adjective call timed out' };
+    }
     const adjVal = Math.floor(Math.random() * data.length);
     const adjective = data[adjVal].word;
     return adjective.charAt(0).toUpperCase() + adjective.slice(1);

@@ -1,5 +1,10 @@
 import GameSection from '@/components/GameSection';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 export default function Home() {
-  return <GameSection />;
+  return (
+    <ErrorBoundary>
+      <GameSection />
+    </ErrorBoundary>
+  );
 }

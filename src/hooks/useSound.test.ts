@@ -54,7 +54,36 @@ describe('useSound', () => {
   it('calls preloadAll on mount', () => {
     renderHook(() => useSound());
     expect(mockPreloadAll).toHaveBeenCalledTimes(1);
-    expect(mockPreloadAll).toHaveBeenCalledWith(['/sounds/themes/finch.mp3', '/sounds/themes/raven.mp3', '/sounds/themes/robin.mp3', '/sounds/themes/seagull.mp3', '/sounds/themes/crane.mp3', '/sounds/themes/woodpecker.mp3', '/sounds/themes/blue-jay.mp3', '/sounds/themes/oriole.mp3', '/sounds/themes/heron.mp3', '/sounds/themes/cardinal.mp3']);
+    expect(mockPreloadAll).toHaveBeenCalledWith(['/sounds/themes/finch.mp3']);
+  });
+
+  it('preloads the currently selected theme song instead of all theme songs', () => {
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 12,
+        birdsIdentified: 10,
+        currentStreak: 0,
+        justAchievedStreak: false,
+        bestStreak: 0,
+        seeds: 0,
+      })
+    );
+    localStorage.setItem(
+      'birdTheme',
+      JSON.stringify({
+        name: 'Raven',
+        primary: '#0a0a14',
+        secondary: '#1B1B5C',
+        textColor: '#FFFFFF',
+        realFakeTextColor: '#B6B6FF',
+        themeSong: '/sounds/themes/raven.mp3',
+      })
+    );
+
+    renderHook(() => useSound());
+
+    expect(mockPreloadAll).toHaveBeenCalledWith(['/sounds/themes/raven.mp3']);
   });
 
   it('returns default settings when localStorage is empty', () => {

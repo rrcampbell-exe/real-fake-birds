@@ -11,6 +11,9 @@ export default function GameSection() {
   const {
     birdData,
     isReal,
+    regionLabel,
+    sciName,
+    fact,
     hasAnswered,
     isLoading,
     isError,
@@ -65,6 +68,10 @@ export default function GameSection() {
             <Answer
               birdData={birdData}
               isReal={isReal}
+              regionLabel={regionLabel}
+              sciName={sciName}
+              fact={fact}
+              hints={hints}
               isStreak={isStreak}
               isCorrect={isCorrect}
               isMilestone={isMilestone}

@@ -1,16 +1,40 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { Check, X } from 'lucide-react';
 import SeedIcon from '@/components/icons/SeedIcon';
 import { correctnessText } from '@/lib/utils/correctness-text';
 import { useSound } from '@/hooks/useSound';
+import type { HintState } from '@/types';
+
+const FAKE_FIELD_NOTES = [
+  'This bird was made up. We still love it, though!',
+  'This one is pure fiction. We would still wave if it flew by.',
+  'Not a real bird, sadly. But it sounds like it would be a charmer!',
+  'Completely invented. We\'re still fond of the little fraud.',
+  'Made up from beak to tail. Still weirdly endearing.',
+  'A total fabrication. We\'d keep an eye out for it anyway.',
+  'Not one for the field guide, but it has a certain spark.',
+  'This bird is fictional, but we respect the ambition.',
+  'An invention, plain and simple. Still, it paints a lovely picture.',
+  'No birder has ever spotted this one. We kind of wish someone would.',
+  'Pure make-believe, with a surprisingly good bird name.',
+  'A counterfeit little creature, but a memorable one.',
+];
+
+function getRandomFakeFieldNote(): string {
+  return FAKE_FIELD_NOTES[Math.floor(Math.random() * FAKE_FIELD_NOTES.length)] ?? FAKE_FIELD_NOTES[0];
+}
 
 interface AnswerProps {
   birdData: string;
   isReal: boolean;
+  regionLabel: string | null;
+  sciName: string | null;
+  fact: string | null;
+  hints: HintState;
   isStreak: boolean;
   isCorrect: boolean;
   isMilestone: boolean;
@@ -23,6 +47,10 @@ interface AnswerProps {
 export default function Answer({
   birdData,
   isReal,
+  regionLabel,
+  sciName,
+  fact,
+  hints,
   isStreak,
   isCorrect,
   isMilestone,
@@ -32,6 +60,8 @@ export default function Answer({
   onTryAgain,
 }: AnswerProps) {
   const { play } = useSound();
+  const displayedFact = hints.fact?.content ?? fact;
+  const [fakeFieldNote] = useState(getRandomFakeFieldNote);
 
   // Play answer reveal sounds, synced with the spring animation delay
   useEffect(() => {
@@ -146,6 +176,40 @@ export default function Answer({
         >
           {isReal ? 'Real' : 'Fake'}
         </motion.span>
+
+        <div className="mt-4 space-y-3 text-left">
+          {isReal ? (
+            <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
+                Field Notes
+              </p>
+              {regionLabel ? (
+                <p className="mt-2 text-sm text-[var(--color-text)]">
+                  Spotted in {regionLabel}
+                </p>
+              ) : null}
+              {sciName ? (
+                <p className="mt-1 text-sm italic text-[var(--color-muted)]">
+                  {sciName}
+                </p>
+              ) : null}
+              {displayedFact ? (
+                <p className="mt-3 text-sm leading-6 text-[var(--color-text)]">
+                  {displayedFact}
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
+                Fake Field Notes
+              </p>
+              <p className="mt-2 text-sm text-[var(--color-text)]">
+                {fakeFieldNote}
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Try again button */}

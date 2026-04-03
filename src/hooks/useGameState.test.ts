@@ -57,6 +57,23 @@ describe('useGameState', () => {
     expect(fetchData).toHaveBeenCalledTimes(1);
   });
 
+  it('exposes bird context returned by fetchData', () => {
+    vi.mocked(fetchData).mockImplementation(
+      (setIsReal, setIsLoading, setBirdData, setSciName, setRegionLabel, setFact) => {
+        setIsReal(false);
+        setIsLoading(false);
+        setBirdData('Crimson Cape Warbler');
+        setSciName(null);
+        setRegionLabel(null);
+        setFact(null);
+      }
+    );
+
+    const { result } = renderHook(() => useGameState());
+
+    expect(result.current.fact).toBeNull();
+  });
+
   it('passes answers to responseEval and flips hasAnswered', () => {
     const { result } = renderHook(() => useGameState());
     const event = {

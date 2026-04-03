@@ -5,8 +5,13 @@ import { nameGenerator } from '@/lib/server/name-generator';
 import { generateFakeFact, generateFakeImage, generateRealBirdFact } from '@/lib/server/openai';
 import { percentOfTime } from '@/lib/server/utils/percent-of-time';
 import { fetchWikipediaFact, fetchWikipediaImage } from '@/lib/server/wikipedia';
+import { consumeRateLimit, getRateLimitKey } from '@/lib/server/rate-limiter';
 
 const EBIRD_TIMEOUT_MS = 8000;
+const BIRD_FETCH_WINDOW_MS = 60_000;
+const BIRD_FETCH_MAX_REQUESTS = 60;
+const HINT_WINDOW_MS = 60_000;
+const HINT_MAX_REQUESTS = 20;
 
 interface EBirdObservation {
   comName?: string;
@@ -130,12 +135,15 @@ async function fetchRealBird(): Promise<BirdApiResult> {
 
     if (data.length) {
       const random = Math.floor(Math.random() * data.length);
+      const selectedBird = data[random];
+      const fact = await fetchWikipediaFact(selectedBird.comName ?? 'Unknown Bird', selectedBird.sciName);
       return {
-        birdName: data[random].comName ?? 'Unknown Bird',
+        birdName: selectedBird.comName ?? 'Unknown Bird',
         isReal: true,
         regionLabel: location.name,
-        sciName: data[random].sciName,
+        sciName: selectedBird.sciName,
         url,
+        fact: fact ?? undefined,
       };
     }
 
@@ -178,7 +186,26 @@ async function resolveHintContent(request: HintRequest): Promise<string | null> 
   return generateFakeImage(request.birdName, request.factHintContent);
 }
 
-export async function GET() {
+function getClientIp(request: NextRequest): string | null {
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  if (forwardedFor) {
+    return forwardedFor.split(',')[0]?.trim() ?? null;
+  }
+
+  return request.headers.get('x-real-ip');
+}
+
+export async function GET(request: NextRequest) {
+  const rateLimit = consumeRateLimit(
+    getRateLimitKey(getClientIp(request), 'bird-fetch'),
+    BIRD_FETCH_MAX_REQUESTS,
+    BIRD_FETCH_WINDOW_MS
+  );
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
+
   // force a fake bird 47% of the time
   const fakeBird = percentOfTime(47);
 
@@ -192,6 +219,16 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimit = consumeRateLimit(
+    getRateLimitKey(getClientIp(request), 'bird-hint'),
+    HINT_MAX_REQUESTS,
+    HINT_WINDOW_MS
+  );
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
+
   let requestBody: unknown;
 
   try {

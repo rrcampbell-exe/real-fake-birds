@@ -15,20 +15,20 @@ export async function nameGenerator(): Promise<BirdApiResult> {
   const includesColor = percentOfTime(80);
   const includesBodyPart = percentOfTime(30);
 
-  const surname = includesSurname ? await surnameSelect() : '';
-
   const birdTypeVal = Math.floor(Math.random() * birdTypes.length);
-  const adjective = includesAdjective
-    ? await generalAdjectiveSelect(birdTypes[birdTypeVal])
-    : '';
+  const birdType = birdTypes[birdTypeVal];
+
+  const [surname, adjective, color] = await Promise.all([
+    includesSurname ? surnameSelect() : Promise.resolve(''),
+    includesAdjective ? generalAdjectiveSelect(birdType) : Promise.resolve(''),
+    includesColor ? colorSelect() : Promise.resolve(''),
+  ]);
 
   const locationVal = Math.floor(Math.random() * locations.length);
   const { demonym, name, subregion } = locations[locationVal];
   const locationsArr = [demonym, name, subregion];
   const locationArrVal = Math.floor(Math.random() * locationsArr.length);
   const location = includesLocation ? locationsArr[locationArrVal] : '';
-
-  const color = includesColor ? await colorSelect() : '';
 
   const bodyPartVal = Math.floor(Math.random() * bodyParts.length);
   const bodyPart = includesColor && includesBodyPart ? bodyParts[bodyPartVal] : '';
@@ -39,7 +39,10 @@ export async function nameGenerator(): Promise<BirdApiResult> {
     if (typeof fallbackColor === 'object') {
       return { error: 'third-party api call timed out' };
     }
-    return { birdName: `${fallbackColor} ${birdTypes[birdTypeVal]}`, isReal: false };
+    return {
+      birdName: `${fallbackColor} ${birdType}`,
+      isReal: false,
+    };
   }
 
   if (errorEval([surname, adjective, color])) {
@@ -52,7 +55,7 @@ export async function nameGenerator(): Promise<BirdApiResult> {
     includesLocation ? `${location} ` : '',
     includesColor && typeof color === 'string' ? color : '',
     includesBodyPart ? bodyPart : '',
-    ` ${birdTypes[birdTypeVal]}`,
+    ` ${birdType}`,
   ];
 
   return { birdName: parts.join(''), isReal: false };

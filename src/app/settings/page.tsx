@@ -22,8 +22,15 @@ import {
   writeBirdScore,
 } from '@/lib/utils/player-progress';
 
+function shouldShowIosAudioNotice(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  const { userAgent, platform, maxTouchPoints } = window.navigator;
+  return /iPad|iPhone|iPod/.test(userAgent)
+    || (platform === 'MacIntel' && maxTouchPoints > 1);
+}
+
 export default function SettingsPage() {
-  const [showIosAudioNotice, setShowIosAudioNotice] = useState(false);
   const storedTheme = useStoredJson('birdTheme', finch);
   const storedScore = useStoredJson<typeof defaultBirdScore | null>('birdScore', defaultBirdScore);
   const storedUnlockedThemeNames = useStoredJson<string[]>(UNLOCKED_THEMES_STORAGE_KEY, []);
@@ -44,16 +51,7 @@ export default function SettingsPage() {
     setMusicVolume,
     play,
   } = useSound();
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const { userAgent, platform, maxTouchPoints } = window.navigator;
-    const isIosDevice = /iPad|iPhone|iPod/.test(userAgent)
-      || (platform === 'MacIntel' && maxTouchPoints > 1);
-
-    setShowIosAudioNotice(isIosDevice);
-  }, []);
+  const showIosAudioNotice = shouldShowIosAudioNotice();
 
   useEffect(() => {
     setStoredBoolean(NEW_THEME_UNLOCK_STORAGE_KEY, false);
