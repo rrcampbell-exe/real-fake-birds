@@ -16,12 +16,12 @@ interface UseGameStateOptions {
   onRoundResolved?: (result: GameRoundResult) => void;
 }
 
-function readStoredHints(): HintState {
+function readStoredHints(storageKey: string): HintState {
   if (typeof window === 'undefined') {
     return emptyHintState;
   }
 
-  const raw = localStorage.getItem(CURRENT_HINTS_STORAGE_KEY);
+  const raw = localStorage.getItem(storageKey);
   if (!raw) {
     return emptyHintState;
   }
@@ -37,8 +37,8 @@ function readStoredHints(): HintState {
   }
 }
 
-function writeStoredHints(hints: HintState): void {
-  localStorage.setItem(CURRENT_HINTS_STORAGE_KEY, JSON.stringify(hints));
+function writeStoredHints(hints: HintState, storageKey: string): void {
+  localStorage.setItem(storageKey, JSON.stringify(hints));
 }
 
 function getHintCost(type: HintType): number {
@@ -46,6 +46,10 @@ function getHintCost(type: HintType): number {
 }
 
 export function useGameState(options?: UseGameStateOptions) {
+  const mode = options?.mode ?? 'classic';
+  const hintsKey = `${CURRENT_HINTS_STORAGE_KEY}:${mode}`;
+  const birdDataKey = `birdData:${mode}`;
+
   const [birdData, setBirdData] = useState('');
   const [isReal, setIsReal] = useState(false);
   const [regionLabel, setRegionLabel] = useState<string | null>(null);
@@ -60,7 +64,7 @@ export function useGameState(options?: UseGameStateOptions) {
   const [seedsEarned, setSeedsEarned] = useState(0);
   const [newThemeUnlockName, setNewThemeUnlockName] = useState<string | null>(null);
   const [earnedBadgeName, setEarnedBadgeName] = useState<string | null>(null);
-  const [hints, setHints] = useState<HintState>(() => readStoredHints());
+  const [hints, setHints] = useState<HintState>(() => readStoredHints(hintsKey));
   const [hintError, setHintError] = useState<string | null>(null);
   const [hintErrorType, setHintErrorType] = useState<HintType | null>(null);
   const [hintLoading, setHintLoading] = useState<Record<HintType, boolean>>({
@@ -69,7 +73,6 @@ export function useGameState(options?: UseGameStateOptions) {
   });
   const [fetchKey, setFetchKey] = useState(0);
   const birdScore = useStoredJson(BIRD_SCORE_STORAGE_KEY, defaultBirdScore);
-  const mode = options?.mode ?? 'classic';
 
   useEffect(() => {
     fetchData(
@@ -79,9 +82,10 @@ export function useGameState(options?: UseGameStateOptions) {
       setSciName,
       setRegionLabel,
       setFact,
-      setIsError
+      setIsError,
+      mode
     );
-  }, [fetchKey]);
+  }, [fetchKey, mode]);
 
   useEffect(() => {
     trackSessionStart(mode);
@@ -151,7 +155,7 @@ export function useGameState(options?: UseGameStateOptions) {
             ...current,
             [type]: hint,
           };
-          writeStoredHints(nextHints);
+          writeStoredHints(nextHints, hintsKey);
           return nextHints;
         });
         track('hint_used', {
@@ -177,7 +181,8 @@ export function useGameState(options?: UseGameStateOptions) {
     localStorage.setItem('birdStreakAchieved', 'false');
     localStorage.setItem('birdMilestoneAchieved', 'false');
     localStorage.removeItem('birdData');
-    localStorage.removeItem(CURRENT_HINTS_STORAGE_KEY);
+    localStorage.removeItem(birdDataKey);
+    localStorage.removeItem(hintsKey);
     // Reset all state in-place instead of reloading
     setHasAnswered(false);
     setIsCorrect(false);
@@ -197,7 +202,7 @@ export function useGameState(options?: UseGameStateOptions) {
     setHintErrorType(null);
     setHintLoading({ fact: false, image: false });
     setFetchKey((k) => k + 1);
-  }, []);
+  }, [birdDataKey, hintsKey]);
 
   const showQuestion = !hasAnswered && !isError && !isLoading;
 
