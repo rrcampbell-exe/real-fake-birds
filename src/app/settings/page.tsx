@@ -8,6 +8,7 @@ import { finch } from '@/lib/themes';
 import { useStoredJson } from '@/hooks/useStoredValue';
 import { useSound } from '@/hooks/useSound';
 import SeedIcon from '@/components/icons/SeedIcon';
+import { track } from '@/lib/analytics';
 import { getThemeUnlockByThemeName } from '@/lib/constants/theme-unlocks';
 import {
   defaultBirdScore,
@@ -121,6 +122,10 @@ export default function SettingsPage() {
     }
 
     if (updatedScore.seeds >= 0) {
+      track('theme_purchased', {
+        theme_name: pendingPurchase.themeName,
+        seed_cost: pendingPurchase.seedCost,
+      });
       setPendingPurchaseThemeName(null);
     }
   };

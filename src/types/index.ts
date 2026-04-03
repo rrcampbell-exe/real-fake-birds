@@ -49,6 +49,83 @@ export interface BirdScore {
   seeds: number;
 }
 
+export type GameMode = 'classic' | 'daily';
+
+export interface GameRoundResult {
+  isCorrect: boolean;
+  isReal: boolean;
+  chosenResponse: 'real' | 'fake';
+  seedsEarned: number;
+  currentStreak: number;
+  bestStreak: number;
+  birdsSeen: number;
+  birdsIdentified: number;
+  usedHintTypes: HintType[];
+  streakProtected: boolean;
+  earnedBadgeName: string | null;
+  unlockedThemeName: string | null;
+}
+
+export interface DailyChallengeState {
+  date: string;
+  roundsPlayed: number;
+  correctAnswers: number;
+  completed: boolean;
+  completionBonusAwarded: boolean;
+  perfectBonusAwarded: boolean;
+  bonusSeedsAwarded: number;
+  roundResults: boolean[];
+}
+
+export interface DailyChallengeHistoryEntry {
+  date: string;
+  correctAnswers: number;
+  roundsPlayed: number;
+  completed: boolean;
+}
+
+export type MissionType =
+  | 'play_rounds'
+  | 'correct_answers'
+  | 'correct_without_hints'
+  | 'use_hints'
+  | 'earn_seeds'
+  | 'identify_real_birds'
+  | 'identify_fake_birds';
+
+export interface MissionDefinition {
+  id: string;
+  description: string;
+  type: MissionType;
+  target: number;
+  rewardSeeds: number;
+}
+
+export interface MissionProgressState {
+  missionId: string;
+  progress: number;
+  completed: boolean;
+  claimed: boolean;
+}
+
+export interface SessionMissionsState {
+  date: string;
+  missions: MissionProgressState[];
+  bonusClaimed: boolean;
+}
+
+export interface StreakInsuranceState {
+  active: boolean;
+  protectedMissesRemaining: number;
+  cost: number;
+  purchasedAtStreak: number;
+}
+
+export interface SharePayload {
+  title: string;
+  text: string;
+}
+
 export interface Theme {
   name: string;
   primary: string;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { HintState, HintType } from '@/types';
+import type { GameMode, GameRoundResult, HintState, HintType } from '@/types';
 import { useStoredJson } from './useStoredValue';
 import { CURRENT_HINTS_STORAGE_KEY, FACT_HINT_COST, IMAGE_HINT_COST, emptyHintState } from '@/lib/constants/hints';
 import fetchData from '@/lib/utils/fetch-data';
@@ -9,6 +9,12 @@ import fetchHint from '@/lib/utils/fetch-hint';
 import responseEval from '@/lib/utils/response-eval';
 import { defaultBirdScore, BIRD_SCORE_STORAGE_KEY } from '@/lib/utils/player-progress';
 import { refundSeeds, spendSeeds } from '@/lib/utils/seed-spend';
+import { track, trackSessionStart } from '@/lib/analytics';
+
+interface UseGameStateOptions {
+  mode?: GameMode;
+  onRoundResolved?: (result: GameRoundResult) => void;
+}
 
 function readStoredHints(): HintState {
   if (typeof window === 'undefined') {
@@ -39,7 +45,7 @@ function getHintCost(type: HintType): number {
   return type === 'fact' ? FACT_HINT_COST : IMAGE_HINT_COST;
 }
 
-export function useGameState() {
+export function useGameState(options?: UseGameStateOptions) {
   const [birdData, setBirdData] = useState('');
   const [isReal, setIsReal] = useState(false);
   const [regionLabel, setRegionLabel] = useState<string | null>(null);
@@ -63,6 +69,7 @@ export function useGameState() {
   });
   const [fetchKey, setFetchKey] = useState(0);
   const birdScore = useStoredJson(BIRD_SCORE_STORAGE_KEY, defaultBirdScore);
+  const mode = options?.mode ?? 'classic';
 
   useEffect(() => {
     fetchData(
@@ -76,10 +83,18 @@ export function useGameState() {
     );
   }, [fetchKey]);
 
+  useEffect(() => {
+    trackSessionStart(mode);
+  }, [mode]);
+
   const handleAnswer = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
       const chosenResponse = (e.currentTarget.id as 'real' | 'fake');
+      const usedHintTypes = (Object.entries(hints) as [HintType, HintState[HintType]][])
+        .filter(([, value]) => value)
+        .map(([type]) => type);
+
       responseEval(
         e,
         isReal,
@@ -89,11 +104,16 @@ export function useGameState() {
         setIsMilestone,
         setSeedsEarned,
         setNewThemeUnlockName,
-        setEarnedBadgeName
+        setEarnedBadgeName,
+        {
+          mode,
+          usedHintTypes,
+          onRoundResolved: options?.onRoundResolved,
+        }
       );
       setHasAnswered(true);
     },
-    [isReal]
+    [hints, isReal, mode, options]
   );
 
   const requestHint = useCallback(
@@ -134,6 +154,11 @@ export function useGameState() {
           writeStoredHints(nextHints);
           return nextHints;
         });
+        track('hint_used', {
+          mode,
+          type,
+          is_real: isReal,
+        });
       } catch {
         refundSeeds(cost);
         setHintError('Request failed. Your seeds were refunded.');
@@ -145,7 +170,7 @@ export function useGameState() {
         }));
       }
     },
-    [birdData, birdScore.seeds, hasAnswered, hintLoading, hints, isError, isLoading, isReal, regionLabel, sciName]
+    [birdData, birdScore.seeds, hasAnswered, hintLoading, hints, isError, isLoading, isReal, mode, regionLabel, sciName]
   );
 
   const tryAgain = useCallback(() => {

@@ -1,6 +1,9 @@
 import { localStorageCheck } from './local-storage-check';
 import { streakValues } from '../constants/streaks';
 import { getThemeUnlockByMilestoneValue } from '../constants/theme-unlocks';
+import { track } from '@/lib/analytics';
+import { applyRoundToSessionMissions } from './missions';
+import { consumeStreakInsurance } from './streak-insurance';
 import {
   BIRD_MILESTONES_STORAGE_KEY,
   NEW_THEME_UNLOCK_STORAGE_KEY,
@@ -13,6 +16,7 @@ import {
   unlockThemeName,
   writeBirdScore,
 } from './player-progress';
+import type { GameMode, GameRoundResult, HintType } from '@/types';
 
 const BASE_CORRECT_SEED_REWARD = 1;
 
@@ -76,15 +80,22 @@ const responseEval = (
   setIsMilestone: (val: boolean) => void,
   setSeedsEarned: (val: number) => void,
   setUnlockedThemeName: (val: string | null) => void,
-  setEarnedBadgeName: (val: string | null) => void
-) => {
+  setEarnedBadgeName: (val: string | null) => void,
+  options?: {
+    mode?: GameMode;
+    usedHintTypes?: HintType[];
+    onRoundResolved?: (result: GameRoundResult) => void;
+  }
+): GameRoundResult => {
   e.preventDefault();
 
   const hasLocalStorage = localStorageCheck();
+  const usedHintTypes = options?.usedHintTypes ?? [];
+  const mode = options?.mode ?? 'classic';
   const isCorrect =
     (isReal && chosenResponse === 'real') ||
     (!isReal && chosenResponse === 'fake');
-  if (isCorrect) setIsCorrect(true);
+  setIsCorrect(isCorrect);
 
   if (!hasLocalStorage) {
     writeBirdScore(defaultBirdScore);
@@ -125,29 +136,125 @@ const responseEval = (
     setUnlockedThemeName(milestoneResult.unlockedThemeName);
     setEarnedBadgeName(milestoneResult.earnedBadgeName);
 
-    return;
+    const result = {
+      isCorrect: true,
+      isReal,
+      chosenResponse,
+      seedsEarned,
+      currentStreak,
+      bestStreak,
+      birdsSeen,
+      birdsIdentified,
+      usedHintTypes,
+      streakProtected: false,
+      earnedBadgeName: milestoneResult.earnedBadgeName,
+      unlockedThemeName: milestoneResult.unlockedThemeName,
+    } satisfies GameRoundResult;
+
+    track('game_round_complete', {
+      mode,
+      is_correct: true,
+      is_real: isReal,
+      hint_count: usedHintTypes.length,
+      seeds_earned: seedsEarned,
+      current_streak: currentStreak,
+      birds_identified: birdsIdentified,
+    });
+
+    if (currentStreak > 1 && streakValues.includes(currentStreak)) {
+      track('streak_achieved', { mode, current_streak: currentStreak, seeds_earned: seedsEarned });
+    }
+
+    if (milestoneResult.earnedBadgeName) {
+      track('milestone_reached', {
+        mode,
+        badge_name: milestoneResult.earnedBadgeName,
+        birds_identified: birdsIdentified,
+      });
+    }
+
+    if (milestoneResult.unlockedThemeName) {
+      track('theme_unlocked', {
+        mode,
+        theme_name: milestoneResult.unlockedThemeName,
+        birds_identified: birdsIdentified,
+      });
+    }
+
+    const { newlyCompletedMissionIds } = applyRoundToSessionMissions(result);
+    newlyCompletedMissionIds.forEach((missionId) => {
+      track('mission_completed', { mission_id: missionId, mode });
+    });
+
+    options?.onRoundResolved?.(result);
+
+    return result;
   }
 
   const birdScore = readBirdScore();
   let { birdsSeen } = birdScore;
   const { bestStreak } = birdScore;
   const { birdsIdentified, seeds } = birdScore;
+  const streakProtected = consumeStreakInsurance();
 
   birdsSeen = birdsSeen + 1;
 
   const updatedBirdScore = {
     birdsSeen,
     birdsIdentified,
-    currentStreak: 0,
+    currentStreak: streakProtected ? birdScore.currentStreak : 0,
     bestStreak,
     justAchievedStreak: false,
     seeds,
   };
 
+  setIsStreak(false);
+  setIsMilestone(false);
   setSeedsEarned(0);
   setUnlockedThemeName(null);
   setEarnedBadgeName(null);
   writeBirdScore(updatedBirdScore);
+
+  const result = {
+    isCorrect: false,
+    isReal,
+    chosenResponse,
+    seedsEarned: 0,
+    currentStreak: updatedBirdScore.currentStreak,
+    bestStreak,
+    birdsSeen,
+    birdsIdentified,
+    usedHintTypes,
+    streakProtected,
+    earnedBadgeName: null,
+    unlockedThemeName: null,
+  } satisfies GameRoundResult;
+
+  track('game_round_complete', {
+    mode,
+    is_correct: false,
+    is_real: isReal,
+    hint_count: usedHintTypes.length,
+    seeds_earned: 0,
+    current_streak: updatedBirdScore.currentStreak,
+    streak_protected: streakProtected,
+  });
+
+  if (streakProtected) {
+    track('streak_insurance_consumed', {
+      mode,
+      preserved_streak: updatedBirdScore.currentStreak,
+    });
+  }
+
+  const { newlyCompletedMissionIds } = applyRoundToSessionMissions(result);
+  newlyCompletedMissionIds.forEach((missionId) => {
+    track('mission_completed', { mission_id: missionId, mode });
+  });
+
+  options?.onRoundResolved?.(result);
+
+  return result;
 };
 
 export default responseEval;
