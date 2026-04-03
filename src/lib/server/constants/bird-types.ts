@@ -13,5 +13,15 @@ export const birdTypes: string[] = [
   'Motmot', 'Roadrunner', 'Koel', 'Coucal', 'Sunbittern', 'Skylark',
   'Starling', 'Flamingo', 'Gannet', 'Merganser', 'Bufflehead', 'Spadebill', 
   'Longtail', 'Bishop', 'Penguin', 'Grouse', 'Myna', 'Kingfisher', 'Harrier', 
-  'Whimbrel', 'Pochard', 'Martin'
+  'Whimbrel', 'Pochard', 'Martin', 
+  'Anhinga', 'Auk', 'Auklet', 'Avocet', 'Babbler', 'Bittern', 'Brant',
+  'Bustard', 'Chough', 'Cormorant', 'Courser', 'Curlew', 'Darter',
+  'Dotterel', 'Drongo', 'Eider', 'Fieldfare', 'Flycatcher', 'Frigatebird',
+  'Fulmar', 'Godwit', 'Goshawk', 'Grackle', 'Honeyguide', 'Ibis', 'Jacana',
+  'Kestrel', 'Lapwing', 'Lorikeet', 'Murre', 'Nightingale', 'Oriole',
+  'Oystercatcher', 'Pheasant', 'Pipit', 'Plover', 'Ptarmigan', 'Rail',
+  'Redpoll', 'Redstart', 'Roller', 'Rook', 'Scoter', 'Shearwater',
+  'Shoveler', 'Shrike', 'Siskin', 'Skua', 'Snipe', 'Stilt', 'Stonechat',
+  'Tanager', 'Teal', 'Tern', 'Turnstone', 'Wagtail', 'Waxwing', 'Weaver',
+  'Wheatear', 'Whydah', 'Woodlark', 'Yellowhammer'
 ];
