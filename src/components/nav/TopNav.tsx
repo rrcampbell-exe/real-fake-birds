@@ -2,13 +2,20 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bird, Trophy, Settings } from 'lucide-react';
-import { useStoredBoolean } from '@/hooks/useStoredValue';
+import { Bird, CalendarDays, Trophy, Settings } from 'lucide-react';
+import { useStoredBoolean, useStoredJson } from '@/hooks/useStoredValue';
 import { useSound } from '@/hooks/useSound';
 import { NEW_THEME_UNLOCK_STORAGE_KEY, UNSEEN_BADGES_STORAGE_KEY } from '@/lib/utils/player-progress';
+import { DAILY_CHALLENGE_STORAGE_KEY } from '@/lib/constants/daily-challenge';
+import { SESSION_MISSIONS_STORAGE_KEY } from '@/lib/constants/missions';
+import { createDailyChallengeState } from '@/lib/utils/daily-challenge';
+import { readSessionMissions } from '@/lib/utils/missions';
+import { hasPendingRewards } from '@/lib/utils/rewards-notification';
+import type { DailyChallengeState, SessionMissionsState } from '@/types';
 
 const links = [
   { href: '/', label: 'Play', icon: Bird },
+  { href: '/daily', label: 'Daily', icon: CalendarDays },
   { href: '/rewards', label: 'Rewards', icon: Trophy },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
@@ -17,6 +24,15 @@ export default function TopNav() {
   const pathname = usePathname();
   const hasUnseenBadges = useStoredBoolean(UNSEEN_BADGES_STORAGE_KEY);
   const hasNewThemeUnlock = useStoredBoolean(NEW_THEME_UNLOCK_STORAGE_KEY);
+  const dailyChallengeState = useStoredJson<DailyChallengeState>(
+    DAILY_CHALLENGE_STORAGE_KEY,
+    createDailyChallengeState()
+  );
+  const sessionMissionsState = useStoredJson<SessionMissionsState>(
+    SESSION_MISSIONS_STORAGE_KEY,
+    readSessionMissions()
+  );
+  const hasPendingRewardClaims = hasPendingRewards(dailyChallengeState, sessionMissionsState);
   const { play } = useSound();
 
   return (
@@ -32,7 +48,10 @@ export default function TopNav() {
       <div className="flex gap-1">
         {links.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
-          const showDot = !active && ((href === '/rewards' && hasUnseenBadges) || (href === '/settings' && hasNewThemeUnlock));
+          const showDot = !active && (
+            (href === '/rewards' && (hasUnseenBadges || hasPendingRewardClaims))
+            || (href === '/settings' && hasNewThemeUnlock)
+          );
           return (
             <Link
               key={href}

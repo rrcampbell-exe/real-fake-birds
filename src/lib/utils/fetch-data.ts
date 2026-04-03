@@ -1,4 +1,10 @@
-import type { BirdResponse, BirdErrorResponse } from '@/types';
+import type { BirdErrorResponse, BirdResponse, GameMode } from '@/types';
+
+const BIRD_DATA_STORAGE_KEY = 'birdData';
+
+function getBirdDataStorageKey(mode: GameMode): string {
+  return `${BIRD_DATA_STORAGE_KEY}:${mode}`;
+}
 
 const fetchData = async (
   setIsReal: (val: boolean) => void,
@@ -7,9 +13,11 @@ const fetchData = async (
   setSciName: (val: string | null) => void,
   setRegionLabel: (val: string | null) => void,
   setFact: (val: string | null) => void,
-  setIsError: (val: boolean) => void
+  setIsError: (val: boolean) => void,
+  mode: GameMode = 'classic'
 ) => {
-  const cached = localStorage.getItem('birdData');
+  const storageKey = getBirdDataStorageKey(mode);
+  const cached = localStorage.getItem(storageKey);
   if (cached) {
     const { birdName, isReal, sciName, regionLabel, fact } = JSON.parse(cached) as BirdResponse;
     setIsReal(isReal);
@@ -38,7 +46,7 @@ const fetchData = async (
       sciName: data.sciName,
       fact: data.fact,
     };
-    localStorage.setItem('birdData', JSON.stringify(birdData));
+    localStorage.setItem(storageKey, JSON.stringify(birdData));
 
     setIsReal(data.isReal);
     setSciName(data.sciName ?? null);

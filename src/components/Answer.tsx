@@ -7,6 +7,10 @@ import { Check, X } from 'lucide-react';
 import SeedIcon from '@/components/icons/SeedIcon';
 import { correctnessText } from '@/lib/utils/correctness-text';
 import { useSound } from '@/hooks/useSound';
+import { useStoredJson } from '@/hooks/useStoredValue';
+import ShareButton from '@/components/ShareButton';
+import { defaultBirdScore, normalizeBirdScore } from '@/lib/utils/player-progress';
+import { buildMilestoneSharePayload, buildRoundSharePayload } from '@/lib/utils/share-data';
 import type { HintState } from '@/types';
 
 const FAKE_FIELD_NOTES = [
@@ -41,7 +45,8 @@ interface AnswerProps {
   seedsEarned: number;
   newThemeUnlockName: string | null;
   earnedBadgeName: string | null;
-  onTryAgain: () => void;
+  actionLabel?: string;
+  onAction: () => void;
 }
 
 export default function Answer({
@@ -57,11 +62,25 @@ export default function Answer({
   seedsEarned,
   newThemeUnlockName,
   earnedBadgeName,
-  onTryAgain,
+  actionLabel = 'Next Bird',
+  onAction,
 }: AnswerProps) {
   const { play } = useSound();
+  const score = normalizeBirdScore(useStoredJson<typeof defaultBirdScore | null>('birdScore', defaultBirdScore));
   const displayedFact = hints.fact?.content ?? fact;
   const [fakeFieldNote] = useState(getRandomFakeFieldNote);
+  const sharePayload = isMilestone && earnedBadgeName
+    ? buildMilestoneSharePayload({
+        badgeName: earnedBadgeName,
+        birdsIdentified: score.birdsIdentified,
+      })
+    : buildRoundSharePayload({
+        birdName: birdData,
+        isReal,
+        isCorrect,
+        currentStreak: score.currentStreak,
+        earnedBadgeName,
+      });
 
   // Play answer reveal sounds, synced with the spring animation delay
   useEffect(() => {
@@ -99,7 +118,14 @@ export default function Answer({
   }, [isStreak, isMilestone, newThemeUnlockName]);
 
   return (
-    <div className="flex flex-col items-center gap-5">
+    <div className="relative flex w-full flex-col items-center gap-5">
+      <div className="absolute left-0 top-0 z-10">
+        <ShareButton
+          payload={sharePayload}
+          eventLabel={isMilestone && earnedBadgeName ? 'milestone' : 'round-result'}
+        />
+      </div>
+
       {/* Correctness indicator */}
       <motion.div
         initial={{ scale: 0 }}
@@ -217,13 +243,13 @@ export default function Answer({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.35 }}
-        onClick={() => { play('whoosh'); onTryAgain(); }}
+        onClick={() => { play('whoosh'); onAction(); }}
         className="mt-2 py-3 px-8 rounded-xl font-[family-name:var(--font-display)] font-semibold text-base
           bg-[var(--color-secondary)] text-[var(--color-on-secondary)] border-none
           shadow-[var(--shadow-button)] hover:brightness-110 active:scale-[0.97]
           transition-all duration-150 cursor-pointer"
       >
-        Next Bird
+        {actionLabel}
       </motion.button>
     </div>
   );

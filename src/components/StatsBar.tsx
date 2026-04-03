@@ -1,13 +1,24 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Flame, Target, Trophy, Zap } from 'lucide-react';
 import SeedIcon from '@/components/icons/SeedIcon';
 import { milestones } from '@/lib/constants/milestones';
 import { streakValues } from '@/lib/constants/streaks';
+import { track } from '@/lib/analytics';
 import { getThemeUnlockByMilestoneValue } from '@/lib/constants/theme-unlocks';
 import { isNextMilestoneEval, isNextStreakEval } from '@/lib/utils/goals-evaluation';
 import { useStoredJson } from '@/hooks/useStoredValue';
 import { defaultBirdScore, getUnlockedThemeNames, normalizeBirdScore } from '@/lib/utils/player-progress';
+import {
+  clearStreakInsurance,
+  defaultStreakInsuranceState,
+  getStreakInsuranceCost,
+  isStreakInsuranceExpired,
+  purchaseStreakInsurance,
+  STREAK_INSURANCE_MIN_STREAK,
+  STREAK_INSURANCE_STORAGE_KEY,
+} from '@/lib/utils/streak-insurance';
 
 interface StatsBarProps {
   refreshTrigger?: unknown;
@@ -17,9 +28,8 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
   void refreshTrigger;
 
   const storedStats = useStoredJson<typeof defaultBirdScore | null>('birdScore', null);
-
-  if (!storedStats) return null;
-
+  const insuranceState = useStoredJson(STREAK_INSURANCE_STORAGE_KEY, defaultStreakInsuranceState);
+  const [insuranceError, setInsuranceError] = useState<string | null>(null);
   const { birdsSeen, birdsIdentified, currentStreak, bestStreak, seeds } = normalizeBirdScore(storedStats);
   const accuracy = birdsSeen > 0 ? Math.floor((birdsIdentified / birdsSeen) * 100) : 0;
   const nextStreak = isNextStreakEval(streakValues, currentStreak);
@@ -34,11 +44,25 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
   const unlockProgress = nextMilestone
     ? ((birdsIdentified - previousMilestone) / (nextMilestone - previousMilestone)) * 100
     : 100;
+  const insuranceCost = getStreakInsuranceCost(currentStreak);
+  const insuranceExpired = isStreakInsuranceExpired(insuranceState, currentStreak);
+  const effectiveInsuranceState = insuranceExpired ? defaultStreakInsuranceState : insuranceState;
   const unlockLabel = nextMilestone
     ? nextUnlock && !nextUnlock.comingSoon && !isNextThemeAlreadyUnlocked
       ? `${remainingMilestoneBirds} to unlock ${nextUnlock.milestoneBadge} Badge and ${nextUnlock.themeName} Theme`
       : `${remainingMilestoneBirds} to unlock ${milestones.find((milestone) => milestone.value === nextMilestone)?.badge} Badge`
     : 'All live themes unlocked';
+  const canShowInsurance = effectiveInsuranceState.active || currentStreak >= STREAK_INSURANCE_MIN_STREAK;
+
+  useEffect(() => {
+    if (!insuranceExpired) {
+      return;
+    }
+
+    clearStreakInsurance();
+  }, [insuranceExpired]);
+
+  if (!storedStats) return null;
 
   return (
     <div className="w-full max-w-md mx-auto px-4">
@@ -102,6 +126,52 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
             </p>
           </div>
         </div>
+
+        {canShowInsurance ? (
+          <div className="mt-3 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
+                  Streak Insurance
+                </p>
+                <p className="mt-1 text-[0.7rem] leading-snug text-[var(--color-muted)]">
+                  {effectiveInsuranceState.active
+                    ? `Armed. Your next wrong answer keeps the current streak alive.`
+                    : `Spend ${insuranceCost} seeds to protect one miss.`}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                disabled={effectiveInsuranceState.active || seeds < insuranceCost}
+                onClick={() => {
+                  const result = purchaseStreakInsurance();
+                  if (!result.ok) {
+                    setInsuranceError(result.error ?? 'Unable to buy streak insurance.');
+                    return;
+                  }
+
+                  setInsuranceError(null);
+                  track('streak_insurance_purchased', {
+                    cost: result.state.cost,
+                    purchased_at_streak: result.state.purchasedAtStreak,
+                  });
+                }}
+                className={`rounded-full px-3 py-1.5 text-[0.7rem] font-semibold transition ${
+                  effectiveInsuranceState.active || seeds < insuranceCost
+                    ? 'bg-[var(--color-surface-border)] text-[var(--color-muted)]'
+                    : 'bg-[var(--color-secondary)] text-[var(--color-on-secondary)]'
+                }`}
+              >
+                {effectiveInsuranceState.active ? 'Protected' : `Protect Streak`}
+              </button>
+            </div>
+
+            {insuranceError ? (
+              <p className="mt-2 text-[0.65rem] text-red-400">{insuranceError}</p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>
   );

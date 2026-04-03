@@ -173,9 +173,10 @@ describe('useGameState', () => {
   });
 
   it('resets transient state and re-fetches on tryAgain', () => {
-    localStorage.setItem('birdData', JSON.stringify({ birdName: 'Test Bird' }));
+    localStorage.setItem('birdData', JSON.stringify({ birdName: 'Legacy Bird' }));
+    localStorage.setItem('birdData:classic', JSON.stringify({ birdName: 'Test Bird' }));
     localStorage.setItem(
-      'currentHints',
+      'currentHints:classic',
       JSON.stringify({ fact: { type: 'fact', content: 'Old hint.' }, image: null })
     );
     const { result } = renderHook(() => useGameState());
@@ -187,7 +188,8 @@ describe('useGameState', () => {
     expect(localStorage.getItem('birdStreakAchieved')).toBe('false');
     expect(localStorage.getItem('birdMilestoneAchieved')).toBe('false');
     expect(localStorage.getItem('birdData')).toBeNull();
-    expect(localStorage.getItem('currentHints')).toBeNull();
+    expect(localStorage.getItem('birdData:classic')).toBeNull();
+    expect(localStorage.getItem('currentHints:classic')).toBeNull();
     expect(fetchData).toHaveBeenCalledTimes(2);
   });
 });

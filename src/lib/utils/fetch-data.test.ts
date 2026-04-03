@@ -9,7 +9,7 @@ describe('fetchData', () => {
   it('uses cached bird data when available', async () => {
     vi.useFakeTimers();
     localStorage.setItem(
-      'birdData',
+      'birdData:classic',
       JSON.stringify({ birdName: 'Blue Finch', isReal: true, regionLabel: 'Algeria', sciName: 'Fringilla caerulea' })
     );
 
@@ -56,7 +56,7 @@ describe('fetchData', () => {
     await vi.runAllTimersAsync();
 
     expect(fetchMock).toHaveBeenCalledWith('/api/bird');
-    expect(localStorage.getItem('birdData')).toBe(
+    expect(localStorage.getItem('birdData:classic')).toBe(
       JSON.stringify({
         birdName: 'Copper Heron',
         isReal: false,
@@ -93,7 +93,7 @@ describe('fetchData', () => {
     expect(setIsError).toHaveBeenCalledWith(true);
     expect(setIsLoading).toHaveBeenCalledWith(false);
     expect(setBirdData).not.toHaveBeenCalled();
-    expect(localStorage.getItem('birdData')).toBeNull();
+    expect(localStorage.getItem('birdData:classic')).toBeNull();
   });
 
   it('handles thrown fetch failures', async () => {

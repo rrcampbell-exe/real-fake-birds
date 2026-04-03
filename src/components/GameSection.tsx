@@ -2,6 +2,7 @@
 
 import { useGameState } from '@/hooks/useGameState';
 import BirdCard from './game/BirdCard';
+import DailyPrompt from './game/DailyPrompt';
 import LoadingState from './LoadingState';
 import Answer from './Answer';
 import Error from './Error';
@@ -50,6 +51,8 @@ export default function GameSection() {
 
       <StatsBar refreshTrigger={hasAnswered} />
 
+  <DailyPrompt />
+
       {isError && <Error onTryAgain={tryAgain} />}
 
       {!isError && (
@@ -78,7 +81,7 @@ export default function GameSection() {
               seedsEarned={seedsEarned}
               newThemeUnlockName={newThemeUnlockName}
               earnedBadgeName={earnedBadgeName}
-              onTryAgain={tryAgain}
+              onAction={tryAgain}
             />
           }
         />

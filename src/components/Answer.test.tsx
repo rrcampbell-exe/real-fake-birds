@@ -28,7 +28,7 @@ describe('Answer', () => {
         seeds: 0,
       })
     );
-    const onTryAgain = vi.fn();
+    const onAction = vi.fn();
 
     render(
       <Answer
@@ -44,7 +44,7 @@ describe('Answer', () => {
         seedsEarned={0}
         newThemeUnlockName={null}
         earnedBadgeName={null}
-        onTryAgain={onTryAgain}
+        onAction={onAction}
       />
     );
 
@@ -53,7 +53,7 @@ describe('Answer', () => {
     expect(screen.getByText('Spotted in Algeria')).toBeInTheDocument();
     expect(screen.getByText('Cyanocitta cristata')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Next Bird' }));
-    expect(onTryAgain).toHaveBeenCalled();
+    expect(onAction).toHaveBeenCalled();
   });
 
   it('fires confetti when a streak or milestone is achieved', () => {
@@ -82,7 +82,7 @@ describe('Answer', () => {
         seedsEarned={2}
         newThemeUnlockName={null}
         earnedBadgeName={null}
-        onTryAgain={vi.fn()}
+        onAction={vi.fn()}
       />
     );
 
@@ -104,7 +104,7 @@ describe('Answer', () => {
         seedsEarned={7}
         newThemeUnlockName="Raven"
         earnedBadgeName="Downy Feather"
-        onTryAgain={vi.fn()}
+        onAction={vi.fn()}
       />
     );
 
@@ -128,7 +128,7 @@ describe('Answer', () => {
         seedsEarned={1}
         newThemeUnlockName={null}
         earnedBadgeName={null}
-        onTryAgain={vi.fn()}
+        onAction={vi.fn()}
       />
     );
 
@@ -151,7 +151,7 @@ describe('Answer', () => {
         seedsEarned={1}
         newThemeUnlockName={null}
         earnedBadgeName={null}
-        onTryAgain={vi.fn()}
+        onAction={vi.fn()}
       />
     );
 
@@ -175,7 +175,7 @@ describe('Answer', () => {
         seedsEarned={0}
         newThemeUnlockName={null}
         earnedBadgeName={null}
-        onTryAgain={vi.fn()}
+        onAction={vi.fn()}
       />
     );
 
@@ -203,7 +203,7 @@ describe('Answer', () => {
         seedsEarned={0}
         newThemeUnlockName={null}
         earnedBadgeName={null}
-        onTryAgain={vi.fn()}
+        onAction={vi.fn()}
       />
     );
 
@@ -228,11 +228,34 @@ describe('Answer', () => {
         seedsEarned={0}
         newThemeUnlockName={null}
         earnedBadgeName={null}
-        onTryAgain={vi.fn()}
+        onAction={vi.fn()}
       />
     );
 
     expect(screen.getByText('Purchased fact hint.')).toBeInTheDocument();
     expect(screen.queryByText('Background fact.')).not.toBeInTheDocument();
+  });
+
+  it('supports a custom action label', () => {
+    render(
+      <Answer
+        birdData="Blue Robin"
+        isReal
+        regionLabel="Algeria"
+        sciName="Cyanocitta cristata"
+        fact="Background fact."
+        hints={emptyHints}
+        isStreak={false}
+        isCorrect
+        isMilestone={false}
+        seedsEarned={0}
+        newThemeUnlockName={null}
+        earnedBadgeName={null}
+        actionLabel="View Summary"
+        onAction={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'View Summary' })).toBeInTheDocument();
   });
 });

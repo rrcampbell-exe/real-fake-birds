@@ -2,11 +2,13 @@
 
 import { motion } from 'framer-motion';
 import { Lock } from 'lucide-react';
+import ShareButton from '@/components/ShareButton';
 import { milestones } from '@/lib/constants/milestones';
 import MilestoneBadgeSvg from '@/components/icons/MilestoneBadgeSvg';
 import { finch } from '@/lib/themes';
 import type { BirdScore } from '@/types';
 import { useStoredJson } from '@/hooks/useStoredValue';
+import { buildMilestoneSharePayload } from '@/lib/utils/share-data';
 import { resolveTheme } from '@/lib/utils/theme-handler';
 
 export default function TrophyCase() {
@@ -48,6 +50,16 @@ export default function TrophyCase() {
             <span className="text-[0.6rem] text-[var(--color-muted)] text-center leading-snug">
               {isEarned ? milestone.description : `Identify ${milestone.value} birds`}
             </span>
+            {isEarned ? (
+              <ShareButton
+                payload={buildMilestoneSharePayload({
+                  badgeName: milestone.badge,
+                  birdsIdentified,
+                })}
+                eventLabel={`badge-${milestone.value}`}
+                className="mt-auto"
+              />
+            ) : null}
           </motion.div>
         );
       })}

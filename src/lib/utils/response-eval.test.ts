@@ -242,7 +242,7 @@ describe('responseEval', () => {
       setEarnedBadgeName
     );
 
-    expect(setIsCorrect).not.toHaveBeenCalled();
+    expect(setIsCorrect).toHaveBeenCalledWith(false);
     expect(JSON.parse(localStorage.getItem('birdScore')!)).toEqual({
       birdsSeen: 8,
       birdsIdentified: 4,
@@ -250,6 +250,56 @@ describe('responseEval', () => {
       bestStreak: 5,
       justAchievedStreak: false,
       seeds: 8,
+    });
+  });
+
+  it('consumes streak insurance instead of dropping the streak on a miss', () => {
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 9,
+        birdsIdentified: 6,
+        currentStreak: 4,
+        justAchievedStreak: false,
+        bestStreak: 5,
+        seeds: 8,
+      })
+    );
+    localStorage.setItem(
+      'streakInsurance',
+      JSON.stringify({
+        active: true,
+        protectedMissesRemaining: 1,
+        cost: 33,
+        purchasedAtStreak: 4,
+      })
+    );
+
+    responseEval(
+      createEvent(),
+      true,
+      'fake',
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn()
+    );
+
+    expect(JSON.parse(localStorage.getItem('birdScore')!)).toEqual({
+      birdsSeen: 10,
+      birdsIdentified: 6,
+      currentStreak: 4,
+      bestStreak: 5,
+      justAchievedStreak: false,
+      seeds: 8,
+    });
+    expect(JSON.parse(localStorage.getItem('streakInsurance')!)).toEqual({
+      active: false,
+      protectedMissesRemaining: 0,
+      cost: 0,
+      purchasedAtStreak: 0,
     });
   });
 });
