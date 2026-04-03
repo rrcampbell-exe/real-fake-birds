@@ -23,22 +23,22 @@ export default function PersonalBests() {
 
   return (
     <div className="grid grid-cols-2 gap-3">
-      {items.map(({ label, value, icon: Icon, color }) => (
-        <div
-          key={label}
-          className="flex items-center gap-3 p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-surface-border)]"
-        >
-          {label === 'Seeds' ? (
-            <Icon size={22} className={color} />
-          ) : (
-            <Icon size={22} className={color} fill="currentColor" />
-          )}
-          <div className="flex flex-col">
-            <span className="font-bold text-lg leading-none">{value}</span>
-            <span className="text-[0.65rem] text-[var(--color-muted)] mt-0.5">{label}</span>
+        {items.map(({ label, value, icon: Icon, color }) => (
+          <div
+            key={label}
+            className="flex items-center gap-3 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4"
+          >
+            {label === 'Seeds' ? (
+              <Icon size={22} className={color} />
+            ) : (
+              <Icon size={22} className={color} fill="currentColor" />
+            )}
+            <div className="flex flex-col">
+              <span className="text-lg font-bold leading-none">{value}</span>
+              <span className="mt-0.5 text-[0.65rem] text-[var(--color-muted)]">{label}</span>
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
     </div>
   );
 }
