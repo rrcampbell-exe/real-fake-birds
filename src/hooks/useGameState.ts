@@ -44,6 +44,7 @@ export function useGameState() {
   const [isReal, setIsReal] = useState(false);
   const [regionLabel, setRegionLabel] = useState<string | null>(null);
   const [sciName, setSciName] = useState<string | null>(null);
+  const [fact, setFact] = useState<string | null>(null);
   const [hasAnswered, setHasAnswered] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
@@ -64,7 +65,15 @@ export function useGameState() {
   const birdScore = useStoredJson(BIRD_SCORE_STORAGE_KEY, defaultBirdScore);
 
   useEffect(() => {
-    fetchData(setIsReal, setIsLoading, setBirdData, setSciName, setRegionLabel, setIsError);
+    fetchData(
+      setIsReal,
+      setIsLoading,
+      setBirdData,
+      setSciName,
+      setRegionLabel,
+      setFact,
+      setIsError
+    );
   }, [fetchKey]);
 
   const handleAnswer = useCallback(
@@ -157,6 +166,7 @@ export function useGameState() {
     setBirdData('');
     setRegionLabel(null);
     setSciName(null);
+    setFact(null);
     setHints(emptyHintState);
     setHintError(null);
     setHintErrorType(null);
@@ -169,6 +179,9 @@ export function useGameState() {
   return {
     birdData,
     isReal,
+    regionLabel,
+    sciName,
+    fact,
     hasAnswered,
     isLoading,
     isError,

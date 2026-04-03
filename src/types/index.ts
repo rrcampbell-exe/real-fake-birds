@@ -4,6 +4,7 @@ export interface BirdResponse {
   regionLabel?: string;
   sciName?: string;
   url?: string;
+  fact?: string;
 }
 
 export interface BirdErrorResponse {

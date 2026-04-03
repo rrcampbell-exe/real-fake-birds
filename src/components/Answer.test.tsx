@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import Answer from './Answer';
+import type { HintState } from '@/types';
 
 const { confettiMock } = vi.hoisted(() => ({
   confettiMock: vi.fn(),
@@ -9,6 +10,11 @@ const { confettiMock } = vi.hoisted(() => ({
 vi.mock('canvas-confetti', () => ({
   default: confettiMock,
 }));
+
+const emptyHints: HintState = {
+  fact: null,
+  image: null,
+};
 
 describe('Answer', () => {
   it('renders answer details and triggers the next-bird action', () => {
@@ -28,6 +34,10 @@ describe('Answer', () => {
       <Answer
         birdData="Blue Robin"
         isReal
+        regionLabel="Algeria"
+        sciName="Cyanocitta cristata"
+        fact="Blue Robin is known for its vivid plumage."
+        hints={emptyHints}
         isStreak={false}
         isCorrect
         isMilestone={false}
@@ -40,6 +50,8 @@ describe('Answer', () => {
 
     expect(screen.getByText('Blue Robin')).toBeInTheDocument();
     expect(screen.getByText('Real')).toBeInTheDocument();
+    expect(screen.getByText('Spotted in Algeria')).toBeInTheDocument();
+    expect(screen.getByText('Cyanocitta cristata')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Next Bird' }));
     expect(onTryAgain).toHaveBeenCalled();
   });
@@ -60,6 +72,10 @@ describe('Answer', () => {
       <Answer
         birdData="Blue Robin"
         isReal={false}
+        regionLabel={null}
+        sciName={null}
+        fact={null}
+        hints={emptyHints}
         isStreak
         isCorrect
         isMilestone={false}
@@ -78,6 +94,10 @@ describe('Answer', () => {
       <Answer
         birdData="Blue Robin"
         isReal
+        regionLabel="Algeria"
+        sciName="Cyanocitta cristata"
+        fact="A bright bird from the north."
+        hints={emptyHints}
         isStreak={false}
         isCorrect
         isMilestone
@@ -98,6 +118,10 @@ describe('Answer', () => {
       <Answer
         birdData="Blue Robin"
         isReal
+        regionLabel="Algeria"
+        sciName="Cyanocitta cristata"
+        fact="A bright bird from the north."
+        hints={emptyHints}
         isStreak={false}
         isCorrect
         isMilestone={false}
@@ -117,6 +141,10 @@ describe('Answer', () => {
       <Answer
         birdData="Blue Robin"
         isReal
+        regionLabel="Algeria"
+        sciName="Cyanocitta cristata"
+        fact="A bright bird from the north."
+        hints={emptyHints}
         isStreak={false}
         isCorrect
         isMilestone={false}
@@ -128,5 +156,83 @@ describe('Answer', () => {
     );
 
     expect(confettiMock).not.toHaveBeenCalled();
+  });
+
+  it('shows a themed fake field note without exposing fake bird metadata', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+
+    render(
+      <Answer
+        birdData="Campbell's Striped Algerian Blue-bellied Robin"
+        isReal={false}
+        regionLabel={null}
+        sciName={null}
+        fact={null}
+        hints={emptyHints}
+        isStreak={false}
+        isCorrect
+        isMilestone={false}
+        seedsEarned={0}
+        newThemeUnlockName={null}
+        earnedBadgeName={null}
+        onTryAgain={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Fake Field Notes')).toBeInTheDocument();
+    expect(screen.getByText('This bird was made up. We still love it, though!')).toBeInTheDocument();
+    expect(screen.queryByText(/Surname:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Color:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Type:/)).not.toBeInTheDocument();
+  });
+
+  it('can select a different fake field note copy', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+
+    render(
+      <Answer
+        birdData="Shy Willow Sparrow"
+        isReal={false}
+        regionLabel={null}
+        sciName={null}
+        fact={null}
+        hints={emptyHints}
+        isStreak={false}
+        isCorrect
+        isMilestone={false}
+        seedsEarned={0}
+        newThemeUnlockName={null}
+        earnedBadgeName={null}
+        onTryAgain={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('A counterfeit little creature, but a memorable one.')).toBeInTheDocument();
+  });
+
+  it('prefers a purchased fact hint over the background fact', () => {
+    render(
+      <Answer
+        birdData="Blue Robin"
+        isReal
+        regionLabel="Algeria"
+        sciName="Cyanocitta cristata"
+        fact="Background fact."
+        hints={{
+          fact: { type: 'fact', content: 'Purchased fact hint.' },
+          image: null,
+        }}
+        isStreak={false}
+        isCorrect
+        isMilestone={false}
+        seedsEarned={0}
+        newThemeUnlockName={null}
+        earnedBadgeName={null}
+        onTryAgain={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Purchased fact hint.')).toBeInTheDocument();
+    expect(screen.queryByText('Background fact.')).not.toBeInTheDocument();
   });
 });
