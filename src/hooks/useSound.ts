@@ -3,9 +3,10 @@
 import { useCallback, useEffect } from 'react';
 import { getSoundController } from '@/lib/sound/sound-platform';
 import type { SoundKey } from '@/lib/sound/types';
-import { themes } from '@/lib/themes';
+import { finch } from '@/lib/themes';
 import type { SoundSettings } from '@/types';
 import { useStoredJson } from '@/hooks/useStoredValue';
+import { resolveTheme } from '@/lib/utils/theme-handler';
 
 const DEFAULT_SETTINGS: SoundSettings = {
   sfxMuted: false,
@@ -14,10 +15,10 @@ const DEFAULT_SETTINGS: SoundSettings = {
   musicVolume: 1,
 };
 
-const THEME_SONG_URLS = [...new Set(themes.flatMap((theme) => theme.themeSong ? [theme.themeSong] : []))];
-
 export function useSound() {
   const settings = useStoredJson<SoundSettings>('birdSoundSettings', DEFAULT_SETTINGS);
+  const storedTheme = useStoredJson('birdTheme', finch);
+  const currentTheme = resolveTheme(storedTheme);
 
   // Sync reactive stored settings into the SoundManager singleton
   useEffect(() => {
@@ -30,11 +31,12 @@ export function useSound() {
     if (current.musicVolume !== settings.musicVolume) controller.setMusicVolume(settings.musicVolume);
   }, [settings.musicMuted, settings.musicVolume, settings.sfxMuted, settings.sfxVolume]);
 
-  // Preload file-based sounds once on mount
+  // Preload the active theme song only. Other tracks load on demand when selected.
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    void getSoundController().preloadAll(THEME_SONG_URLS);
-  }, []);
+    if (!currentTheme.themeSong) return;
+    void getSoundController().preloadAll([currentTheme.themeSong]);
+  }, [currentTheme.themeSong]);
 
   // Resume AudioContext on first user gesture (iOS / Android requirement)
   useEffect(() => {
