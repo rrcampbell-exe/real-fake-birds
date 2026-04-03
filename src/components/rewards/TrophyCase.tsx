@@ -57,7 +57,7 @@ export default function TrophyCase() {
                   birdsIdentified,
                 })}
                 eventLabel={`badge-${milestone.value}`}
-                className="mt-1"
+                className="mt-auto"
               />
             ) : null}
           </motion.div>
