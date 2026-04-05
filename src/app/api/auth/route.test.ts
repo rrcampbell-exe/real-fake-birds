@@ -114,6 +114,97 @@ describe('auth route', () => {
     });
   });
 
+  it('registers an account with username, email, and password in one server-side flow', async () => {
+    mockedHasSupabaseEnv.mockReturnValue(true);
+
+    const createUser = vi.fn().mockResolvedValue({
+      data: { user: { id: 'user-1', email: 'bird@example.com' } },
+      error: null,
+    });
+    const deleteUser = vi.fn().mockResolvedValue({ error: null });
+    const profileUpsert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({
+          data: {
+            username: 'BirdFan_17',
+            username_canonical: 'birdfan_17',
+            avatar_palette: 'finch',
+          },
+          error: null,
+        }),
+      }),
+    });
+    const leaderboardUpsert = vi.fn().mockResolvedValue({ error: null });
+
+    mockedCreateSupabaseAdminClient.mockReturnValue({
+      auth: {
+        admin: {
+          createUser,
+          deleteUser,
+        },
+      },
+      from: vi.fn((table: string) => {
+        if (table === 'profiles') {
+          return {
+            upsert: profileUpsert,
+          };
+        }
+
+        if (table === 'leaderboard_stats') {
+          return {
+            select: vi.fn().mockReturnValue({
+              not: vi.fn().mockReturnValue({
+                lt: vi.fn().mockResolvedValue({ data: [] }),
+              }),
+            }),
+            upsert: leaderboardUpsert,
+          };
+        }
+
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue({ count: 0, error: null }),
+            }),
+          }),
+        };
+      }),
+    } as never);
+
+    const response = await POST(
+      new Request('http://localhost/api/auth', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'register-account',
+          username: 'BirdFan_17',
+          email: 'bird@example.com',
+          password: 'secret-password',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      }) as never
+    );
+
+    expect(response.status).toBe(200);
+    expect(createUser).toHaveBeenCalledWith({
+      email: 'bird@example.com',
+      password: 'secret-password',
+      email_confirm: true,
+      user_metadata: {
+        requested_username: 'BirdFan_17',
+      },
+    });
+    expect(deleteUser).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toEqual({
+      action: 'register-account',
+      account: {
+        email: 'bird@example.com',
+        username: 'BirdFan_17',
+        usernameCanonical: 'birdfan_17',
+        avatarPalette: 'finch',
+      },
+    });
+  });
+
   it('purchases a theme for an authenticated user', async () => {
     mockedHasSupabaseEnv.mockReturnValue(true);
     mockAuthenticatedUser();
@@ -268,6 +359,20 @@ describe('auth route', () => {
 
         if (table === 'daily_challenge_history') {
           return {
+            upsert: vi.fn().mockResolvedValue({ error: null }),
+          };
+        }
+
+        if (table === 'leaderboard_stats') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+              }),
+              not: vi.fn().mockReturnValue({
+                lt: vi.fn().mockResolvedValue({ data: [] }),
+              }),
+            }),
             upsert: vi.fn().mockResolvedValue({ error: null }),
           };
         }

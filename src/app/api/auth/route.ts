@@ -31,7 +31,7 @@ import type {
   WeeklyPlacementSummary,
 } from '@/types';
 
-type AuthAction = 'validate-username' | 'get-account-state' | 'get-leaderboard' | 'resolve-sign-in-identifier' | 'save-profile' | 'save-avatar-palette' | 'sync-local-progress' | 'pull-account-progress' | 'purchase-theme' | 'apply-progress-events' | 'sync-daily-mission-completion';
+type AuthAction = 'validate-username' | 'register-account' | 'get-account-state' | 'get-leaderboard' | 'resolve-sign-in-identifier' | 'save-profile' | 'save-avatar-palette' | 'sync-local-progress' | 'pull-account-progress' | 'purchase-theme' | 'apply-progress-events' | 'sync-daily-mission-completion';
 type RewardAuthAction = 'claim-daily-challenge-bonuses' | 'claim-mission-reward' | 'claim-mission-set-bonus' | 'purchase-streak-insurance';
 
 interface ValidateUsernameRequest {
@@ -41,6 +41,13 @@ interface ValidateUsernameRequest {
 
 interface GetAccountStateRequest {
   action: AuthAction;
+}
+
+interface RegisterAccountRequest {
+  action: AuthAction;
+  username: string;
+  email: string;
+  password: string;
 }
 
 interface GetLeaderboardRequest {
@@ -133,6 +140,18 @@ function isGetAccountStateRequest(value: unknown): value is GetAccountStateReque
 
   const candidate = value as Partial<GetAccountStateRequest>;
   return candidate.action === 'get-account-state';
+}
+
+function isRegisterAccountRequest(value: unknown): value is RegisterAccountRequest {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<RegisterAccountRequest>;
+  return candidate.action === 'register-account'
+    && typeof candidate.username === 'string'
+    && typeof candidate.email === 'string'
+    && typeof candidate.password === 'string';
 }
 
 function isGetLeaderboardRequest(value: unknown): value is GetLeaderboardRequest {
@@ -849,6 +868,121 @@ export async function POST(request: NextRequest) {
       normalizedUsername: validation.normalizedUsername,
       available,
     });
+  }
+
+  if (isRegisterAccountRequest(body)) {
+    if (!hasSupabaseEnv()) {
+      return configErrorResponse();
+    }
+
+    const username = body.username.trim();
+    const email = body.email.trim().toLowerCase();
+    const password = body.password;
+    const validation = validateUsername(username);
+
+    if (!validation.isValid) {
+      return NextResponse.json(
+        {
+          error: 'invalid_username',
+          issues: validation.issues,
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!email || !email.includes('@')) {
+      return NextResponse.json({ error: 'invalid_email', message: 'Enter a valid email address.' }, { status: 400 });
+    }
+
+    if (password.length < 8) {
+      return NextResponse.json({ error: 'invalid_password', message: 'Choose a password with at least 8 characters.' }, { status: 400 });
+    }
+
+    const available = await lookupUsernameAvailability(validation.normalizedUsername);
+    if (available === false) {
+      return NextResponse.json({ error: 'username_unavailable' }, { status: 409 });
+    }
+
+    try {
+      const admin = createSupabaseAdminClient();
+      const currentWeekStart = await finalizeExpiredWeeklyLeaderboards(admin);
+      const { data: createdUserResult, error: createUserError } = await admin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          requested_username: username,
+        },
+      });
+
+      if (createUserError || !createdUserResult.user) {
+        return NextResponse.json(
+          {
+            error: 'account_creation_failed',
+            message: createUserError?.message ?? 'Unable to create the account.',
+          },
+          { status: 400 }
+        );
+      }
+
+      const userId = createdUserResult.user.id;
+
+      try {
+        const { data: profile, error: profileError } = await admin
+          .from('profiles')
+          .upsert(
+            {
+              user_id: userId,
+              username,
+              username_canonical: validation.normalizedUsername,
+              avatar_palette: 'finch',
+            },
+            { onConflict: 'user_id' }
+          )
+          .select('username, username_canonical, avatar_palette')
+          .single();
+
+        if (profileError || !profile) {
+          throw new Error('Unable to save the username for this account.');
+        }
+
+        const { error: leaderboardError } = await admin
+          .from('leaderboard_stats')
+          .upsert(
+            {
+              user_id: userId,
+              username_canonical: validation.normalizedUsername,
+              current_week_start: currentWeekStart,
+            },
+            { onConflict: 'user_id' }
+          );
+
+        if (leaderboardError) {
+          throw new Error('Unable to prepare the leaderboard profile for this account.');
+        }
+
+        return NextResponse.json({
+          action: 'register-account',
+          account: {
+            email,
+            username: profile.username,
+            usernameCanonical: profile.username_canonical,
+            avatarPalette: profile.avatar_palette,
+          },
+        });
+      } catch (caughtError) {
+        await admin.auth.admin.deleteUser(userId);
+        return NextResponse.json(
+          {
+            error: 'account_creation_failed',
+            message: caughtError instanceof Error ? caughtError.message : 'Unable to finish creating the account.',
+          },
+          { status: 500 }
+        );
+      }
+    } catch {
+      return NextResponse.json({ error: 'account_creation_failed', message: 'Unable to create the account.' }, { status: 500 });
+    }
   }
 
   if (isGetAccountStateRequest(body)) {

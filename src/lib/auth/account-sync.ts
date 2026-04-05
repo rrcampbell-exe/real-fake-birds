@@ -51,6 +51,16 @@ export interface SaveProfileResponse {
   };
 }
 
+export interface RegisterAccountResponse {
+  action: 'register-account';
+  account: {
+    email: string;
+    username: string;
+    usernameCanonical: string;
+    avatarPalette: string;
+  };
+}
+
 export interface SyncLocalProgressResponse {
   action: 'sync-local-progress';
   syncedAt: string;
@@ -180,6 +190,12 @@ async function postAuthAction<T>(body: object, signal?: AbortSignal): Promise<T>
           : 'That username is invalid.';
       } else if (payload.error === 'not_authenticated') {
         message = 'Sign in first to manage account sync.';
+      } else if (payload.error === 'invalid_email') {
+        message = 'Enter a valid email address.';
+      } else if (payload.error === 'invalid_password') {
+        message = 'Choose a password with at least 8 characters.';
+      } else if (payload.error === 'account_creation_failed') {
+        message = payload.message ?? 'Unable to create the account.';
       }
     } catch {
       // Fall back to the generic message.
@@ -193,6 +209,17 @@ async function postAuthAction<T>(body: object, signal?: AbortSignal): Promise<T>
 
 export function fetchAccountState(signal?: AbortSignal): Promise<AccountStateResponse> {
   return postAuthAction<AccountStateResponse>({ action: 'get-account-state' }, signal);
+}
+
+export function registerAccount(options: {
+  username: string;
+  email: string;
+  password: string;
+}): Promise<RegisterAccountResponse> {
+  return postAuthAction<RegisterAccountResponse>({
+    action: 'register-account',
+    ...options,
+  });
 }
 
 export function fetchWeeklyLeaderboard(): Promise<GetLeaderboardResponse> {

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, ChevronDown, LoaderCircle, ShieldCheck } from 'lucide-react';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import {
+  registerAccount,
   resolveSignInIdentifier,
   saveProfile,
 } from '@/lib/auth/account-sync';
@@ -36,8 +37,11 @@ export default function UsernameAvailabilityCard() {
   const { value, normalizedUsername, issues, available, isChecking, error, setValue } = useUsernameValidation();
   const usernameValueRef = useRef(value);
   const hasPrefilledUsernameRef = useRef(false);
+  const [authMode, setAuthMode] = useState<'create' | 'sign-in'>('create');
+  const [createEmail, setCreateEmail] = useState('');
+  const [createPassword, setCreatePassword] = useState('');
   const [signInIdentifier, setSignInIdentifier] = useState('');
-  const [password, setPassword] = useState('');
+  const [signInPassword, setSignInPassword] = useState('');
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -53,6 +57,11 @@ export default function UsernameAvailabilityCard() {
   useEffect(() => {
     usernameValueRef.current = value;
   }, [value]);
+
+  useEffect(() => {
+    setAuthError(null);
+    setAuthNotice(null);
+  }, [authMode]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -79,17 +88,45 @@ export default function UsernameAvailabilityCard() {
     }
   }, [accountEmail, accountUsername, effectiveAccountEmail, setValue]);
 
+  const handleCreateAccountSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void handleCreateAccount();
+  };
+
+  const handleSignInSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void handleEmailSignIn();
+  };
+
+  const handleCreateAccountKeyDown = (event: React.KeyboardEvent<HTMLFormElement>) => {
+    if (event.key !== 'Enter') {
+      return;
+    }
+
+    event.preventDefault();
+    void handleCreateAccount();
+  };
+
+  const handleSignInKeyDown = (event: React.KeyboardEvent<HTMLFormElement>) => {
+    if (event.key !== 'Enter') {
+      return;
+    }
+
+    event.preventDefault();
+    void handleEmailSignIn();
+  };
+
   const handleCreateAccount = async () => {
     if (!supabaseReady || isCreatingAccount) {
       return;
     }
 
-    if (!signInIdentifier.trim() || !password) {
+    if (!createEmail.trim() || !createPassword) {
       setAuthError('Enter an email address, username, and password first.');
       return;
     }
 
-    if (!signInIdentifier.includes('@')) {
+    if (!createEmail.includes('@')) {
       setAuthError('Use an email address when creating an account.');
       return;
     }
@@ -111,34 +148,29 @@ export default function UsernameAvailabilityCard() {
     setAuthNotice(null);
 
     try {
-      const supabase = getSupabaseBrowserClient();
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email: signInIdentifier.trim().toLowerCase(),
-        password,
-        options: {
-          data: {
-            requested_username: value.trim(),
-          },
-        },
+      await registerAccount({
+        username: value.trim(),
+        email: createEmail.trim().toLowerCase(),
+        password: createPassword,
       });
 
-      if (signUpError) {
-        throw signUpError;
+      const supabase = getSupabaseBrowserClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: createEmail.trim().toLowerCase(),
+        password: createPassword,
+      });
+
+      if (signInError) {
+        throw signInError;
       }
 
-      if (data.session) {
-        const profile = await saveProfile(value.trim());
-        await pushCurrentLocalProgressToAccount();
-        setHasSignedOutLocally(false);
-        hasPrefilledUsernameRef.current = true;
-        setValue(profile.profile.username);
-        notifyAccountStateChanged();
-        setAuthNotice('Account created. Your current progress is now tied to this account.');
-      } else {
-        setAuthNotice('Account created. Check your email to confirm it, then sign in here.');
-      }
-
-      setPassword('');
+      await pushCurrentLocalProgressToAccount();
+      await hydrateSignedInAccountToLocalState();
+      setHasSignedOutLocally(false);
+      hasPrefilledUsernameRef.current = true;
+      notifyAccountStateChanged();
+      setAuthNotice('Account created. Your current progress is now tied to this username.');
+      setCreatePassword('');
     } catch (caughtError) {
       setAuthError(caughtError instanceof Error ? caughtError.message : 'Unable to create the account.');
     } finally {
@@ -151,7 +183,7 @@ export default function UsernameAvailabilityCard() {
       return;
     }
 
-    if (!signInIdentifier.trim() || !password) {
+    if (!signInIdentifier.trim() || !signInPassword) {
       setAuthError('Enter your email or username and password first.');
       return;
     }
@@ -166,7 +198,7 @@ export default function UsernameAvailabilityCard() {
       const supabase = getSupabaseBrowserClient();
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: resolved.email,
-        password,
+        password: signInPassword,
       });
 
       if (signInError) {
@@ -174,7 +206,7 @@ export default function UsernameAvailabilityCard() {
       }
 
       await hydrateSignedInAccountToLocalState();
-      setPassword('');
+      setSignInPassword('');
       setAuthNotice('Signed in.');
     } catch (caughtError) {
       setAuthError(caughtError instanceof Error ? caughtError.message : 'Unable to sign in.');
@@ -205,8 +237,10 @@ export default function UsernameAvailabilityCard() {
       setHasSignedOutLocally(true);
       void refreshAccountState();
       hasPrefilledUsernameRef.current = false;
+      setCreateEmail('');
+      setCreatePassword('');
       setSignInIdentifier('');
-      setPassword('');
+      setSignInPassword('');
       setAuthNotice('Signed out.');
     } catch (caughtError) {
       setAuthError(caughtError instanceof Error ? caughtError.message : 'Unable to sign out.');
@@ -246,7 +280,7 @@ export default function UsernameAvailabilityCard() {
   );
 
   const statusMessage = !value.trim()
-    ? 'Try a username now. Once Supabase is configured, this will also check live availability.'
+    ? 'Pick the username people will see in leaderboards and account screens.'
     : issues.length > 0
       ? 'That name breaks one or more rules.'
       : isChecking
@@ -268,7 +302,7 @@ export default function UsernameAvailabilityCard() {
         <p className="text-sm leading-6 text-[var(--color-muted)]">
           {effectiveAccountEmail && effectiveSavedUsername
             ? 'Welcome back and happy real fake birding.'
-            : 'Save your progress to an account and keep playing across sessions.'}
+            : 'Create an account with a username, email, and password. After that, you can sign in with either your email or username.'}
         </p>
 
         <div className="mt-4 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-3">
@@ -291,126 +325,196 @@ export default function UsernameAvailabilityCard() {
             <p className="text-sm text-[var(--color-muted)]">Checking account status...</p>
           ) : !effectiveAccountEmail ? (
             <>
-              <div>
-                <p className="text-sm font-semibold">Email sign-in</p>
-                <p className="mt-1 text-sm text-[var(--color-muted)]">
-                  Create an account with a username, email, and password. Sign in with either your email or username.
-                </p>
-              </div>
-
-              <label className="mt-4 block">
-                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
-                  Username
-                </span>
-                <input
-                  type="text"
-                  value={value}
-                  onChange={(event) => setValue(event.target.value)}
-                  placeholder="BirdFan_17"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  className="w-full rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-secondary)]"
-                />
-              </label>
-
-              <div className="mt-4 flex items-start gap-2 text-sm">
-                {isChecking ? (
-                  <LoaderCircle size={16} className="mt-0.5 shrink-0 animate-spin text-[var(--color-secondary)]" />
-                ) : issues.length > 0 || error ? (
-                  <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-400" />
-                ) : (
-                  <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-400" />
-                )}
-                <div>
-                  <p>{error ?? statusMessage}</p>
-                  {normalizedUsername ? (
-                    <p className="mt-1 text-xs text-[var(--color-muted)]">
-                      Canonical username: {normalizedUsername}
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-
-              {issues.length > 0 ? (
-                <ul className="mt-3 space-y-1 text-xs text-red-300">
-                  {issues.map((issue) => (
-                    <li key={issue}>- {issue.replace(/_/g, ' ')}</li>
-                  ))}
-                </ul>
-              ) : null}
-
-              <div className="mt-4 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-3">
+              <div className="grid grid-cols-2 gap-2 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-1">
                 <button
                   type="button"
-                  onClick={() => setShowUsernameRules((current) => !current)}
-                  className="flex w-full items-center justify-between gap-2 text-left text-sm font-semibold"
+                  onClick={() => setAuthMode('create')}
+                  className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                    authMode === 'create'
+                      ? 'bg-[var(--color-secondary)] text-[var(--color-on-secondary)]'
+                      : 'text-[var(--color-text)]'
+                  }`}
                 >
-                  <span className="flex items-center gap-2">
-                    <ShieldCheck size={16} className="text-[var(--color-secondary)]" />
-                    Username rules
-                  </span>
-                  <ChevronDown
-                    size={16}
-                    className={`transition-transform ${showUsernameRules ? 'rotate-180' : ''}`}
-                  />
+                  Create account
                 </button>
-                {showUsernameRules ? (
-                  <ul className="mt-2 space-y-1 text-sm text-[var(--color-muted)]">
-                    {usernameGuidance.map((item) => (
-                      <li key={item}>- {item}</li>
-                    ))}
-                  </ul>
-                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('sign-in')}
+                  className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                    authMode === 'sign-in'
+                      ? 'bg-[var(--color-secondary)] text-[var(--color-on-secondary)]'
+                      : 'text-[var(--color-text)]'
+                  }`}
+                >
+                  Sign in
+                </button>
               </div>
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <label className="block sm:col-span-2">
-                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
-                  Email or username
-                </span>
-                <input
-                  type="text"
-                  value={signInIdentifier}
-                  onChange={(event) => setSignInIdentifier(event.target.value)}
-                  placeholder="birdfan@example.com or BirdFan_17"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  className="w-full rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-secondary)]"
-                />
-              </label>
+              {authMode === 'create' ? (
+                <form className="contents" onKeyDown={handleCreateAccountKeyDown} onSubmit={handleCreateAccountSubmit}>
+                  <div className="mt-4">
+                    <p className="text-sm font-semibold">Create account</p>
+                    <p className="mt-1 text-sm text-[var(--color-muted)]">
+                      Choose the username that will show up in the app, then add your email and password.
+                    </p>
+                  </div>
 
-              <label className="block sm:col-span-2">
-                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
-                  Password
-                </span>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="Choose a password"
-                  className="w-full rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-secondary)]"
-                />
-              </label>
+                  <label className="mt-4 block">
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
+                      Username
+                    </span>
+                    <input
+                      type="text"
+                      value={value}
+                      onChange={(event) => setValue(event.target.value)}
+                      placeholder="BirdFan_17"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      className="w-full rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-secondary)]"
+                    />
+                  </label>
 
-              <button
-                type="button"
-                onClick={handleCreateAccount}
-                disabled={!supabaseReady || isCreatingAccount || isSigningIn}
-                className="inline-flex items-center justify-center rounded-full bg-[var(--color-secondary)] px-4 py-2 text-sm font-semibold text-[var(--color-on-secondary)] transition disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isCreatingAccount ? 'Creating account...' : 'Create account'}
-              </button>
-              <button
-                type="button"
-                onClick={handleEmailSignIn}
-                disabled={!supabaseReady || isSigningIn || isCreatingAccount}
-                className="inline-flex items-center justify-center rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] transition disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isSigningIn ? 'Signing in...' : 'Sign in'}
-              </button>
-              </div>
+                  <div className="mt-4 flex items-start gap-2 text-sm">
+                    {isChecking ? (
+                      <LoaderCircle size={16} className="mt-0.5 shrink-0 animate-spin text-[var(--color-secondary)]" />
+                    ) : issues.length > 0 || error ? (
+                      <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-400" />
+                    ) : (
+                      <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-400" />
+                    )}
+                    <div>
+                      <p>{error ?? statusMessage}</p>
+                      {normalizedUsername ? (
+                        <p className="mt-1 text-xs text-[var(--color-muted)]">
+                          Canonical username: {normalizedUsername}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {issues.length > 0 ? (
+                    <ul className="mt-3 space-y-1 text-xs text-red-300">
+                      {issues.map((issue) => (
+                        <li key={issue}>- {issue.replace(/_/g, ' ')}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+
+                  <div className="mt-4 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowUsernameRules((current) => !current)}
+                      className="flex w-full items-center justify-between gap-2 text-left text-sm font-semibold"
+                    >
+                      <span className="flex items-center gap-2">
+                        <ShieldCheck size={16} className="text-[var(--color-secondary)]" />
+                        Username rules
+                      </span>
+                      <ChevronDown
+                        size={16}
+                        className={`transition-transform ${showUsernameRules ? 'rotate-180' : ''}`}
+                      />
+                    </button>
+                    {showUsernameRules ? (
+                      <ul className="mt-2 space-y-1 text-sm text-[var(--color-muted)]">
+                        {usernameGuidance.map((item) => (
+                          <li key={item}>- {item}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-4 grid gap-3">
+                    <label className="block">
+                      <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
+                        Email
+                      </span>
+                      <input
+                        type="email"
+                        value={createEmail}
+                        onChange={(event) => setCreateEmail(event.target.value)}
+                        placeholder="birdfan@example.com"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        className="w-full rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-secondary)]"
+                      />
+                    </label>
+
+                    <label className="block">
+                      <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
+                        Password
+                      </span>
+                      <input
+                        type="password"
+                        value={createPassword}
+                        onChange={(event) => setCreatePassword(event.target.value)}
+                        placeholder="At least 8 characters"
+                        className="w-full rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-secondary)]"
+                      />
+                    </label>
+
+                    <button
+                      type="submit"
+                      onClick={handleCreateAccount}
+                      disabled={!supabaseReady || isCreatingAccount || isSigningIn}
+                      className="inline-flex items-center justify-center rounded-full bg-[var(--color-secondary)] px-4 py-2 text-sm font-semibold text-[var(--color-on-secondary)] transition disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isCreatingAccount ? 'Creating account...' : 'Create account'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <form className="contents" onKeyDown={handleSignInKeyDown} onSubmit={handleSignInSubmit}>
+                  <div className="mt-4">
+                    <p className="text-sm font-semibold">Sign in</p>
+                    <p className="mt-1 text-sm text-[var(--color-muted)]">
+                      Use the email you signed up with, or use your username instead. Your username is what other players will see.
+                    </p>
+                  </div>
+
+                  <div className="mt-4 grid gap-3">
+                    <label className="block">
+                      <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
+                        Email or username
+                      </span>
+                      <input
+                        type="text"
+                        value={signInIdentifier}
+                        onChange={(event) => setSignInIdentifier(event.target.value)}
+                        placeholder="birdfan@example.com or BirdFan_17"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        className="w-full rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-secondary)]"
+                      />
+                    </label>
+
+                    <label className="block">
+                      <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
+                        Password
+                      </span>
+                      <input
+                        type="password"
+                        value={signInPassword}
+                        onChange={(event) => setSignInPassword(event.target.value)}
+                        placeholder="Your password"
+                        className="w-full rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-secondary)]"
+                      />
+                    </label>
+
+                    <button
+                      type="submit"
+                      onClick={handleEmailSignIn}
+                      disabled={!supabaseReady || isSigningIn || isCreatingAccount}
+                      className="inline-flex items-center justify-center rounded-full bg-[var(--color-secondary)] px-4 py-2 text-sm font-semibold text-[var(--color-on-secondary)] transition disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isSigningIn ? 'Signing in...' : 'Sign in'}
+                    </button>
+                  </div>
+                </form>
+              )}
             </>
           ) : null}
 
@@ -425,9 +529,9 @@ export default function UsernameAvailabilityCard() {
               <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold">Finish account setup</p>
+                    <p className="text-sm font-semibold">Legacy account needs a username</p>
                     <p className="mt-1 text-xs text-[var(--color-muted)]">
-                      Pick a public username to finish setting up this account.
+                      This account was created before usernames were required. Pick a public username to finish migrating it.
                     </p>
                   </div>
                   <button
