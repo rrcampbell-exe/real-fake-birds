@@ -222,8 +222,8 @@ export function registerAccount(options: {
   });
 }
 
-export function fetchWeeklyLeaderboard(): Promise<GetLeaderboardResponse> {
-  return postAuthAction<GetLeaderboardResponse>({ action: 'get-leaderboard' });
+export function fetchWeeklyLeaderboard(signal?: AbortSignal): Promise<GetLeaderboardResponse> {
+  return postAuthAction<GetLeaderboardResponse>({ action: 'get-leaderboard' }, signal);
 }
 
 export function resolveSignInIdentifier(identifier: string): Promise<ResolveSignInIdentifierResponse> {
