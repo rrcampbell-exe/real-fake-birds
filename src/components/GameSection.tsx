@@ -1,12 +1,16 @@
 'use client';
 
+import { useCallback, useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { useGameState } from '@/hooks/useGameState';
+import { useSignUpPrompt } from '@/hooks/useSignUpPrompt';
 import WeeklyChallengeBanner from '@/components/WeeklyChallengeBanner';
 import BirdCard from './game/BirdCard';
 import LoadingState from './LoadingState';
 import Answer from './Answer';
 import Error from './Error';
 import StatsBar from '@/components/StatsBar';
+import SignUpPromptModal from '@/components/auth/SignUpPromptModal';
 
 export default function GameSection() {
   const {
@@ -36,8 +40,31 @@ export default function GameSection() {
     requestHint,
     tryAgain,
   } = useGameState();
+  const [showSignUpModal, setShowSignUpModal] = useState(false);
+  const signUpPrompt = useSignUpPrompt('classic');
 
   const cardState = isLoading ? 'loading' : showQuestion ? 'question' : 'answer';
+
+  const handleAdvanceRound = useCallback(() => {
+    if (signUpPrompt.shouldPrompt && signUpPrompt.activeThreshold !== null) {
+      setShowSignUpModal(true);
+      return;
+    }
+
+    tryAgain();
+  }, [signUpPrompt.activeThreshold, signUpPrompt.shouldPrompt, tryAgain]);
+
+  const handleDismissSignUpModal = useCallback(() => {
+    signUpPrompt.dismiss();
+    setShowSignUpModal(false);
+    tryAgain();
+  }, [signUpPrompt, tryAgain]);
+
+  const handleAuthenticated = useCallback(() => {
+    signUpPrompt.onAccountCreated();
+    setShowSignUpModal(false);
+    tryAgain();
+  }, [signUpPrompt, tryAgain]);
 
   return (
     <div className="box-border flex min-h-[calc(100dvh-7rem)] flex-1 flex-col items-center justify-center gap-6 py-6 md:min-h-0 md:py-4">
@@ -85,11 +112,24 @@ export default function GameSection() {
               newThemeUnlockName={newThemeUnlockName}
               earnedBadgeName={earnedBadgeName}
               isNewBirdEncounter={isNewBirdEncounter}
-              onAction={tryAgain}
+              onAction={handleAdvanceRound}
             />
           }
         />
       )}
+
+      <AnimatePresence>
+        {showSignUpModal && signUpPrompt.activeThreshold !== null ? (
+          <SignUpPromptModal
+            birdsSeen={signUpPrompt.birdsSeen}
+            birdsIdentified={signUpPrompt.birdsIdentified}
+            seeds={signUpPrompt.seeds}
+            threshold={signUpPrompt.activeThreshold}
+            onDismiss={handleDismissSignUpModal}
+            onAuthenticated={handleAuthenticated}
+          />
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }
