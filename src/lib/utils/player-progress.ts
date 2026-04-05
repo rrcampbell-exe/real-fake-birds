@@ -19,6 +19,8 @@ export const defaultBirdScore: BirdScore = {
   currentStreak: 0,
   justAchievedStreak: false,
   bestStreak: 0,
+  currentDailyStreak: 0,
+  bestDailyStreak: 0,
   seeds: 0,
 };
 
@@ -61,6 +63,10 @@ export function normalizeBirdScore(scoreLike: Partial<BirdScore> | null | undefi
     justAchievedStreak:
       typeof scoreLike?.justAchievedStreak === 'boolean' ? scoreLike.justAchievedStreak : false,
     bestStreak: isFiniteNumber(scoreLike?.bestStreak) ? scoreLike.bestStreak : 0,
+    currentDailyStreak: isFiniteNumber(scoreLike?.currentDailyStreak)
+      ? scoreLike.currentDailyStreak
+      : 0,
+    bestDailyStreak: isFiniteNumber(scoreLike?.bestDailyStreak) ? scoreLike.bestDailyStreak : 0,
     seeds: isFiniteNumber(scoreLike?.seeds) ? scoreLike.seeds : 0,
   };
 }

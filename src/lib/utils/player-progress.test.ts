@@ -61,6 +61,8 @@ describe('player-progress', () => {
     const migration = migrateStoredPlayerProgress();
 
     expect(migration.score.seeds).toBe(0);
+    expect(migration.score.currentDailyStreak).toBe(0);
+    expect(migration.score.bestDailyStreak).toBe(0);
     expect(migration.unlockedThemes).toContain('Cardinal');
     expect(migration.unlockedThemes).not.toContain('Flamingo');
     expect(migration.selectedThemeName).toBe('Finch');

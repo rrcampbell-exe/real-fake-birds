@@ -1,0 +1,161 @@
+import { notifyStoredValueChanged } from '@/hooks/useStoredValue';
+import { DAILY_CHALLENGE_CONFIG, DAILY_CHALLENGE_HISTORY_STORAGE_KEY } from '@/lib/constants/daily-challenge';
+import { getTodayChallengeDate, resetDailyChallengeState, writeDailyChallengeHistory, writeDailyChallengeState } from '@/lib/utils/daily-challenge';
+import { DAILY_MISSION_HISTORY_STORAGE_KEY, writeDailyMissionHistory } from '@/lib/utils/daily-mission-history';
+import {
+  BIRD_JOURNAL_STORAGE_KEY,
+  mergeBirdJournalStores,
+  readBirdJournal,
+  writeBirdJournal,
+} from '@/lib/utils/bird-journal';
+import {
+  BIRD_SCORE_STORAGE_KEY,
+  setUnlockedThemeNames,
+  UNLOCKED_THEMES_STORAGE_KEY,
+  writeBirdScore,
+} from '@/lib/utils/player-progress';
+import { getMissionDefinitionsForState, readSessionMissions, resetSessionMissions, writeSessionMissions } from '@/lib/utils/missions';
+import type { BirdJournalEntry, BirdScore, DailyChallengeHistoryEntry, DailyMissionHistoryEntry } from '@/types';
+
+export const ACCOUNT_SYNC_META_STORAGE_KEY = 'accountSyncMeta';
+
+export interface AccountSyncMeta {
+  lastServerSyncAt: string | null;
+  lastPulledAt: string | null;
+  lastPushedAt: string | null;
+}
+
+export interface PulledAccountProgress {
+  score: BirdScore;
+  unlockedThemes: string[];
+  dailyChallengeHistory: DailyChallengeHistoryEntry[];
+  dailyMissionHistory: DailyMissionHistoryEntry[];
+  milestones: number[];
+  journalEntries: BirdJournalEntry[];
+  lastLocalSyncAt: string | null;
+  todayDailyChallenge: {
+    date: string;
+    roundsPlayed: number;
+    correctAnswers: number;
+    bonusSeedsAwarded: number;
+    claimed: boolean;
+  } | null;
+  todayMissionClaims: {
+    date: string;
+    claimedMissionIds: string[];
+    bonusClaimed: boolean;
+  } | null;
+}
+
+const defaultAccountSyncMeta: AccountSyncMeta = {
+  lastServerSyncAt: null,
+  lastPulledAt: null,
+  lastPushedAt: null,
+};
+
+function isBrowser(): boolean {
+  return typeof window !== 'undefined';
+}
+
+export function readAccountSyncMeta(): AccountSyncMeta {
+  if (!isBrowser()) {
+    return defaultAccountSyncMeta;
+  }
+
+  const raw = window.localStorage.getItem(ACCOUNT_SYNC_META_STORAGE_KEY);
+  if (!raw) {
+    return defaultAccountSyncMeta;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<AccountSyncMeta>;
+    return {
+      lastServerSyncAt: typeof parsed.lastServerSyncAt === 'string' ? parsed.lastServerSyncAt : null,
+      lastPulledAt: typeof parsed.lastPulledAt === 'string' ? parsed.lastPulledAt : null,
+      lastPushedAt: typeof parsed.lastPushedAt === 'string' ? parsed.lastPushedAt : null,
+    };
+  } catch {
+    return defaultAccountSyncMeta;
+  }
+}
+
+export function writeAccountSyncMeta(metaLike: Partial<AccountSyncMeta>): AccountSyncMeta {
+  const nextMeta: AccountSyncMeta = {
+    ...readAccountSyncMeta(),
+    ...metaLike,
+  };
+
+  window.localStorage.setItem(ACCOUNT_SYNC_META_STORAGE_KEY, JSON.stringify(nextMeta));
+  notifyStoredValueChanged(ACCOUNT_SYNC_META_STORAGE_KEY);
+  return nextMeta;
+}
+
+export function applyPulledAccountProgress(progress: PulledAccountProgress): void {
+  writeBirdScore(progress.score);
+  setUnlockedThemeNames(progress.unlockedThemes);
+  writeDailyChallengeHistory(progress.dailyChallengeHistory);
+  writeDailyMissionHistory(progress.dailyMissionHistory);
+  writeBirdJournal(
+    mergeBirdJournalStores(
+      readBirdJournal(),
+      Object.fromEntries(progress.journalEntries.map((entry) => [entry.birdKey, entry]))
+    )
+  );
+
+  const today = getTodayChallengeDate();
+
+  if (progress.todayDailyChallenge?.date === today) {
+    writeDailyChallengeState({
+      date: today,
+      roundsPlayed: progress.todayDailyChallenge.roundsPlayed,
+      correctAnswers: progress.todayDailyChallenge.correctAnswers,
+      completed: true,
+      completionBonusAwarded: progress.todayDailyChallenge.claimed,
+      perfectBonusAwarded:
+        progress.todayDailyChallenge.claimed
+        && progress.todayDailyChallenge.correctAnswers === DAILY_CHALLENGE_CONFIG.roundCount,
+      bonusSeedsAwarded: progress.todayDailyChallenge.bonusSeedsAwarded,
+      roundResults: [],
+    });
+  } else {
+    resetDailyChallengeState(today);
+  }
+
+  if (progress.todayMissionClaims?.date === today) {
+    const baseState = readSessionMissions(today);
+    const missionTargetMap = new Map(
+      getMissionDefinitionsForState(baseState).map((mission) => [mission.id, mission.target])
+    );
+    const hasCompletedToday = progress.dailyMissionHistory.some((entry) => entry.date === today);
+    const claimedMissionIds = progress.todayMissionClaims.bonusClaimed
+      ? baseState.missions.map((mission) => mission.missionId)
+      : progress.todayMissionClaims.claimedMissionIds;
+    const claimedMissionIdSet = new Set(claimedMissionIds);
+
+    writeSessionMissions({
+      ...baseState,
+      missions: baseState.missions.map((mission) => ({
+        ...mission,
+        progress: hasCompletedToday || claimedMissionIdSet.has(mission.missionId)
+          ? (missionTargetMap.get(mission.missionId) ?? mission.progress)
+          : mission.progress,
+        completed: hasCompletedToday || claimedMissionIdSet.has(mission.missionId) ? true : mission.completed,
+        claimed: claimedMissionIdSet.has(mission.missionId) ? true : mission.claimed,
+      })),
+      bonusClaimed: progress.todayMissionClaims.bonusClaimed,
+    });
+  } else {
+    resetSessionMissions(today);
+  }
+
+  notifyStoredValueChanged(BIRD_SCORE_STORAGE_KEY);
+  notifyStoredValueChanged(BIRD_JOURNAL_STORAGE_KEY);
+  notifyStoredValueChanged(UNLOCKED_THEMES_STORAGE_KEY);
+  notifyStoredValueChanged(DAILY_CHALLENGE_HISTORY_STORAGE_KEY);
+  notifyStoredValueChanged(DAILY_MISSION_HISTORY_STORAGE_KEY);
+
+  writeAccountSyncMeta({
+    lastServerSyncAt: progress.lastLocalSyncAt,
+    lastPulledAt: new Date().toISOString(),
+  });
+}

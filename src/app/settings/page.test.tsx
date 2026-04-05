@@ -1,6 +1,18 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { useAccountState } from '@/components/account/AccountStateProvider';
 import SettingsPage from './page';
+
+vi.mock('@/components/account/AccountStateProvider', () => ({
+  useAccountState: vi.fn(() => ({
+    isLoadingAccount: false,
+    accountEmail: null,
+    accountUsername: null,
+    remoteSummary: null,
+    remoteUnlockedThemes: [],
+    refreshAccountState: vi.fn(),
+  })),
+}));
 
 vi.mock('@/hooks/useSound', () => ({
   useSound: () => ({
@@ -15,6 +27,8 @@ vi.mock('@/hooks/useSound', () => ({
     play: vi.fn(),
   }),
 }));
+
+const mockedUseAccountState = vi.mocked(useAccountState);
 
 describe('SettingsPage theme unlocking', () => {
   it('prompts for locked themes and explains missing seeds and birds', () => {
@@ -67,5 +81,42 @@ describe('SettingsPage theme unlocking', () => {
     expect(localStorage.getItem('birdTheme')).toContain('Raven');
     expect(localStorage.getItem('unlockedThemes')).toContain('Raven');
     expect(JSON.parse(localStorage.getItem('birdScore')!)).toMatchObject({ seeds: 0 });
+  });
+
+  it('uses the fresher local seed count when signed-in account state is stale', () => {
+    mockedUseAccountState.mockReturnValue({
+      isLoadingAccount: false,
+      accountEmail: 'bird@example.com',
+      accountUsername: 'BirdFan_17',
+      remoteSummary: {
+        birdsIdentified: 80,
+        seeds: 98,
+        bestStreak: 12,
+        bestDailyStreak: 4,
+      },
+      remoteUnlockedThemes: [],
+      refreshAccountState: vi.fn(),
+    });
+
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 120,
+        birdsIdentified: 80,
+        currentStreak: 3,
+        justAchievedStreak: false,
+        bestStreak: 12,
+        currentDailyStreak: 1,
+        bestDailyStreak: 4,
+        seeds: 104,
+      })
+    );
+
+    render(<SettingsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /woodpecker/i }));
+
+    expect(screen.getByText(/You have 104 seeds, so you can unlock this theme now\./i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Confirm Unlock' })).not.toBeDisabled();
   });
 });

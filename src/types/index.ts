@@ -13,6 +13,27 @@ export interface BirdErrorResponse {
 
 export type BirdApiResult = BirdResponse | BirdErrorResponse;
 
+export interface BirdJournalMetadata {
+  regionLabel?: string;
+  sciName?: string;
+  fact?: string;
+  url?: string;
+  classificationRevealed?: boolean;
+}
+
+export interface BirdJournalEntry {
+  birdKey: string;
+  birdName: string;
+  isReal: boolean;
+  seenCount: number;
+  correctCount: number;
+  incorrectCount: number;
+  lastSeenAt: string;
+  metadata: BirdJournalMetadata;
+}
+
+export type BirdJournalStore = Record<string, BirdJournalEntry>;
+
 export type HintType = 'fact' | 'image';
 
 export interface HintResponse {
@@ -46,7 +67,87 @@ export interface BirdScore {
   currentStreak: number;
   justAchievedStreak: boolean;
   bestStreak: number;
+  currentDailyStreak: number;
+  bestDailyStreak: number;
   seeds: number;
+}
+
+export type WeeklyChallengeId =
+  | 'seed-collector'
+  | 'plumage-precision'
+  | 'on-fire'
+  | 'explorer'
+  | 'fake-spotter'
+  | 'real-recognizer'
+  | 'completionist'
+  | 'birdwatcher';
+
+export type WeeklyChallengeIcon =
+  | 'bird'
+  | 'binoculars'
+  | 'collection'
+  | 'feather'
+  | 'flame'
+  | 'masks'
+  | 'sprout'
+  | 'target';
+
+export type WeeklyChallengeMetric =
+  | 'accuracy'
+  | 'weeklyBestStreak'
+  | 'weeklyBirdsIdentified'
+  | 'weeklyBirdsSeen'
+  | 'weeklyFakeBirdsIdentified'
+  | 'weeklyNewBirdsDiscovered'
+  | 'weeklyRealBirdsIdentified'
+  | 'weeklySeedsEarned'
+  | 'weeklyUniqueBirdsSeen';
+
+export interface WeeklyChallengeDefinition {
+  id: WeeklyChallengeId;
+  name: string;
+  description: string;
+  icon: WeeklyChallengeIcon;
+  primaryLabel: string;
+  tiebreakerLabel: string;
+  qualificationText?: string;
+  metric: WeeklyChallengeMetric;
+  tiebreakerMetric: WeeklyChallengeMetric;
+  minimumBirdsSeen?: number;
+}
+
+export interface WeeklyPlacementSummary {
+  bestWeeklyPlacement: number | null;
+  firstPlaceCount: number;
+  secondPlaceCount: number;
+  thirdPlaceCount: number;
+}
+
+export interface WeeklyRecap {
+  weekStart: string;
+  participated: boolean;
+  qualified: boolean;
+  rank: number | null;
+  rewardSeeds: number;
+}
+
+export interface WeeklyLeaderboardEntry {
+  rank: number;
+  username: string;
+  avatarPalette: string | null;
+  primaryValue: number;
+  primaryDisplayValue: string;
+  tiebreakerValue: number;
+  tiebreakerDisplayValue: string;
+  birdsSeen: number;
+  isCurrentUser: boolean;
+}
+
+export interface WeeklyOverview {
+  currentWeekStart: string;
+  challenge: WeeklyChallengeDefinition;
+  previousRecap: WeeklyRecap | null;
+  placementSummary: WeeklyPlacementSummary;
 }
 
 export type GameMode = 'classic' | 'daily';
@@ -82,6 +183,10 @@ export interface DailyChallengeHistoryEntry {
   correctAnswers: number;
   roundsPlayed: number;
   completed: boolean;
+}
+
+export interface DailyMissionHistoryEntry {
+  date: string;
 }
 
 export type MissionType =
