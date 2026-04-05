@@ -41,7 +41,7 @@ export function buildStatsSharePayload(options: {
 }): SharePayload {
   return {
     title: `${APP_NAME} stats`,
-    text: `My ${APP_NAME} stats: best streak ${options.bestStreak}, current streak ${options.currentStreak}, ${options.birdsIdentified} birds identified, ${options.accuracy}% accuracy.`,
+    text: `My ${APP_NAME} stats: best guess streak ${options.bestStreak}, current guess streak ${options.currentStreak}, ${options.birdsIdentified} birds identified, ${options.accuracy}% accuracy.`,
   };
 }
 
@@ -49,5 +49,32 @@ export function buildDailyChallengeSharePayload(state: DailyChallengeState): Sha
   return {
     title: `${APP_NAME} daily challenge`,
     text: `I scored ${state.correctAnswers}/${DAILY_CHALLENGE_CONFIG.roundCount} on today's ${APP_NAME} Daily Challenge.`,
+  };
+}
+
+export function buildWeeklyLeaderboardSharePayload(options: {
+  challengeName: string;
+  rank: number;
+  isFinal: boolean;
+}): SharePayload {
+  const verb = options.isFinal ? 'finished' : 'am currently sitting';
+  const timeframe = options.isFinal ? "last week's" : "this week's";
+
+  return {
+    title: `${APP_NAME} leaderboard`,
+    text: `I ${verb} at #${options.rank} in ${timeframe} ${options.challengeName} challenge on ${APP_NAME}.`,
+  };
+}
+
+export function buildWeeklyChampionSharePayload(options: {
+  firstPlaceCount: number;
+  secondPlaceCount: number;
+  thirdPlaceCount: number;
+}): SharePayload {
+  const totalPodiums = options.firstPlaceCount + options.secondPlaceCount + options.thirdPlaceCount;
+
+  return {
+    title: `${APP_NAME} podiums`,
+    text: `I've landed ${totalPodiums} weekly podium finish${totalPodiums === 1 ? '' : 'es'} in ${APP_NAME}: ${options.firstPlaceCount} gold, ${options.secondPlaceCount} silver, ${options.thirdPlaceCount} bronze.`,
   };
 }

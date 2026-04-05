@@ -12,6 +12,16 @@ interface BirdCardProps {
   hintLoading: Record<HintType, boolean>;
   hints: HintState;
   onRequestHint: (type: HintType) => void;
+  specialHintAction?: {
+    type: 'skip' | 'reveal';
+    title: string;
+    description: string;
+    cost: number;
+    disabled: boolean;
+    onRequest: () => void;
+    previewTitle?: string;
+    previewContent?: string;
+  } | null;
   state: 'loading' | 'question' | 'answer';
   seedsBalance: number;
   onAnswer: (e: React.MouseEvent<HTMLButtonElement>) => void;
@@ -26,6 +36,7 @@ export default function BirdCard({
   hintLoading,
   hints,
   onRequestHint,
+  specialHintAction,
   state,
   seedsBalance,
   onAnswer,
@@ -111,6 +122,7 @@ export default function BirdCard({
                   hints={hints}
                   onRequestHint={onRequestHint}
                   seedsBalance={seedsBalance}
+                  specialAction={specialHintAction}
                 />
               </motion.div>
             ) : (

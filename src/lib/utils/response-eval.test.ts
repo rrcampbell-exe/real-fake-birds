@@ -38,6 +38,8 @@ describe('responseEval', () => {
       currentStreak: 1,
       justAchievedStreak: false,
       bestStreak: 1,
+      currentDailyStreak: 0,
+      bestDailyStreak: 0,
       seeds: 1,
     });
   });
@@ -249,6 +251,8 @@ describe('responseEval', () => {
       currentStreak: 0,
       bestStreak: 5,
       justAchievedStreak: false,
+      currentDailyStreak: 0,
+      bestDailyStreak: 0,
       seeds: 8,
     });
   });
@@ -293,6 +297,8 @@ describe('responseEval', () => {
       currentStreak: 4,
       bestStreak: 5,
       justAchievedStreak: false,
+      currentDailyStreak: 0,
+      bestDailyStreak: 0,
       seeds: 8,
     });
     expect(JSON.parse(localStorage.getItem('streakInsurance')!)).toEqual({

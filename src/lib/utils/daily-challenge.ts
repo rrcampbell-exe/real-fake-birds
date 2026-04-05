@@ -7,6 +7,11 @@ import {
 import type { DailyChallengeHistoryEntry, DailyChallengeState } from '@/types';
 import { readBirdScore, writeBirdScore } from './player-progress';
 
+interface DailyChallengeStreaks {
+  currentStreak: number;
+  bestStreak: number;
+}
+
 function isBrowser(): boolean {
   return typeof window !== 'undefined';
 }
@@ -79,6 +84,10 @@ export function writeDailyChallengeState(stateLike: Partial<DailyChallengeState>
   return state;
 }
 
+export function resetDailyChallengeState(date = getTodayChallengeDate()): DailyChallengeState {
+  return writeDailyChallengeState(createDailyChallengeState(date));
+}
+
 export function readDailyChallengeHistory(): DailyChallengeHistoryEntry[] {
   if (!isBrowser()) {
     return [];
@@ -115,29 +124,60 @@ export function writeDailyChallengeHistory(history: DailyChallengeHistoryEntry[]
   return history;
 }
 
-export function getDailyChallengeHistoryStreak(history = readDailyChallengeHistory()): number {
+export function getDailyChallengeStreaks(
+  history = readDailyChallengeHistory(),
+  now = new Date()
+): DailyChallengeStreaks {
   const sorted = [...history]
     .filter((entry) => entry.completed)
     .sort((left, right) => right.date.localeCompare(left.date));
 
   if (sorted.length === 0) {
-    return 0;
+    return {
+      currentStreak: 0,
+      bestStreak: 0,
+    };
   }
 
-  let streak = 0;
-  const cursor = new Date(`${sorted[0].date}T12:00:00`);
+  const completedDates = new Set(sorted.map((entry) => entry.date));
+  const currentCursor = new Date(`${getTodayChallengeDate(now)}T12:00:00`);
+  let currentStreak = 0;
 
-  for (const entry of sorted) {
-    const expectedDate = getTodayChallengeDate(cursor);
-    if (entry.date !== expectedDate) {
-      break;
+  const todayKey = getTodayChallengeDate(currentCursor);
+  if (!completedDates.has(todayKey)) {
+    currentCursor.setDate(currentCursor.getDate() - 1);
+  }
+
+  while (completedDates.has(getTodayChallengeDate(currentCursor))) {
+    currentStreak += 1;
+    currentCursor.setDate(currentCursor.getDate() - 1);
+  }
+
+  const ascending = [...sorted].sort((left, right) => left.date.localeCompare(right.date));
+  let bestStreak = 1;
+  let runningStreak = 1;
+
+  for (let index = 1; index < ascending.length; index += 1) {
+    const previous = new Date(`${ascending[index - 1].date}T12:00:00`);
+    previous.setDate(previous.getDate() + 1);
+
+    if (ascending[index].date === getTodayChallengeDate(previous)) {
+      runningStreak += 1;
+      bestStreak = Math.max(bestStreak, runningStreak);
+      continue;
     }
 
-    streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
+    runningStreak = 1;
   }
 
-  return streak;
+  return {
+    currentStreak,
+    bestStreak,
+  };
+}
+
+export function getDailyChallengeHistoryStreak(history = readDailyChallengeHistory()): number {
+  return getDailyChallengeStreaks(history).currentStreak;
 }
 
 export function recordDailyChallengeRound(isCorrect: boolean): DailyChallengeState {
@@ -228,6 +268,21 @@ export function claimDailyChallengeBonuses(): DailyChallengeState {
     ...score,
     seeds: score.seeds + rewardSeeds,
   });
+
+  return writeDailyChallengeState({
+    ...current,
+    completionBonusAwarded: true,
+    perfectBonusAwarded: current.correctAnswers === DAILY_CHALLENGE_CONFIG.roundCount,
+    bonusSeedsAwarded: getDailyChallengeRewardSeeds(current),
+  });
+}
+
+export function markDailyChallengeBonusesClaimed(): DailyChallengeState {
+  const current = readDailyChallengeState();
+
+  if (!current.completed) {
+    return current;
+  }
 
   return writeDailyChallengeState({
     ...current,

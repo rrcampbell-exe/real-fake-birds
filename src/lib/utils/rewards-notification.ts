@@ -4,7 +4,7 @@ import type { DailyChallengeState, SessionMissionsState } from '@/types';
 
 export function hasPendingMissionSetBonus(state: SessionMissionsState): boolean {
   return state.missions.length > 0
-    && state.missions.every((mission) => mission.claimed)
+    && state.missions.every((mission) => mission.completed)
     && !state.bonusClaimed
     && DAILY_MISSION_BONUS_SEEDS > 0;
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { AccountStateProvider } from '@/components/account/AccountStateProvider';
 import { finch } from '@/lib/themes';
 import { useSound } from '@/hooks/useSound';
 import { useStoredJson } from '@/hooks/useStoredValue';
@@ -39,9 +40,9 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
   useEffect(() => () => stopThemeSong(), [stopThemeSong]);
 
   return (
-    <>
+    <AccountStateProvider>
       <IosWebAudioNotice />
       {children}
-    </>
+    </AccountStateProvider>
   );
 }

@@ -66,6 +66,16 @@ src/
 
 The app is structured for Next.js serverless deployment. Production runtime behavior is handled by Next.js and the App Router, not by Vite. Vite is only used indirectly for Vitest during local and CI testing.
 
+## Supabase Setup
+
+Supabase is now the planned backing store for account auth and progression migration.
+
+- Create the schema by applying the SQL files in `supabase/migrations/`
+- Add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` to your environment
+- Enable email/password auth in Supabase Auth
+- If you are moving away from third-party login, disable unused OAuth providers such as Google in the Supabase dashboard
+- Keep preview and production projects separate so auth redirects and RLS checks stay environment-specific
+
 ## Credits
 
 ### Developed By

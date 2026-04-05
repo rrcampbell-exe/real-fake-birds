@@ -7,6 +7,7 @@ import {
 } from '@/lib/constants/missions';
 import type { GameRoundResult, MissionDefinition, SessionMissionsState } from '@/types';
 import { getTodayChallengeDate } from './daily-challenge';
+import { recordDailyMissionCompletion, syncDailyMissionStreaksToBirdScore } from './daily-mission-history';
 import { readBirdScore, writeBirdScore } from './player-progress';
 
 function hashValue(value: string): number {
@@ -91,7 +92,12 @@ export function readSessionMissions(date = getTodayChallengeDate()): SessionMiss
 
   try {
     const parsed = normalizeState(JSON.parse(raw) as Partial<SessionMissionsState>, date);
-    return parsed.date === date ? parsed : createStateForDate(date);
+    if (parsed.date !== date) {
+      syncDailyMissionStreaksToBirdScore();
+      return createStateForDate(date);
+    }
+
+    return parsed;
   } catch {
     return createStateForDate(date);
   }
@@ -102,6 +108,10 @@ export function writeSessionMissions(stateLike: Partial<SessionMissionsState>): 
   localStorage.setItem(SESSION_MISSIONS_STORAGE_KEY, JSON.stringify(state));
   notifyStoredValueChanged(SESSION_MISSIONS_STORAGE_KEY);
   return state;
+}
+
+export function resetSessionMissions(date = getTodayChallengeDate()): SessionMissionsState {
+  return writeSessionMissions(createStateForDate(date));
 }
 
 function incrementForMission(definition: MissionDefinition, roundResult: GameRoundResult): number {
@@ -157,6 +167,10 @@ export function applyRoundToSessionMissions(roundResult: GameRoundResult): {
     }),
   });
 
+  if (nextState.missions.every((mission) => mission.completed)) {
+    recordDailyMissionCompletion(nextState.date);
+  }
+
   return {
     nextState,
     newlyCompletedMissionIds,
@@ -188,9 +202,9 @@ export function claimMissionReward(missionId: string): SessionMissionsState {
 
 export function claimMissionSetBonus(): SessionMissionsState {
   const current = readSessionMissions();
-  const allClaimed = current.missions.every((mission) => mission.claimed);
+  const allCompleted = current.missions.every((mission) => mission.completed);
 
-  if (!allClaimed || current.bonusClaimed) {
+  if (!allCompleted || current.bonusClaimed) {
     return current;
   }
 
@@ -199,6 +213,26 @@ export function claimMissionSetBonus(): SessionMissionsState {
     ...score,
     seeds: score.seeds + DAILY_MISSION_BONUS_SEEDS,
   });
+
+  return writeSessionMissions({
+    ...current,
+    bonusClaimed: true,
+  });
+}
+
+export function markMissionRewardClaimed(missionId: string): SessionMissionsState {
+  const current = readSessionMissions();
+
+  return writeSessionMissions({
+    ...current,
+    missions: current.missions.map((mission) =>
+      mission.missionId === missionId ? { ...mission, claimed: true } : mission
+    ),
+  });
+}
+
+export function markMissionSetBonusClaimed(): SessionMissionsState {
+  const current = readSessionMissions();
 
   return writeSessionMissions({
     ...current,

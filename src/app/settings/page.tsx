@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { Check, Music4, Volume2, VolumeX } from 'lucide-react';
+import { useAccountState } from '@/components/account/AccountStateProvider';
+import UsernameAvailabilityCard from '@/components/auth/UsernameAvailabilityCard';
+import { flushQueuedProgressEventsForSignedInUser } from '@/lib/auth/account-session';
+import { purchaseTheme, saveAvatarPalette } from '@/lib/auth/account-sync';
 import { themes } from '@/lib/themes';
 import { resolveTheme, setTheme } from '@/lib/utils/theme-handler';
 import { finch } from '@/lib/themes';
@@ -13,7 +17,7 @@ import { getThemeUnlockByThemeName } from '@/lib/constants/theme-unlocks';
 import {
   defaultBirdScore,
   getUnlockedThemeNames,
-  isThemeUnlocked,
+  getMilestoneUnlockedThemeNames,
   NEW_THEME_UNLOCK_STORAGE_KEY,
   normalizeBirdScore,
   readBirdScore,
@@ -32,13 +36,37 @@ function shouldShowIosAudioNotice(): boolean {
 }
 
 export default function SettingsPage() {
+  const [isHydrated, setIsHydrated] = useState(false);
+  const {
+    isLoadingAccount,
+    accountEmail,
+    remoteSummary,
+    remoteUnlockedThemes,
+    refreshAccountState,
+  } = useAccountState();
   const storedTheme = useStoredJson('birdTheme', finch);
   const storedScore = useStoredJson<typeof defaultBirdScore | null>('birdScore', defaultBirdScore);
   const storedUnlockedThemeNames = useStoredJson<string[]>(UNLOCKED_THEMES_STORAGE_KEY, []);
-  const score = normalizeBirdScore(storedScore);
-  const currentTheme = resolveTheme(storedTheme);
+  const localScore = isHydrated ? normalizeBirdScore(storedScore) : defaultBirdScore;
+  const score = accountEmail && remoteSummary
+    ? {
+        ...defaultBirdScore,
+        birdsSeen: localScore.birdsSeen,
+        currentStreak: localScore.currentStreak,
+        birdsIdentified: Math.max(localScore.birdsIdentified, remoteSummary.birdsIdentified),
+        seeds: Math.max(localScore.seeds, remoteSummary.seeds),
+        bestStreak: Math.max(localScore.bestStreak, remoteSummary.bestStreak),
+        bestDailyStreak: Math.max(localScore.bestDailyStreak, remoteSummary.bestDailyStreak),
+      }
+    : localScore;
+  const currentTheme = isHydrated ? resolveTheme(storedTheme) : finch;
+  const showDynamicThemeState = isHydrated;
   const unlockedThemeNames = new Set(
-    [...getUnlockedThemeNames(score), ...storedUnlockedThemeNames]
+    accountEmail
+      ? [finch.name, ...getMilestoneUnlockedThemeNames(score.birdsIdentified), ...remoteUnlockedThemes]
+      : isHydrated
+        ? [...getUnlockedThemeNames(score), ...storedUnlockedThemeNames]
+        : getUnlockedThemeNames(defaultBirdScore)
   );
   const [pendingPurchaseThemeName, setPendingPurchaseThemeName] = useState<string | null>(null);
   const {
@@ -52,14 +80,18 @@ export default function SettingsPage() {
     setMusicVolume,
     play,
   } = useSound();
-  const showIosAudioNotice = shouldShowIosAudioNotice();
+  const showIosAudioNotice = isHydrated ? shouldShowIosAudioNotice() : false;
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   useEffect(() => {
     setStoredBoolean(NEW_THEME_UNLOCK_STORAGE_KEY, false);
   }, []);
 
   const handleThemeChange = (theme: typeof finch) => {
-    if (!isThemeUnlocked(theme.name, score)) {
+    if (!unlockedThemeNames.has(theme.name)) {
       handleLockedThemeClick(theme.name);
       return;
     }
@@ -68,6 +100,10 @@ export default function SettingsPage() {
     setTheme(theme);
     document.documentElement.setAttribute('data-theme', theme.name);
     play('themeChange');
+
+    if (accountEmail) {
+      void saveAvatarPalette(theme.name).catch(() => undefined);
+    }
   };
 
   const pendingPurchase = pendingPurchaseThemeName
@@ -106,6 +142,43 @@ export default function SettingsPage() {
       return;
     }
 
+    if (accountEmail) {
+      void (async () => {
+        try {
+          await flushQueuedProgressEventsForSignedInUser();
+          const response = await purchaseTheme(pendingPurchase.themeName);
+          writeBirdScore({
+            ...localScore,
+            birdsIdentified: response.progressSummary.birdsIdentified,
+            seeds: response.progressSummary.seeds,
+            bestStreak: response.progressSummary.bestStreak,
+            bestDailyStreak: response.progressSummary.bestDailyStreak,
+          });
+          await refreshAccountState();
+
+          const purchasedTheme = themes.find((theme) => theme.name === pendingPurchase.themeName);
+          if (purchasedTheme) {
+            setTheme(purchasedTheme);
+            document.documentElement.setAttribute('data-theme', purchasedTheme.name);
+            play('themeChange');
+            void saveAvatarPalette(purchasedTheme.name).catch(() => undefined);
+          }
+
+          if (response.purchaseApplied) {
+            track('theme_purchased', {
+              theme_name: pendingPurchase.themeName,
+              seed_cost: pendingPurchase.seedCost,
+            });
+          }
+
+          setPendingPurchaseThemeName(null);
+        } catch {
+          // Keep the modal open so the user can retry after transient failures.
+        }
+      })();
+      return;
+    }
+
     const currentScore = readBirdScore();
     const updatedScore = writeBirdScore({
       ...currentScore,
@@ -140,6 +213,7 @@ export default function SettingsPage() {
           Customize your experience.
         </p>
       </div>
+      <UsernameAvailabilityCard />
 
       <section>
         <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold mb-3">
@@ -252,8 +326,19 @@ export default function SettingsPage() {
             const isActive = currentTheme?.name === theme.name;
             const themeUnlock = getThemeUnlockByThemeName(theme.name);
             const isComingSoon = Boolean(themeUnlock?.comingSoon);
-            const isUnlocked = unlockedThemeNames.has(theme.name);
+            const isUnlocked = showDynamicThemeState && unlockedThemeNames.has(theme.name);
             const isLocked = !isComingSoon && !isUnlocked;
+            const themeStatusLabel = theme.name === finch.name
+              ? 'Always available'
+              : isComingSoon
+                ? 'Coming Soon'
+                : !showDynamicThemeState
+                  ? `Unlock at ${themeUnlock?.milestoneValue} birds or ${themeUnlock?.seedCost} seeds`
+                  : isUnlocked
+                    ? `Unlocked at ${themeUnlock?.milestoneValue} birds`
+                    : Math.max((themeUnlock?.seedCost ?? 0) - score.seeds, 0) === 0
+                      ? `Unlock now or with ${Math.max((themeUnlock?.milestoneValue ?? 0) - score.birdsIdentified, 0)} more birds`
+                      : `${Math.max((themeUnlock?.seedCost ?? 0) - score.seeds, 0)} more seeds or ${Math.max((themeUnlock?.milestoneValue ?? 0) - score.birdsIdentified, 0)} more birds`;
 
             return (
               <button
@@ -298,15 +383,7 @@ export default function SettingsPage() {
                     {theme.name}
                   </span>
                   <span className="block text-[0.65rem] leading-tight text-[var(--color-muted)]">
-                    {theme.name === finch.name
-                      ? 'Always available'
-                      : isComingSoon
-                        ? 'Coming Soon'
-                        : isUnlocked
-                          ? `Unlocked at ${themeUnlock?.milestoneValue} birds`
-                          : Math.max((themeUnlock?.seedCost ?? 0) - score.seeds, 0) === 0
-                            ? `Unlock now or with ${Math.max((themeUnlock?.milestoneValue ?? 0) - score.birdsIdentified, 0)} more birds`
-                            : `${Math.max((themeUnlock?.seedCost ?? 0) - score.seeds, 0)} more seeds or ${Math.max((themeUnlock?.milestoneValue ?? 0) - score.birdsIdentified, 0)} more birds`}
+                    {themeStatusLabel}
                   </span>
                 </div>
 
@@ -320,7 +397,7 @@ export default function SettingsPage() {
                   </span>
                 )}
 
-                {!isActive && isLocked && themeUnlock && (
+                {!isActive && isLocked && themeUnlock && showDynamicThemeState && (
                   <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-[var(--color-surface-border)] px-2 py-0.5 text-[0.6rem] font-semibold text-[var(--color-muted)]">
                     <SeedIcon size={12} color="currentColor" />
                     {themeUnlock.seedCost}
@@ -346,7 +423,7 @@ export default function SettingsPage() {
           </div>
           <div className="flex flex-col gap-0.5">
             <p className="text-[var(--color-muted)] text-xs">
-              Ryan R. Campbell © 2023 - {new Date().getFullYear()} | All rights reserved.
+              Ryan R. Campbell © 2023 - 2026 | All rights reserved.
             </p>
             <p className="text-[var(--color-muted)] text-xs">
               Theme music created in collaboration with ElevenLabs.

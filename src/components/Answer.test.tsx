@@ -258,4 +258,27 @@ describe('Answer', () => {
 
     expect(screen.getByRole('button', { name: 'View Summary' })).toBeInTheDocument();
   });
+
+  it('shows a journal link when the bird is newly discovered', () => {
+    render(
+      <Answer
+        birdData="Blue Robin"
+        isReal
+        regionLabel="Algeria"
+        sciName="Cyanocitta cristata"
+        fact="Background fact."
+        hints={emptyHints}
+        isStreak={false}
+        isCorrect
+        isMilestone={false}
+        seedsEarned={0}
+        newThemeUnlockName={null}
+        earnedBadgeName={null}
+        isNewBirdEncounter
+        onAction={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('link', { name: 'A new bird for your field journal!' })).toHaveAttribute('href', '/journal');
+  });
 });

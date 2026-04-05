@@ -21,8 +21,9 @@ describe('fetchData', () => {
     const setFact = vi.fn();
     const setIsError = vi.fn();
 
-    await fetchData(setIsReal, setIsLoading, setBirdData, setSciName, setRegionLabel, setFact, setIsError);
+    const fetchPromise = fetchData(setIsReal, setIsLoading, setBirdData, setSciName, setRegionLabel, setFact, setIsError);
     await vi.runAllTimersAsync();
+    await fetchPromise;
 
     expect(setIsReal).toHaveBeenCalledWith(true);
     expect(setSciName).toHaveBeenCalledWith('Fringilla caerulea');
@@ -52,10 +53,11 @@ describe('fetchData', () => {
     const setFact = vi.fn();
     const setIsError = vi.fn();
 
-    await fetchData(setIsReal, setIsLoading, setBirdData, setSciName, setRegionLabel, setFact, setIsError);
+    const fetchPromise = fetchData(setIsReal, setIsLoading, setBirdData, setSciName, setRegionLabel, setFact, setIsError);
     await vi.runAllTimersAsync();
+    await fetchPromise;
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/bird');
+    expect(fetchMock).toHaveBeenCalledWith('/api/bird', { signal: undefined });
     expect(localStorage.getItem('birdData:classic')).toBe(
       JSON.stringify({
         birdName: 'Copper Heron',
@@ -116,5 +118,42 @@ describe('fetchData', () => {
     expect(setIsError).toHaveBeenCalledWith(true);
     expect(setIsLoading).toHaveBeenCalledWith(false);
     expect(setBirdData).not.toHaveBeenCalled();
+  });
+
+  it('does not reject when an aborted cached reveal delay is cleaned up', async () => {
+    vi.useFakeTimers();
+    localStorage.setItem(
+      'birdData:classic',
+      JSON.stringify({ birdName: 'Blue Finch', isReal: true, regionLabel: 'Algeria', sciName: 'Fringilla caerulea' })
+    );
+
+    const controller = new AbortController();
+    const setIsReal = vi.fn();
+    const setIsLoading = vi.fn();
+    const setBirdData = vi.fn();
+    const setSciName = vi.fn();
+    const setRegionLabel = vi.fn();
+    const setFact = vi.fn();
+    const setIsError = vi.fn();
+
+    const fetchPromise = fetchData(
+      setIsReal,
+      setIsLoading,
+      setBirdData,
+      setSciName,
+      setRegionLabel,
+      setFact,
+      setIsError,
+      'classic',
+      controller.signal
+    );
+
+    controller.abort();
+    await vi.runAllTimersAsync();
+
+    await expect(fetchPromise).resolves.toBeUndefined();
+    expect(setBirdData).not.toHaveBeenCalled();
+    expect(setIsLoading).not.toHaveBeenCalledWith(false);
+    expect(setIsError).not.toHaveBeenCalled();
   });
 });

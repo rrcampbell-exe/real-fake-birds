@@ -3,10 +3,23 @@ import { finch, themes } from '@/lib/themes';
 import { notifyStoredValueChanged } from '@/hooks/useStoredValue';
 import { getUnlockedThemeNames } from '@/lib/utils/player-progress';
 
+function normalizeThemeName(themeName: string): string {
+  return themeName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+export function findThemeByName(themeName: string | null | undefined): Theme | undefined {
+  if (!themeName) {
+    return undefined;
+  }
+
+  const normalizedThemeName = normalizeThemeName(themeName);
+  return themes.find((currentTheme) => normalizeThemeName(currentTheme.name) === normalizedThemeName);
+}
+
 export function resolveTheme(themeLike: Pick<Theme, 'name'> | null | undefined): Theme {
   if (!themeLike?.name) return finch;
 
-  const theme = themes.find((currentTheme) => currentTheme.name === themeLike.name);
+  const theme = findThemeByName(themeLike.name);
   if (!theme) return finch;
 
   if (typeof window !== 'undefined') {

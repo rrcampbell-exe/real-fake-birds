@@ -1,99 +1,89 @@
 'use client';
 
-import { CalendarDays, CheckCircle2, Sprout, Trophy } from 'lucide-react';
+import { useState } from 'react';
+import { Gift } from 'lucide-react';
 import MissionPanel from '@/components/game/MissionPanel';
-import { useDailyChallengeState } from '@/hooks/useDailyChallengeState';
 import { useSessionMissions } from '@/hooks/useSessionMissions';
-import { useSound } from '@/hooks/useSound';
 import { track } from '@/lib/analytics';
-import { claimDailyChallengeBonuses, getUnclaimedDailyChallengeRewardSeeds } from '@/lib/utils/daily-challenge';
 import { hasPendingMissionSetBonus } from '@/lib/utils/rewards-notification';
 
 export default function DailyRewardsPanel() {
-  const { play } = useSound();
-  const { state: dailyState, isComplete } = useDailyChallengeState();
-  const { missions, bonusClaimed } = useSessionMissions();
-  const pendingDailyRewardSeeds = getUnclaimedDailyChallengeRewardSeeds(dailyState);
+  const {
+    missions,
+    allCompleted,
+    bonusClaimed,
+    missionSetBonusSeeds,
+    claimMissionReward,
+    claimMissionSetBonus,
+  } = useSessionMissions();
+  const [isClaimingAllRewards, setIsClaimingAllRewards] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
   const hasMissionSetBonusReady = hasPendingMissionSetBonus({
-    date: dailyState.date,
+    date: new Date().toISOString().slice(0, 10),
     missions,
     bonusClaimed,
   });
+  const claimableMissionRewards = missions.filter((mission) => mission.completed && !mission.claimed);
+  const claimableRewardCount = claimableMissionRewards.length
+    + (hasMissionSetBonusReady ? 1 : 0);
+
+  const claimAllRewards = async () => {
+    if (claimableRewardCount === 0 || isClaimingAllRewards) {
+      return;
+    }
+
+    setIsClaimingAllRewards(true);
+    setClaimError(null);
+
+    try {
+      for (const mission of claimableMissionRewards) {
+        await claimMissionReward(mission.id);
+        track('mission_claimed', { mission_id: mission.id, reward_seeds: mission.rewardSeeds });
+      }
+
+      if (allCompleted && !bonusClaimed) {
+        await claimMissionSetBonus();
+        track('mission_claimed', { mission_id: 'daily-set-bonus', reward_seeds: missionSetBonusSeeds });
+      }
+    } catch (error) {
+      setClaimError(error instanceof Error ? error.message : 'Unable to claim all available rewards.');
+    } finally {
+      setIsClaimingAllRewards(false);
+    }
+  };
 
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold mb-3">
-          Daily Rewards
-        </h2>
-        <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-card)]">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
-                Daily Challenge
-              </p>
-              <h3 className="mt-1 font-[family-name:var(--font-display)] text-lg font-semibold">
-                Claim your challenge payout
-              </h3>
-            </div>
-            <div className="inline-flex items-center gap-1 rounded-full bg-[var(--color-surface-hover)] px-2 py-1 text-[0.65rem] font-semibold text-[var(--color-muted)]">
-              <CalendarDays size={12} />
-              {dailyState.correctAnswers}/5
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2 text-[0.7rem] font-semibold text-[var(--color-muted)]">
-            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-surface-hover)] px-2 py-1">
-              <Trophy size={12} />
-              {isComplete ? 'Complete' : 'In progress'}
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-surface-hover)] px-2 py-1">
-              <Sprout size={12} />
-              {pendingDailyRewardSeeds > 0 ? `${pendingDailyRewardSeeds} ready` : `${dailyState.bonusSeedsAwarded} total`}
-            </span>
-          </div>
-
-          <p className="mt-4 text-sm leading-6 text-[var(--color-muted)]">
-            {!isComplete
-              ? 'Finish the Daily Challenge to unlock today\'s bonus seeds.'
-              : pendingDailyRewardSeeds > 0
-                ? `Your ${pendingDailyRewardSeeds} daily bonus seeds are waiting here until you claim them.`
-                : 'Today\'s Daily Challenge reward has already been claimed.'}
-          </p>
-
-          <div className="mt-4 flex items-center justify-between gap-3">
-            {pendingDailyRewardSeeds > 0 ? (
-              <div className="inline-flex items-center gap-1 text-[0.7rem] font-semibold text-emerald-400">
-                <CheckCircle2 size={14} />
-                Ready to claim
-              </div>
-            ) : (
-              <span className="text-[0.7rem] text-[var(--color-muted)]">
-                {isComplete ? 'Already claimed' : 'Complete today\'s run first'}
-              </span>
-            )}
-
-            <button
-              type="button"
-              disabled={pendingDailyRewardSeeds <= 0}
-              onClick={() => {
-                play('streak');
-                claimDailyChallengeBonuses();
-                track('daily_reward_claimed', { reward_seeds: pendingDailyRewardSeeds, date: dailyState.date });
-              }}
-              className={`rounded-full px-3 py-1.5 text-[0.7rem] font-semibold transition ${
-                pendingDailyRewardSeeds > 0
-                  ? 'bg-[var(--color-secondary)] text-[var(--color-on-secondary)]'
-                  : 'bg-[var(--color-surface-border)] text-[var(--color-muted)]'
-              }`}
-            >
-              {pendingDailyRewardSeeds > 0 ? 'Claim Daily Reward' : 'Claimed'}
-            </button>
-          </div>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">
+            Daily Rewards
+          </h2>
+          <button
+            type="button"
+            disabled={claimableRewardCount === 0 || isClaimingAllRewards}
+            onClick={() => {
+              void claimAllRewards();
+            }}
+            className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[0.7rem] font-semibold transition ${
+              claimableRewardCount > 0 && !isClaimingAllRewards
+                ? 'bg-[var(--color-secondary)] text-[var(--color-on-secondary)]'
+                : 'bg-[var(--color-surface-border)] text-[var(--color-muted)]'
+            }`}
+          >
+            <Gift size={14} />
+            {claimableRewardCount > 0
+              ? (isClaimingAllRewards ? 'Claiming...' : `Claim All (${claimableRewardCount})`)
+              : 'Nothing to claim'}
+          </button>
         </div>
       </div>
 
       <MissionPanel containerClassName="w-full" />
+
+      {claimError ? (
+        <p className="text-[0.7rem] text-red-400">{claimError}</p>
+      ) : null}
 
       {hasMissionSetBonusReady ? (
         <p className="text-xs text-[var(--color-muted)]">

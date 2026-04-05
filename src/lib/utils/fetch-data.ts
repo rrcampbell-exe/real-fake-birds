@@ -2,8 +2,40 @@ import type { BirdErrorResponse, BirdResponse, GameMode } from '@/types';
 
 const BIRD_DATA_STORAGE_KEY = 'birdData';
 
+const BIRD_REVEAL_DELAY_MS = 1000;
+
 function getBirdDataStorageKey(mode: GameMode): string {
   return `${BIRD_DATA_STORAGE_KEY}:${mode}`;
+}
+
+function waitForRevealDelay(ms: number, signal?: AbortSignal): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    const timer = window.setTimeout(() => {
+      cleanup();
+      resolve(true);
+    }, ms);
+
+    const onAbort = () => {
+      window.clearTimeout(timer);
+      cleanup();
+      resolve(false);
+    };
+
+    const cleanup = () => {
+      signal?.removeEventListener('abort', onAbort);
+    };
+
+    if (!signal) {
+      return;
+    }
+
+    if (signal.aborted) {
+      onAbort();
+      return;
+    }
+
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
 }
 
 const fetchData = async (
@@ -14,7 +46,8 @@ const fetchData = async (
   setRegionLabel: (val: string | null) => void,
   setFact: (val: string | null) => void,
   setIsError: (val: boolean) => void,
-  mode: GameMode = 'classic'
+  mode: GameMode = 'classic',
+  signal?: AbortSignal
 ) => {
   const storageKey = getBirdDataStorageKey(mode);
   const cached = localStorage.getItem(storageKey);
@@ -24,13 +57,17 @@ const fetchData = async (
     setSciName(sciName ?? null);
     setRegionLabel(regionLabel ?? null);
     setFact(fact ?? null);
-    setTimeout(() => setIsLoading(false), 1000);
-    setTimeout(() => setBirdData(birdName), 1000);
+    const delayCompleted = await waitForRevealDelay(BIRD_REVEAL_DELAY_MS, signal);
+    if (!delayCompleted || signal?.aborted) {
+      return;
+    }
+    setIsLoading(false);
+    setBirdData(birdName);
     return;
   }
 
   try {
-    const response = await fetch('/api/bird');
+    const response = await fetch('/api/bird', { signal });
     const data: BirdResponse | BirdErrorResponse = await response.json();
 
     if ('error' in data) {
@@ -52,9 +89,17 @@ const fetchData = async (
     setSciName(data.sciName ?? null);
     setRegionLabel(data.regionLabel ?? null);
     setFact(data.fact ?? null);
-    setTimeout(() => setIsLoading(false), 1000);
-    setTimeout(() => setBirdData(data.birdName), 1000);
-  } catch {
+    const delayCompleted = await waitForRevealDelay(BIRD_REVEAL_DELAY_MS, signal);
+    if (!delayCompleted || signal?.aborted) {
+      return;
+    }
+    setIsLoading(false);
+    setBirdData(data.birdName);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return;
+    }
+
     setSciName(null);
     setRegionLabel(null);
     setFact(null);

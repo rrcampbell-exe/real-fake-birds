@@ -1,8 +1,24 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const { deriveBirdKeyMock, recordBirdEncounterMock, writeCurrentRoundJournalRevealKeyMock } = vi.hoisted(() => ({
+  deriveBirdKeyMock: vi.fn(),
+  recordBirdEncounterMock: vi.fn(),
+  writeCurrentRoundJournalRevealKeyMock: vi.fn(),
+}));
+
 vi.mock('./useStoredValue', () => ({
   useStoredJson: vi.fn(),
+}));
+
+vi.mock('@/lib/utils/bird-journal', () => ({
+  BIRD_JOURNAL_STORAGE_KEY: 'birdJournal',
+  CURRENT_ROUND_JOURNAL_REVEAL_KEY: 'currentRoundJournalRevealKey',
+  deriveBirdKey: deriveBirdKeyMock,
+  normalizeBirdJournalStore: (value: unknown) => value,
+  recordBirdEncounter: recordBirdEncounterMock,
+  writeCurrentRoundJournalBirdKey: vi.fn(),
+  writeCurrentRoundJournalRevealKey: writeCurrentRoundJournalRevealKeyMock,
 }));
 
 vi.mock('@/lib/utils/fetch-data', () => ({
@@ -22,6 +38,14 @@ vi.mock('@/lib/utils/seed-spend', () => ({
   spendSeeds: vi.fn(),
 }));
 
+vi.mock('@/lib/supabase/env', () => ({
+  hasSupabaseEnv: vi.fn(() => false),
+}));
+
+vi.mock('@/lib/supabase/client', () => ({
+  getSupabaseBrowserClient: vi.fn(),
+}));
+
 import fetchData from '@/lib/utils/fetch-data';
 import fetchHint from '@/lib/utils/fetch-hint';
 import responseEval from '@/lib/utils/response-eval';
@@ -32,13 +56,59 @@ import { useStoredJson } from './useStoredValue';
 
 describe('useGameState', () => {
   beforeEach(() => {
-    vi.mocked(useStoredJson).mockReturnValue({
-      birdsSeen: 0,
-      birdsIdentified: 0,
-      currentStreak: 0,
-      justAchievedStreak: false,
-      bestStreak: 0,
-      seeds: 100,
+    deriveBirdKeyMock.mockReset();
+    deriveBirdKeyMock.mockReturnValue('real:blue-jay');
+    recordBirdEncounterMock.mockReset();
+    writeCurrentRoundJournalRevealKeyMock.mockReset();
+    recordBirdEncounterMock.mockReturnValue({
+      birdKey: 'real:blue-jay',
+      birdName: 'Blue Jay',
+      isReal: true,
+      seenCount: 1,
+      correctCount: 1,
+      incorrectCount: 0,
+      lastSeenAt: '2026-04-05T12:00:00.000Z',
+      metadata: {
+        regionLabel: 'Algeria',
+        sciName: 'Cyanocitta cristata',
+        classificationRevealed: false,
+      },
+    });
+
+    vi.mocked(responseEval).mockReturnValue({
+      isCorrect: true,
+      isReal: true,
+      chosenResponse: 'real',
+      seedsEarned: 1,
+      currentStreak: 1,
+      bestStreak: 1,
+      birdsSeen: 1,
+      birdsIdentified: 1,
+      usedHintTypes: [],
+      streakProtected: false,
+      earnedBadgeName: null,
+      unlockedThemeName: null,
+    });
+
+    vi.mocked(useStoredJson).mockImplementation((key: string) => {
+      if (key === 'birdJournal') {
+        return {};
+      }
+
+      if (key === 'currentRoundJournalRevealKey') {
+        return null;
+      }
+
+      return {
+        birdsSeen: 0,
+        birdsIdentified: 0,
+        currentStreak: 0,
+        justAchievedStreak: false,
+        bestStreak: 0,
+        currentDailyStreak: 0,
+        bestDailyStreak: 0,
+        seeds: 100,
+      };
     });
 
     vi.mocked(fetchData).mockImplementation((setIsReal, setIsLoading, setBirdData, setSciName, setRegionLabel) => {
@@ -86,7 +156,80 @@ describe('useGameState', () => {
     });
 
     expect(responseEval).toHaveBeenCalled();
+    expect(recordBirdEncounterMock).toHaveBeenCalledWith({
+      birdName: 'Blue Jay',
+      isReal: true,
+      outcome: 'correct',
+      metadata: {
+        regionLabel: 'Algeria',
+        sciName: 'Cyanocitta cristata',
+        fact: undefined,
+      },
+    });
     expect(result.current.hasAnswered).toBe(true);
+    expect(result.current.isNewBirdEncounter).toBe(true);
+  });
+
+  it('offers skip for unseen birds without recording progress before fetching a replacement', () => {
+    const { result } = renderHook(() => useGameState());
+
+    expect(result.current.specialHintAction?.type).toBe('skip');
+
+    act(() => {
+      result.current.specialHintAction?.onRequest();
+    });
+
+    expect(spendSeeds).toHaveBeenCalledWith(18);
+    expect(recordBirdEncounterMock).not.toHaveBeenCalled();
+    expect(fetchData).toHaveBeenCalledTimes(2);
+  });
+
+  it('offers reveal for concealed seen birds and shows the reveal preview after purchase', () => {
+    vi.mocked(useStoredJson).mockImplementation((key: string) => {
+      if (key === 'birdJournal') {
+        return {
+          'real:blue-jay': {
+            birdKey: 'real:blue-jay',
+            birdName: 'Blue Jay',
+            isReal: true,
+            seenCount: 2,
+            correctCount: 1,
+            incorrectCount: 1,
+            lastSeenAt: '2026-04-05T12:00:00.000Z',
+            metadata: {
+              classificationRevealed: false,
+            },
+          },
+        };
+      }
+
+      if (key === 'currentRoundJournalRevealKey') {
+        return null;
+      }
+
+      return {
+        birdsSeen: 0,
+        birdsIdentified: 0,
+        currentStreak: 0,
+        justAchievedStreak: false,
+        bestStreak: 0,
+        currentDailyStreak: 0,
+        bestDailyStreak: 0,
+        seeds: 100,
+      };
+    });
+
+    const { result } = renderHook(() => useGameState());
+
+    expect(result.current.specialHintAction?.type).toBe('reveal');
+
+    act(() => {
+      result.current.specialHintAction?.onRequest();
+    });
+
+    expect(spendSeeds).toHaveBeenCalledWith(32);
+    expect(writeCurrentRoundJournalRevealKeyMock).toHaveBeenCalledWith('real:blue-jay');
+    expect(result.current.specialHintAction?.title).toBe('Reveal This Bird');
   });
 
   it('requests a hint and stores the result', async () => {
