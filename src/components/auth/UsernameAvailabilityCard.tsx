@@ -25,7 +25,15 @@ const usernameGuidance = [
   'No offensive names or reserved words',
 ];
 
-export default function UsernameAvailabilityCard() {
+interface UsernameAvailabilityCardProps {
+  compact?: boolean;
+  onAuthSuccess?: () => void;
+}
+
+export default function UsernameAvailabilityCard({
+  compact = false,
+  onAuthSuccess,
+}: UsernameAvailabilityCardProps) {
   const supabaseReady = hasSupabaseEnv();
   const {
     isLoadingAccount,
@@ -132,13 +140,17 @@ export default function UsernameAvailabilityCard() {
     }
 
     if (!value.trim()) {
-      setShowUsernameRules(true);
+      if (!compact) {
+        setShowUsernameRules(true);
+      }
       setAuthError('Choose a username before creating an account.');
       return;
     }
 
     if (issues.length > 0 || available === false) {
-      setShowUsernameRules(true);
+      if (!compact) {
+        setShowUsernameRules(true);
+      }
       setAuthError('Pick an available username before creating your account.');
       return;
     }
@@ -171,6 +183,7 @@ export default function UsernameAvailabilityCard() {
       notifyAccountStateChanged();
       setAuthNotice('Account created. Your current progress is now tied to this username.');
       setCreatePassword('');
+      onAuthSuccess?.();
     } catch (caughtError) {
       setAuthError(caughtError instanceof Error ? caughtError.message : 'Unable to create the account.');
     } finally {
@@ -208,6 +221,7 @@ export default function UsernameAvailabilityCard() {
       await hydrateSignedInAccountToLocalState();
       setSignInPassword('');
       setAuthNotice('Signed in.');
+      onAuthSuccess?.();
     } catch (caughtError) {
       setAuthError(caughtError instanceof Error ? caughtError.message : 'Unable to sign in.');
     } finally {
@@ -280,7 +294,7 @@ export default function UsernameAvailabilityCard() {
   );
 
   const statusMessage = !value.trim()
-    ? 'Pick the username people will see in leaderboards and account screens.'
+    ? 'People will see your username on leaderboards and account screens.'
     : issues.length > 0
       ? 'That name breaks one or more rules.'
       : isChecking
@@ -290,22 +304,38 @@ export default function UsernameAvailabilityCard() {
           : available === false
             ? 'That username is already taken or blocked.'
             : supabaseReady
-              ? 'Availability is unknown right now. Check your connection or Supabase configuration.'
+              ? 'Availability is unknown right now. Check your connection or try again later.'
               : 'Rules passed. Live availability will start once Supabase is configured.';
+    const outerContainerClassName = compact
+      ? 'space-y-4'
+      : 'rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4';
+    const contentContainerClassName = compact
+      ? 'space-y-4'
+      : 'mt-4 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-3';
+    const tabsClassName = compact
+      ? 'grid grid-cols-2 gap-2 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-1'
+      : 'grid grid-cols-2 gap-2 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-1';
+    const usernameRulesClassName = compact
+      ? 'mt-4 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-3'
+      : 'mt-4 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-3';
 
   return (
     <section>
-      <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-semibold">
-        Account
-      </h2>
-      <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4">
-        <p className="text-sm leading-6 text-[var(--color-muted)]">
-          {effectiveAccountEmail && effectiveSavedUsername
-            ? 'Welcome back and happy real fake birding.'
-            : 'Create an account with a username, email, and password. After that, you can sign in with either your email or username.'}
-        </p>
+      {!compact ? (
+        <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-semibold">
+          Account
+        </h2>
+      ) : null}
+      <div className={outerContainerClassName}>
+        {!compact ? (
+          <p className="text-sm leading-6 text-[var(--color-muted)]">
+            {effectiveAccountEmail && effectiveSavedUsername
+              ? 'Welcome back and happy real fake birding.'
+              : 'Create an account with a username, email, and password. After that, you can sign in with either your email or username.'}
+          </p>
+        ) : null}
 
-        <div className="mt-4 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-3">
+        <div className={contentContainerClassName}>
           {effectiveAccountEmail && effectiveSavedUsername ? (
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -325,7 +355,7 @@ export default function UsernameAvailabilityCard() {
             <p className="text-sm text-[var(--color-muted)]">Checking account status...</p>
           ) : !effectiveAccountEmail ? (
             <>
-              <div className="grid grid-cols-2 gap-2 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-1">
+              <div className={tabsClassName}>
                 <button
                   type="button"
                   onClick={() => setAuthMode('create')}
@@ -385,11 +415,6 @@ export default function UsernameAvailabilityCard() {
                     )}
                     <div>
                       <p>{error ?? statusMessage}</p>
-                      {normalizedUsername ? (
-                        <p className="mt-1 text-xs text-[var(--color-muted)]">
-                          Canonical username: {normalizedUsername}
-                        </p>
-                      ) : null}
                     </div>
                   </div>
 
@@ -401,29 +426,31 @@ export default function UsernameAvailabilityCard() {
                     </ul>
                   ) : null}
 
-                  <div className="mt-4 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowUsernameRules((current) => !current)}
-                      className="flex w-full items-center justify-between gap-2 text-left text-sm font-semibold"
-                    >
-                      <span className="flex items-center gap-2">
-                        <ShieldCheck size={16} className="text-[var(--color-secondary)]" />
-                        Username rules
-                      </span>
-                      <ChevronDown
-                        size={16}
-                        className={`transition-transform ${showUsernameRules ? 'rotate-180' : ''}`}
-                      />
-                    </button>
-                    {showUsernameRules ? (
-                      <ul className="mt-2 space-y-1 text-sm text-[var(--color-muted)]">
-                        {usernameGuidance.map((item) => (
-                          <li key={item}>- {item}</li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </div>
+                  {!compact ? (
+                    <div className={usernameRulesClassName}>
+                      <button
+                        type="button"
+                        onClick={() => setShowUsernameRules((current) => !current)}
+                        className="flex w-full items-center justify-between gap-2 text-left text-sm font-semibold"
+                      >
+                        <span className="flex items-center gap-2">
+                          <ShieldCheck size={16} className="text-[var(--color-secondary)]" />
+                          Username rules
+                        </span>
+                        <ChevronDown
+                          size={16}
+                          className={`transition-transform ${showUsernameRules ? 'rotate-180' : ''}`}
+                        />
+                      </button>
+                      {showUsernameRules ? (
+                        <ul className="mt-2 space-y-1 text-sm text-[var(--color-muted)]">
+                          {usernameGuidance.map((item) => (
+                            <li key={item}>- {item}</li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                  ) : null}
 
                   <div className="mt-4 grid gap-3">
                     <label className="block">
@@ -457,7 +484,6 @@ export default function UsernameAvailabilityCard() {
 
                     <button
                       type="submit"
-                      onClick={handleCreateAccount}
                       disabled={!supabaseReady || isCreatingAccount || isSigningIn}
                       className="inline-flex items-center justify-center rounded-full bg-[var(--color-secondary)] px-4 py-2 text-sm font-semibold text-[var(--color-on-secondary)] transition disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -506,7 +532,6 @@ export default function UsernameAvailabilityCard() {
 
                     <button
                       type="submit"
-                      onClick={handleEmailSignIn}
                       disabled={!supabaseReady || isSigningIn || isCreatingAccount}
                       className="inline-flex items-center justify-center rounded-full bg-[var(--color-secondary)] px-4 py-2 text-sm font-semibold text-[var(--color-on-secondary)] transition disabled:cursor-not-allowed disabled:opacity-50"
                     >

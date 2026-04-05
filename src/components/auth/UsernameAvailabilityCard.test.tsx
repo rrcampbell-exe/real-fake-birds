@@ -101,6 +101,7 @@ describe('UsernameAvailabilityCard', () => {
       accountUsername: null,
       remoteSummary: null,
       remoteUnlockedThemes: [],
+      weeklyOverview: null,
       refreshAccountState: vi.fn(),
     });
     mockedFetchAccountState.mockReset();
@@ -134,6 +135,7 @@ describe('UsernameAvailabilityCard', () => {
 
   it('creates an account with required username, email, and password', async () => {
     const signInWithPassword = vi.fn().mockResolvedValue({ error: null });
+    const onAuthSuccess = vi.fn();
     mockedHasSupabaseEnv.mockReturnValue(true);
     mockedUseUsernameValidation.mockReturnValue({
       value: 'BirdFan_17',
@@ -157,7 +159,7 @@ describe('UsernameAvailabilityCard', () => {
       createSupabaseClientMock({ signInWithPassword }) as never
     );
 
-    render(<UsernameAvailabilityCard />);
+    render(<UsernameAvailabilityCard onAuthSuccess={onAuthSuccess} />);
 
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'bird@example.com' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'secret-password' } });
@@ -178,10 +180,30 @@ describe('UsernameAvailabilityCard', () => {
     });
     expect(mockedPushCurrentLocalProgressToAccount).toHaveBeenCalled();
     expect(mockedHydrateSignedInAccountToLocalState).toHaveBeenCalled();
+    expect(onAuthSuccess).toHaveBeenCalled();
+  });
+
+  it('keeps the compact create-account flow stripped down', () => {
+    mockedHasSupabaseEnv.mockReturnValue(true);
+    mockedUseUsernameValidation.mockReturnValue({
+      value: 'BirdFan_17',
+      normalizedUsername: 'birdfan_17',
+      issues: [],
+      available: true,
+      isChecking: false,
+      error: null,
+      setValue: vi.fn(),
+    });
+
+    render(<UsernameAvailabilityCard compact />);
+
+    expect(screen.queryByText('Username rules')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Canonical username:/i)).not.toBeInTheDocument();
   });
 
   it('signs in with email and password', async () => {
     const signInWithPassword = vi.fn().mockResolvedValue({ error: null });
+    const onAuthSuccess = vi.fn();
     mockedHasSupabaseEnv.mockReturnValue(true);
     mockedResolveSignInIdentifier.mockResolvedValue({
       action: 'resolve-sign-in-identifier',
@@ -191,7 +213,7 @@ describe('UsernameAvailabilityCard', () => {
       createSupabaseClientMock({ signInWithPassword }) as never
     );
 
-    render(<UsernameAvailabilityCard />);
+    render(<UsernameAvailabilityCard onAuthSuccess={onAuthSuccess} />);
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Sign in' }).at(-1)!);
 
@@ -215,6 +237,7 @@ describe('UsernameAvailabilityCard', () => {
     });
 
     expect(mockedHydrateSignedInAccountToLocalState).toHaveBeenCalled();
+    expect(onAuthSuccess).toHaveBeenCalled();
   });
 
   it('submits account creation when pressing Enter in the password field', async () => {
@@ -300,6 +323,7 @@ describe('UsernameAvailabilityCard', () => {
         bestDailyStreak: 2,
       },
       remoteUnlockedThemes: [],
+      weeklyOverview: null,
       refreshAccountState,
     });
     mockedGetSupabaseBrowserClient.mockReturnValue(
@@ -322,8 +346,13 @@ describe('UsernameAvailabilityCard', () => {
         seeds: 40,
         bestStreak: 8,
         bestDailyStreak: 3,
+        bestWeeklyPlacement: null,
+        firstPlaceCount: 0,
+        secondPlaceCount: 0,
+        thirdPlaceCount: 0,
       },
       unlockedThemes: ['Raven'],
+      weeklyOverview: null,
     });
 
     render(<UsernameAvailabilityCard />);
@@ -381,8 +410,13 @@ describe('UsernameAvailabilityCard', () => {
         seeds: 40,
         bestStreak: 8,
         bestDailyStreak: 3,
+        bestWeeklyPlacement: null,
+        firstPlaceCount: 0,
+        secondPlaceCount: 0,
+        thirdPlaceCount: 0,
       },
       remoteUnlockedThemes: [],
+      weeklyOverview: null,
       refreshAccountState: vi.fn(),
     });
     const setValue = vi.fn();
@@ -414,8 +448,13 @@ describe('UsernameAvailabilityCard', () => {
         seeds: 40,
         bestStreak: 8,
         bestDailyStreak: 3,
+        bestWeeklyPlacement: null,
+        firstPlaceCount: 0,
+        secondPlaceCount: 0,
+        thirdPlaceCount: 0,
       },
       unlockedThemes: [],
+      weeklyOverview: null,
     });
     render(<UsernameAvailabilityCard />);
 
