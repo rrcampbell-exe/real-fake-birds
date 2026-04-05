@@ -492,7 +492,7 @@ export function useGameState(options?: UseGameStateOptions) {
         ? {
             type: 'skip' as const,
             title: 'Skip This Bird',
-            description: 'Pass on this encounter and pull a new bird immediately.',
+            description: 'Pass on this encounter and spot a new bird immediately.',
             cost: SKIP_BIRD_COST,
             disabled: birdScore.seeds < SKIP_BIRD_COST,
             onRequest: skipCurrentBird,

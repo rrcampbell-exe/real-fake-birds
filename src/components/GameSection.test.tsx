@@ -26,6 +26,10 @@ vi.mock('@/components/StatsBar', () => ({
   default: () => <div>StatsBar</div>,
 }));
 
+vi.mock('@/components/WeeklyChallengeBanner', () => ({
+  default: () => <div>WeeklyChallengeBanner</div>,
+}));
+
 import { useGameState } from '@/hooks/useGameState';
 
 const mockedUseGameState = vi.mocked(useGameState);

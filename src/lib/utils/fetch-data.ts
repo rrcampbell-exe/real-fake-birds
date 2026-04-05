@@ -8,6 +8,36 @@ function getBirdDataStorageKey(mode: GameMode): string {
   return `${BIRD_DATA_STORAGE_KEY}:${mode}`;
 }
 
+function waitForRevealDelay(ms: number, signal?: AbortSignal): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    const timer = window.setTimeout(() => {
+      cleanup();
+      resolve(true);
+    }, ms);
+
+    const onAbort = () => {
+      window.clearTimeout(timer);
+      cleanup();
+      resolve(false);
+    };
+
+    const cleanup = () => {
+      signal?.removeEventListener('abort', onAbort);
+    };
+
+    if (!signal) {
+      return;
+    }
+
+    if (signal.aborted) {
+      onAbort();
+      return;
+    }
+
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
 const fetchData = async (
   setIsReal: (val: boolean) => void,
   setIsLoading: (val: boolean) => void,
@@ -19,25 +49,6 @@ const fetchData = async (
   mode: GameMode = 'classic',
   signal?: AbortSignal
 ) => {
-  const delay = (ms: number) => new Promise<void>((resolve, reject) => {
-    const timer = window.setTimeout(resolve, ms);
-    if (!signal) {
-      return;
-    }
-
-    const onAbort = () => {
-      window.clearTimeout(timer);
-      reject(new DOMException('The operation was aborted.', 'AbortError'));
-    };
-
-    if (signal.aborted) {
-      onAbort();
-      return;
-    }
-
-    signal.addEventListener('abort', onAbort, { once: true });
-  });
-
   const storageKey = getBirdDataStorageKey(mode);
   const cached = localStorage.getItem(storageKey);
   if (cached) {
@@ -46,8 +57,8 @@ const fetchData = async (
     setSciName(sciName ?? null);
     setRegionLabel(regionLabel ?? null);
     setFact(fact ?? null);
-    await delay(BIRD_REVEAL_DELAY_MS);
-    if (signal?.aborted) {
+    const delayCompleted = await waitForRevealDelay(BIRD_REVEAL_DELAY_MS, signal);
+    if (!delayCompleted || signal?.aborted) {
       return;
     }
     setIsLoading(false);
@@ -78,8 +89,8 @@ const fetchData = async (
     setSciName(data.sciName ?? null);
     setRegionLabel(data.regionLabel ?? null);
     setFact(data.fact ?? null);
-    await delay(BIRD_REVEAL_DELAY_MS);
-    if (signal?.aborted) {
+    const delayCompleted = await waitForRevealDelay(BIRD_REVEAL_DELAY_MS, signal);
+    if (!delayCompleted || signal?.aborted) {
       return;
     }
     setIsLoading(false);

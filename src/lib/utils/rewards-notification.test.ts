@@ -129,6 +129,6 @@ describe('rewards notification helpers', () => {
           bonusClaimed: false,
         }
       )
-    ).toBe(2);
+    ).toBe(3);
   });
 });

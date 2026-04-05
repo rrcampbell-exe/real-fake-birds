@@ -97,7 +97,7 @@ describe('HintPanel', () => {
         specialAction={{
           type: 'skip',
           title: 'Skip This Bird',
-          description: 'Pass on this first encounter and pull a new bird immediately.',
+          description: 'Pass on this first encounter and spot a new bird immediately.',
           cost: 18,
           disabled: false,
           onRequest,

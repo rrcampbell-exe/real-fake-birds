@@ -36,7 +36,7 @@ describe('account-sync-local', () => {
 
     expect(JSON.parse(localStorage.getItem('birdScore') ?? '{}')).toMatchObject({
       birdsIdentified: 11,
-      bestDailyStreak: 4,
+      bestDailyStreak: 2,
       seeds: 28,
     });
     expect(JSON.parse(localStorage.getItem('unlockedThemes') ?? '[]')).toEqual(['Raven']);

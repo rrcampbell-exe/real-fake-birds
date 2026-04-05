@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Bird, BookOpen, Compass, Eye, Feather, Flame, Sprout, Target, Trophy } from 'lucide-react';
+import { Binoculars, Bird, BookOpen, Feather, Flame, Sprout, Target, Trophy, HatGlasses } from 'lucide-react';
 import ShareButton from '@/components/ShareButton';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import LeaderboardAvatar from '@/components/leaderboard/LeaderboardAvatar';
@@ -13,11 +13,11 @@ import type { WeeklyChallengeIcon } from '@/types';
 
 const challengeIcons: Record<WeeklyChallengeIcon, typeof Trophy> = {
   bird: Bird,
-  binoculars: Compass,
+  binoculars: Binoculars,
   collection: BookOpen,
   feather: Feather,
   flame: Flame,
-  masks: Eye,
+  masks: HatGlasses,
   sprout: Sprout,
   target: Target,
 };

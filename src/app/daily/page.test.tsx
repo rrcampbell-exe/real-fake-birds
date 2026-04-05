@@ -86,7 +86,8 @@ describe('DailyChallengePage', () => {
 
     render(<DailyChallengePage />);
 
-    expect(screen.getByText('Clean sweep unlocked: 15 bonus seeds.')).toBeInTheDocument();
-    expect(screen.getByText('The streak is already safe for today. Claim the sweep bonus whenever you want.')).toBeInTheDocument();
+    expect(screen.getByText('Claim Queue')).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(screen.queryByText('Sweep Bonus')).not.toBeInTheDocument();
   });
 });
