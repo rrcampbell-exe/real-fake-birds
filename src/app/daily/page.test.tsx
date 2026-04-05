@@ -1,246 +1,92 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import DailyChallengePage from './page';
 
-vi.mock('@/hooks/useGameState', () => ({
-  useGameState: vi.fn(),
+vi.mock('@/hooks/useSessionMissions', () => ({
+  useSessionMissions: vi.fn(),
 }));
 
-vi.mock('@/hooks/useDailyChallengeState', () => ({
-  useDailyChallengeState: vi.fn(),
-}));
-
-vi.mock('@/components/Answer', () => ({
-  default: ({ actionLabel, onAction }: { actionLabel?: string; onAction: () => void }) => (
-    <button type="button" onClick={onAction}>{actionLabel ?? 'Next Bird'}</button>
-  ),
-}));
-
-vi.mock('@/components/Error', () => ({
-  default: () => <div>ErrorState</div>,
-}));
-
-vi.mock('@/components/LoadingState', () => ({
-  default: () => <div>LoadingState</div>,
-}));
-
-vi.mock('@/components/StatsBar', () => ({
-  default: () => <div>StatsBar</div>,
-}));
-
-vi.mock('@/components/game/BirdCard', () => ({
-  default: ({ answerContent }: { answerContent: React.ReactNode }) => <div>{answerContent}</div>,
-}));
-
-vi.mock('@/components/game/DailyChallengeCard', () => ({
-  default: () => <div>DailyChallengeCard</div>,
+vi.mock('@/hooks/useStoredValue', () => ({
+  useStoredJson: vi.fn(),
 }));
 
 vi.mock('@/components/game/MissionPanel', () => ({
   default: () => <div>MissionPanel</div>,
 }));
 
-vi.mock('@/components/ShareButton', () => ({
-  default: () => <div>ShareButton</div>,
-}));
+import { useSessionMissions } from '@/hooks/useSessionMissions';
+import { useStoredJson } from '@/hooks/useStoredValue';
 
-import { useDailyChallengeState } from '@/hooks/useDailyChallengeState';
-import { useGameState } from '@/hooks/useGameState';
-import type { GameRoundResult } from '@/types';
-
-const mockedUseGameState = vi.mocked(useGameState);
-const mockedUseDailyChallengeState = vi.mocked(useDailyChallengeState);
+const mockedUseSessionMissions = vi.mocked(useSessionMissions);
+const mockedUseStoredJson = vi.mocked(useStoredJson);
 
 describe('DailyChallengePage', () => {
-  it('shows the active next round number while a challenge is in progress', () => {
-    mockedUseDailyChallengeState.mockReturnValue({
+  it('renders the mission hub copy and streak summary', () => {
+    mockedUseSessionMissions.mockReturnValue({
       state: {
-        date: '2026-04-03',
-        roundsPlayed: 2,
-        correctAnswers: 1,
-        completed: false,
-        completionBonusAwarded: false,
-        perfectBonusAwarded: false,
-        bonusSeedsAwarded: 0,
-        roundResults: [true, false],
+        date: '2026-04-05',
+        missions: [
+          { missionId: 'warmup-rounds', progress: 3, completed: true, claimed: true },
+          { missionId: 'real-deal', progress: 1, completed: false, claimed: false },
+          { missionId: 'seed-harvest', progress: 4, completed: false, claimed: false },
+        ],
+        bonusClaimed: false,
       },
-      history: [],
-      challengeStreak: 1,
-      roundsRemaining: 3,
-      isComplete: false,
-      canPlay: true,
-      recordRound: vi.fn(),
+      missions: [
+        { id: 'warmup-rounds', missionId: 'warmup-rounds', description: 'Warmup', type: 'play_rounds', target: 3, rewardSeeds: 8, progress: 3, completed: true, claimed: true },
+        { id: 'real-deal', missionId: 'real-deal', description: 'Real Deal', type: 'identify_real_birds', target: 2, rewardSeeds: 10, progress: 1, completed: false, claimed: false },
+        { id: 'seed-harvest', missionId: 'seed-harvest', description: 'Seed Harvest', type: 'earn_seeds', target: 12, rewardSeeds: 12, progress: 4, completed: false, claimed: false },
+      ],
+      allCompleted: false,
+      allClaimed: false,
+      bonusClaimed: false,
+      missionSetBonusSeeds: 15,
+      claimMissionReward: vi.fn(),
+      claimMissionSetBonus: vi.fn(),
     });
-
-    mockedUseGameState.mockReturnValue({
-      birdData: 'Blue Robin',
-      isReal: true,
-      regionLabel: 'Algeria',
-      sciName: 'Birdus birdus',
-      fact: 'A bird fact',
-      hasAnswered: false,
-      isLoading: false,
-      isError: false,
-      isCorrect: false,
-      isStreak: false,
-      isMilestone: false,
-      seedsEarned: 0,
-      newThemeUnlockName: null,
-      earnedBadgeName: null,
-      hints: { fact: null, image: null },
-      hintError: null,
-      hintErrorType: null,
-      hintLoading: { fact: false, image: false },
-      seedsBalance: 10,
-      showQuestion: true,
-      handleAnswer: vi.fn(),
-      requestHint: vi.fn(),
-      tryAgain: vi.fn(),
-    });
+    mockedUseStoredJson.mockReturnValue([
+      { date: '2026-04-05' },
+      { date: '2026-04-04' },
+      { date: '2026-04-03' },
+    ]);
 
     render(<DailyChallengePage />);
 
-    expect(screen.getByText('Round 3 of 5')).toBeInTheDocument();
+    expect(screen.getByText('Daily Missions')).toBeInTheDocument();
+    expect(screen.getByText('Keep the streak alive by finishing all three missions.')).toBeInTheDocument();
+    expect(screen.getByText('Current Streak')).toBeInTheDocument();
+    expect(screen.getByText('1/3')).toBeInTheDocument();
+    expect(screen.getByText('MissionPanel')).toBeInTheDocument();
   });
 
-  it('uses the resolved final round state for the header and summary action before storage catches up', () => {
-    let capturedOnRoundResolved: ((result: GameRoundResult) => void) | undefined;
-
-    mockedUseDailyChallengeState.mockReturnValue({
+  it('shows the clean sweep unlocked state once all missions are complete', () => {
+    mockedUseSessionMissions.mockReturnValue({
       state: {
-        date: '2026-04-03',
-        roundsPlayed: 4,
-        correctAnswers: 3,
-        completed: false,
-        completionBonusAwarded: false,
-        perfectBonusAwarded: false,
-        bonusSeedsAwarded: 0,
-        roundResults: [true, true, false, true],
+        date: '2026-04-05',
+        missions: [
+          { missionId: 'warmup-rounds', progress: 3, completed: true, claimed: true },
+          { missionId: 'real-deal', progress: 2, completed: true, claimed: false },
+          { missionId: 'seed-harvest', progress: 12, completed: true, claimed: false },
+        ],
+        bonusClaimed: false,
       },
-      history: [],
-      challengeStreak: 2,
-      roundsRemaining: 1,
-      isComplete: false,
-      canPlay: true,
-      recordRound: vi.fn().mockReturnValue({
-        date: '2026-04-03',
-        roundsPlayed: 5,
-        correctAnswers: 4,
-        completed: true,
-        completionBonusAwarded: true,
-        perfectBonusAwarded: false,
-        bonusSeedsAwarded: 25,
-        roundResults: [true, true, false, true, true],
-      }),
+      missions: [
+        { id: 'warmup-rounds', missionId: 'warmup-rounds', description: 'Warmup', type: 'play_rounds', target: 3, rewardSeeds: 8, progress: 3, completed: true, claimed: true },
+        { id: 'real-deal', missionId: 'real-deal', description: 'Real Deal', type: 'identify_real_birds', target: 2, rewardSeeds: 10, progress: 2, completed: true, claimed: false },
+        { id: 'seed-harvest', missionId: 'seed-harvest', description: 'Seed Harvest', type: 'earn_seeds', target: 12, rewardSeeds: 12, progress: 12, completed: true, claimed: false },
+      ],
+      allCompleted: true,
+      allClaimed: false,
+      bonusClaimed: false,
+      missionSetBonusSeeds: 15,
+      claimMissionReward: vi.fn(),
+      claimMissionSetBonus: vi.fn(),
     });
-
-    mockedUseGameState.mockImplementation((options) => {
-      capturedOnRoundResolved = options?.onRoundResolved;
-
-      return {
-        birdData: 'Blue Robin',
-        isReal: true,
-        regionLabel: 'Algeria',
-        sciName: 'Birdus birdus',
-        fact: 'A bird fact',
-        hasAnswered: true,
-        isLoading: false,
-        isError: false,
-        isCorrect: true,
-        isStreak: false,
-        isMilestone: false,
-        seedsEarned: 1,
-        newThemeUnlockName: null,
-        earnedBadgeName: null,
-        hints: { fact: null, image: null },
-        hintError: null,
-        hintErrorType: null,
-        hintLoading: { fact: false, image: false },
-        seedsBalance: 10,
-        showQuestion: false,
-        handleAnswer: vi.fn(),
-        requestHint: vi.fn(),
-        tryAgain: vi.fn(),
-      };
-    });
+    mockedUseStoredJson.mockReturnValue([{ date: '2026-04-05' }]);
 
     render(<DailyChallengePage />);
 
-    act(() => {
-      capturedOnRoundResolved?.({
-        isCorrect: true,
-        isReal: true,
-        chosenResponse: 'real',
-        seedsEarned: 1,
-        currentStreak: 1,
-        bestStreak: 1,
-        birdsSeen: 5,
-        birdsIdentified: 4,
-        usedHintTypes: [],
-        streakProtected: false,
-        earnedBadgeName: null,
-        unlockedThemeName: null,
-      });
-    });
-
-    expect(screen.getByText('Round 5 of 5')).toBeInTheDocument();
-    expect(screen.getByText('4 correct')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'View Summary' }));
-
-    expect(screen.getByText('4/5 birds right today')).toBeInTheDocument();
-    expect(screen.getByText('25')).toBeInTheDocument();
-  });
-
-  it('renders the summary surface when the daily challenge is complete', () => {
-    mockedUseDailyChallengeState.mockReturnValue({
-      state: {
-        date: '2026-04-03',
-        roundsPlayed: 5,
-        correctAnswers: 4,
-        completed: true,
-        completionBonusAwarded: true,
-        perfectBonusAwarded: false,
-        bonusSeedsAwarded: 25,
-        roundResults: [true, true, true, true, false],
-      },
-      history: [],
-      challengeStreak: 2,
-      roundsRemaining: 0,
-      isComplete: true,
-      canPlay: false,
-      recordRound: vi.fn(),
-    });
-
-    mockedUseGameState.mockReturnValue({
-      birdData: 'Blue Robin',
-      isReal: true,
-      regionLabel: 'Algeria',
-      sciName: 'Birdus birdus',
-      fact: 'A bird fact',
-      hasAnswered: true,
-      isLoading: false,
-      isError: false,
-      isCorrect: true,
-      isStreak: false,
-      isMilestone: false,
-      seedsEarned: 1,
-      newThemeUnlockName: null,
-      earnedBadgeName: null,
-      hints: { fact: null, image: null },
-      hintError: null,
-      hintErrorType: null,
-      hintLoading: { fact: false, image: false },
-      seedsBalance: 10,
-      showQuestion: false,
-      handleAnswer: vi.fn(),
-      requestHint: vi.fn(),
-      tryAgain: vi.fn(),
-    });
-
-    render(<DailyChallengePage />);
-
-    expect(screen.getByText('4/5 birds right today')).toBeInTheDocument();
-    expect(screen.getByText('25')).toBeInTheDocument();
+    expect(screen.getByText('Clean sweep unlocked: 15 bonus seeds.')).toBeInTheDocument();
+    expect(screen.getByText('The streak is already safe for today. Claim the sweep bonus whenever you want.')).toBeInTheDocument();
   });
 });

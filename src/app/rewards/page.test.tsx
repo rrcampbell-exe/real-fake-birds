@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import RewardsPage from './page';
 
@@ -131,6 +131,67 @@ describe('RewardsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Claim Daily Reward' }));
 
     expect(mockedClaimDailyChallengeBonuses).toHaveBeenCalled();
+  });
+
+  it('shows and runs claim all for all available rewards', async () => {
+    const claimMissionReward = vi.fn().mockResolvedValue(undefined);
+    const claimMissionSetBonus = vi.fn().mockResolvedValue(undefined);
+
+    mockedUseDailyChallengeState.mockReturnValue({
+      state: {
+        date: '2026-04-03',
+        roundsPlayed: 5,
+        correctAnswers: 5,
+        completed: true,
+        completionBonusAwarded: false,
+        perfectBonusAwarded: false,
+        bonusSeedsAwarded: 75,
+        roundResults: [true, true, true, true, true],
+      },
+      history: [],
+      challengeStreak: 3,
+      roundsRemaining: 0,
+      isComplete: true,
+      canPlay: false,
+      recordRound: vi.fn(),
+    });
+
+    mockedUseSessionMissions.mockReturnValue({
+      state: {
+        date: '2026-04-03',
+        missions: [
+          { missionId: 'warmup-rounds', progress: 3, completed: true, claimed: false },
+          { missionId: 'real-deal', progress: 2, completed: true, claimed: false },
+          { missionId: 'deep-focus', progress: 4, completed: true, claimed: false },
+        ],
+        bonusClaimed: false,
+      },
+      missions: [
+        { id: 'warmup-rounds', missionId: 'warmup-rounds', description: 'Warmup', target: 3, rewardSeeds: 8, progress: 3, completed: true, claimed: false, type: 'play_rounds' },
+        { id: 'real-deal', missionId: 'real-deal', description: 'Real Deal', target: 2, rewardSeeds: 10, progress: 2, completed: true, claimed: false, type: 'identify_real_birds' },
+        { id: 'deep-focus', missionId: 'deep-focus', description: 'Deep Focus', target: 4, rewardSeeds: 20, progress: 4, completed: true, claimed: false, type: 'correct_without_hints' },
+      ],
+      allCompleted: true,
+      allClaimed: false,
+      bonusClaimed: false,
+      missionSetBonusSeeds: 15,
+      claimMissionReward,
+      claimMissionSetBonus,
+    });
+
+    mockedGetUnclaimedDailyChallengeRewardSeeds.mockReturnValue(75);
+
+    render(<RewardsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Claim All (5)' }));
+
+    await waitFor(() => {
+      expect(mockedClaimDailyChallengeBonuses).toHaveBeenCalled();
+      expect(claimMissionReward).toHaveBeenCalledWith('warmup-rounds');
+      expect(claimMissionReward).toHaveBeenCalledWith('real-deal');
+      expect(claimMissionReward).toHaveBeenCalledWith('deep-focus');
+      expect(claimMissionSetBonus).toHaveBeenCalled();
+    });
   });
 
   it('shows no claims waiting when nothing is pending', () => {

@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   claimDailyChallengeBonuses,
   createDailyChallengeState,
+  getDailyChallengeStreaks,
   getUnclaimedDailyChallengeRewardSeeds,
   recordDailyChallengeRound,
   writeDailyChallengeState,
+  writeDailyChallengeHistory,
 } from './daily-challenge';
 
 describe('daily challenge utilities', () => {
@@ -36,6 +38,8 @@ describe('daily challenge utilities', () => {
         currentStreak: 0,
         justAchievedStreak: false,
         bestStreak: 0,
+        currentDailyStreak: 0,
+        bestDailyStreak: 0,
         seeds: 10,
       })
     );
@@ -61,5 +65,51 @@ describe('daily challenge utilities', () => {
     const repeatedState = claimDailyChallengeBonuses();
     expect(repeatedState.bonusSeedsAwarded).toBe(75);
     expect(JSON.parse(localStorage.getItem('birdScore') ?? '{}').seeds).toBe(85);
+  });
+
+  it('computes both current and best daily streaks from history', () => {
+    const streaks = getDailyChallengeStreaks(
+      [
+        { date: '2026-03-28', correctAnswers: 5, roundsPlayed: 5, completed: true },
+        { date: '2026-03-29', correctAnswers: 4, roundsPlayed: 5, completed: true },
+        { date: '2026-03-30', correctAnswers: 4, roundsPlayed: 5, completed: true },
+        { date: '2026-04-01', correctAnswers: 4, roundsPlayed: 5, completed: true },
+        { date: '2026-04-02', correctAnswers: 4, roundsPlayed: 5, completed: true },
+      ],
+      new Date('2026-04-03T12:00:00Z')
+    );
+
+    expect(streaks).toEqual({
+      currentStreak: 2,
+      bestStreak: 3,
+    });
+  });
+
+  it('stores challenge history without mutating the mission-based daily streak fields', () => {
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 12,
+        birdsIdentified: 8,
+        currentStreak: 2,
+        justAchievedStreak: false,
+        bestStreak: 4,
+        currentDailyStreak: 0,
+        bestDailyStreak: 0,
+        seeds: 10,
+      })
+    );
+
+    writeDailyChallengeHistory([
+      { date: '2026-04-03', correctAnswers: 4, roundsPlayed: 5, completed: true },
+      { date: '2026-04-02', correctAnswers: 5, roundsPlayed: 5, completed: true },
+      { date: '2026-03-30', correctAnswers: 5, roundsPlayed: 5, completed: true },
+      { date: '2026-03-29', correctAnswers: 5, roundsPlayed: 5, completed: true },
+    ]);
+
+    expect(JSON.parse(localStorage.getItem('birdScore') ?? '{}')).toMatchObject({
+      currentDailyStreak: 0,
+      bestDailyStreak: 0,
+    });
   });
 });
