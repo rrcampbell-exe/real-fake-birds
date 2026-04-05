@@ -2,6 +2,8 @@ import type { BirdErrorResponse, BirdResponse, GameMode } from '@/types';
 
 const BIRD_DATA_STORAGE_KEY = 'birdData';
 
+const BIRD_REVEAL_DELAY_MS = 1000;
+
 function getBirdDataStorageKey(mode: GameMode): string {
   return `${BIRD_DATA_STORAGE_KEY}:${mode}`;
 }
@@ -14,8 +16,28 @@ const fetchData = async (
   setRegionLabel: (val: string | null) => void,
   setFact: (val: string | null) => void,
   setIsError: (val: boolean) => void,
-  mode: GameMode = 'classic'
+  mode: GameMode = 'classic',
+  signal?: AbortSignal
 ) => {
+  const delay = (ms: number) => new Promise<void>((resolve, reject) => {
+    const timer = window.setTimeout(resolve, ms);
+    if (!signal) {
+      return;
+    }
+
+    const onAbort = () => {
+      window.clearTimeout(timer);
+      reject(new DOMException('The operation was aborted.', 'AbortError'));
+    };
+
+    if (signal.aborted) {
+      onAbort();
+      return;
+    }
+
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+
   const storageKey = getBirdDataStorageKey(mode);
   const cached = localStorage.getItem(storageKey);
   if (cached) {
@@ -24,13 +46,17 @@ const fetchData = async (
     setSciName(sciName ?? null);
     setRegionLabel(regionLabel ?? null);
     setFact(fact ?? null);
-    setTimeout(() => setIsLoading(false), 1000);
-    setTimeout(() => setBirdData(birdName), 1000);
+    await delay(BIRD_REVEAL_DELAY_MS);
+    if (signal?.aborted) {
+      return;
+    }
+    setIsLoading(false);
+    setBirdData(birdName);
     return;
   }
 
   try {
-    const response = await fetch('/api/bird');
+    const response = await fetch('/api/bird', { signal });
     const data: BirdResponse | BirdErrorResponse = await response.json();
 
     if ('error' in data) {
@@ -52,9 +78,17 @@ const fetchData = async (
     setSciName(data.sciName ?? null);
     setRegionLabel(data.regionLabel ?? null);
     setFact(data.fact ?? null);
-    setTimeout(() => setIsLoading(false), 1000);
-    setTimeout(() => setBirdData(data.birdName), 1000);
-  } catch {
+    await delay(BIRD_REVEAL_DELAY_MS);
+    if (signal?.aborted) {
+      return;
+    }
+    setIsLoading(false);
+    setBirdData(data.birdName);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return;
+    }
+
     setSciName(null);
     setRegionLabel(null);
     setFact(null);

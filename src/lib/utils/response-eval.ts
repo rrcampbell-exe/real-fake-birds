@@ -117,6 +117,7 @@ const responseEval = (
     seeds = seeds + seedsEarned;
 
     const updatedBirdScore = {
+      ...birdScore,
       birdsSeen,
       birdsIdentified,
       currentStreak,
@@ -200,6 +201,7 @@ const responseEval = (
   birdsSeen = birdsSeen + 1;
 
   const updatedBirdScore = {
+    ...birdScore,
     birdsSeen,
     birdsIdentified,
     currentStreak: streakProtected ? birdScore.currentStreak : 0,

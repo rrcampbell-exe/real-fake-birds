@@ -1,8 +1,8 @@
 'use client';
 
 import { useGameState } from '@/hooks/useGameState';
+import WeeklyChallengeBanner from '@/components/WeeklyChallengeBanner';
 import BirdCard from './game/BirdCard';
-import DailyPrompt from './game/DailyPrompt';
 import LoadingState from './LoadingState';
 import Answer from './Answer';
 import Error from './Error';
@@ -24,11 +24,13 @@ export default function GameSection() {
     seedsEarned,
     newThemeUnlockName,
     earnedBadgeName,
+    isNewBirdEncounter,
     hints,
     hintError,
     hintErrorType,
     hintLoading,
     seedsBalance,
+    specialHintAction,
     showQuestion,
     handleAnswer,
     requestHint,
@@ -51,7 +53,7 @@ export default function GameSection() {
 
       <StatsBar refreshTrigger={hasAnswered} />
 
-  <DailyPrompt />
+      <WeeklyChallengeBanner />
 
       {isError && <Error onTryAgain={tryAgain} />}
 
@@ -63,6 +65,7 @@ export default function GameSection() {
           hintLoading={hintLoading}
           hints={hints}
           onRequestHint={requestHint}
+          specialHintAction={specialHintAction}
           state={cardState}
           seedsBalance={seedsBalance}
           onAnswer={handleAnswer}
@@ -81,6 +84,7 @@ export default function GameSection() {
               seedsEarned={seedsEarned}
               newThemeUnlockName={newThemeUnlockName}
               earnedBadgeName={earnedBadgeName}
+              isNewBirdEncounter={isNewBirdEncounter}
               onAction={tryAgain}
             />
           }

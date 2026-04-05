@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { Check, X } from 'lucide-react';
+import Link from 'next/link';
 import SeedIcon from '@/components/icons/SeedIcon';
 import { correctnessText } from '@/lib/utils/correctness-text';
 import { useSound } from '@/hooks/useSound';
@@ -11,6 +12,7 @@ import { useStoredJson } from '@/hooks/useStoredValue';
 import ShareButton from '@/components/ShareButton';
 import { defaultBirdScore, normalizeBirdScore } from '@/lib/utils/player-progress';
 import { buildMilestoneSharePayload, buildRoundSharePayload } from '@/lib/utils/share-data';
+import { formatNumber } from '@/lib/utils/number-format';
 import type { HintState } from '@/types';
 
 const FAKE_FIELD_NOTES = [
@@ -45,6 +47,7 @@ interface AnswerProps {
   seedsEarned: number;
   newThemeUnlockName: string | null;
   earnedBadgeName: string | null;
+  isNewBirdEncounter?: boolean;
   actionLabel?: string;
   onAction: () => void;
 }
@@ -62,6 +65,7 @@ export default function Answer({
   seedsEarned,
   newThemeUnlockName,
   earnedBadgeName,
+  isNewBirdEncounter = false,
   actionLabel = 'Next Bird',
   onAction,
 }: AnswerProps) {
@@ -168,7 +172,7 @@ export default function Answer({
               className="inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1 text-xs font-semibold"
             >
               <SeedIcon size={16} color="var(--color-secondary)" />
-              <span>+{seedsEarned} {seedsEarned === 1 ? 'seed' : 'seeds'}</span>
+              <span>+{formatNumber(seedsEarned)} {seedsEarned === 1 ? 'seed' : 'seeds'}</span>
             </motion.div>
           )}
 
@@ -202,6 +206,17 @@ export default function Answer({
         >
           {isReal ? 'Real' : 'Fake'}
         </motion.span>
+
+        {isNewBirdEncounter ? (
+          <div className="mt-3 flex justify-center">
+            <Link
+              href="/journal"
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1 text-xs font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-surface-hover)]"
+            >
+              A new bird for your field journal!
+            </Link>
+          </div>
+        ) : null}
 
         <div className="mt-4 space-y-3 text-left">
           {isReal ? (

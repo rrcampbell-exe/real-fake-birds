@@ -36,7 +36,7 @@ describe('share-data', () => {
       })
     ).toEqual({
       title: 'Real Fake Birds stats',
-      text: 'My Real Fake Birds stats: best streak 5, current streak 2, 14 birds identified, 71% accuracy.',
+      text: 'My Real Fake Birds stats: best guess streak 5, current guess streak 2, 14 birds identified, 71% accuracy.',
     });
   });
 

@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertCircle, BookOpenText, ChevronDown, ImageIcon, LoaderCircle, Sparkles } from 'lucide-react';
+import { AlertCircle, BookOpenText, ChevronDown, ImageIcon, LoaderCircle, SkipForward, Sparkles, WandSparkles } from 'lucide-react';
 import type { HintState, HintType } from '@/types';
 import { FACT_HINT_COST, IMAGE_HINT_COST } from '@/lib/constants/hints';
+import { formatNumber } from '@/lib/utils/number-format';
 
 interface HintPanelProps {
   birdName: string;
@@ -14,6 +15,16 @@ interface HintPanelProps {
   hints: HintState;
   onRequestHint: (type: HintType) => void;
   seedsBalance: number;
+  specialAction?: {
+    type: 'skip' | 'reveal';
+    title: string;
+    description: string;
+    cost: number;
+    disabled: boolean;
+    onRequest: () => void;
+    previewTitle?: string;
+    previewContent?: string;
+  } | null;
 }
 
 interface HintOption {
@@ -141,7 +152,7 @@ function HintOptionButton({
     ? 'Fetching...'
     : insufficientSeeds
       ? 'Not enough seeds'
-      : `Trade ${cost} seeds`;
+      : `Trade ${formatNumber(cost)} seeds`;
   const statusClassName = insufficientSeeds && !loading
     ? 'text-[var(--color-text)]/70'
     : 'text-[var(--color-text)]';
@@ -168,7 +179,7 @@ function HintOptionButton({
           </p>
         </div>
         <span className="mt-0.5 shrink-0 rounded-full bg-[var(--color-primary-light)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text)]">
-          {cost} seeds
+          {formatNumber(cost)} seeds
         </span>
       </div>
 
@@ -185,9 +196,11 @@ export default function HintPanel({
   hints,
   onRequestHint,
   seedsBalance,
+  specialAction,
 }: HintPanelProps) {
   const [isManuallyExpanded, setIsManuallyExpanded] = useState(false);
-  const isExpanded = isManuallyExpanded || Boolean(hints.fact || hintLoading.fact || hintErrorType === 'fact');
+  const isExpanded = isManuallyExpanded
+    || Boolean(hints.fact || hintLoading.fact || hintErrorType === 'fact' || specialAction?.previewContent);
 
   return (
     <div className="w-full">
@@ -202,7 +215,7 @@ export default function HintPanel({
           Get a Hint
         </span>
         <span className="flex items-center gap-2 text-xs text-[var(--color-muted)]">
-          <span>{seedsBalance} seeds</span>
+          <span>{formatNumber(seedsBalance)} seeds</span>
           <ChevronDown
             size={16}
             className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
@@ -262,6 +275,27 @@ export default function HintPanel({
                   />
                 );
               })}
+
+              {specialAction?.previewContent ? (
+                <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-4 text-sm leading-6 text-[var(--color-text)]">
+                  <div className="mb-2 font-[family-name:var(--font-display)] text-sm font-semibold text-[var(--color-text)]">
+                    {specialAction.previewTitle ?? 'Round Reveal'}
+                  </div>
+                  <p>{specialAction.previewContent}</p>
+                </div>
+              ) : null}
+
+              {specialAction && !specialAction.previewContent ? (
+                <HintOptionButton
+                  cost={specialAction.cost}
+                  description={specialAction.description}
+                  Icon={specialAction.type === 'skip' ? SkipForward : WandSparkles}
+                  insufficientSeeds={specialAction.disabled}
+                  loading={false}
+                  onRequest={specialAction.onRequest}
+                  title={specialAction.title}
+                />
+              ) : null}
             </div>
 
             {hintError && !hintErrorType ? (

@@ -82,6 +82,62 @@ describe('HintPanel', () => {
     expect(screen.queryByRole('button', { name: /image hint/i })).not.toBeInTheDocument();
   });
 
+  it('renders a contextual skip option when provided', () => {
+    const onRequest = vi.fn();
+
+    render(
+      <HintPanel
+        birdName="Blue Jay"
+        hintError={null}
+        hintErrorType={null}
+        hintLoading={{ fact: false, image: false }}
+        hints={{ fact: null, image: null }}
+        onRequestHint={vi.fn()}
+        seedsBalance={75}
+        specialAction={{
+          type: 'skip',
+          title: 'Skip This Bird',
+          description: 'Pass on this first encounter and pull a new bird immediately.',
+          cost: 18,
+          disabled: false,
+          onRequest,
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /get a hint/i }));
+    fireEvent.click(screen.getByRole('button', { name: /skip this bird/i }));
+
+    expect(onRequest).toHaveBeenCalled();
+  });
+
+  it('shows a reveal preview after a journal unlock', () => {
+    render(
+      <HintPanel
+        birdName="Blue Jay"
+        hintError={null}
+        hintErrorType={null}
+        hintLoading={{ fact: false, image: false }}
+        hints={{ fact: null, image: null }}
+        onRequestHint={vi.fn()}
+        seedsBalance={75}
+        specialAction={{
+          type: 'reveal',
+          title: 'Reveal This Bird',
+          description: 'See whether this bird is real or fake for this round only.',
+          cost: 32,
+          disabled: false,
+          onRequest: vi.fn(),
+          previewTitle: 'Round Reveal',
+          previewContent: 'Blue Jay is a real bird.',
+        }}
+      />
+    );
+
+    expect(screen.getByText('Round Reveal')).toBeInTheDocument();
+    expect(screen.getByText('Blue Jay is a real bird.')).toBeInTheDocument();
+  });
+
   it('shows a richer loading preview while hints are being fetched', () => {
     render(
       <HintPanel
