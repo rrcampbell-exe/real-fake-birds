@@ -10,6 +10,7 @@ import { themes } from '@/lib/themes';
 import { resolveTheme, setTheme } from '@/lib/utils/theme-handler';
 import { finch } from '@/lib/themes';
 import { useStoredJson } from '@/hooks/useStoredValue';
+import { useHasHydrated } from '@/hooks/useHasHydrated';
 import { useSound } from '@/hooks/useSound';
 import SeedIcon from '@/components/icons/SeedIcon';
 import { track } from '@/lib/analytics';
@@ -36,9 +37,8 @@ function shouldShowIosAudioNotice(): boolean {
 }
 
 export default function SettingsPage() {
-  const [isHydrated, setIsHydrated] = useState(false);
+  const isHydrated = useHasHydrated();
   const {
-    isLoadingAccount,
     accountEmail,
     remoteSummary,
     remoteUnlockedThemes,
@@ -81,10 +81,6 @@ export default function SettingsPage() {
     play,
   } = useSound();
   const showIosAudioNotice = isHydrated ? shouldShowIosAudioNotice() : false;
-
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
 
   useEffect(() => {
     setStoredBoolean(NEW_THEME_UNLOCK_STORAGE_KEY, false);
