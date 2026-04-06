@@ -79,7 +79,7 @@ export function purchaseStreakInsurance(): {
   if (normalizedCurrentState.active) {
     return {
       ok: false,
-      error: 'You already have streak insurance active.',
+      error: 'Streak insurance is already armed for your next guess.',
       state: normalizedCurrentState,
     };
   }
@@ -126,6 +126,22 @@ export function consumeStreakInsurance(): boolean {
 
   writeStreakInsuranceState(defaultStreakInsuranceState);
   return true;
+}
+
+export function expireStreakInsuranceAfterGuess(): void {
+  const score = readBirdScore();
+  const state = readStreakInsuranceState();
+
+  if (!state.active) {
+    return;
+  }
+
+  if (isStreakInsuranceExpired(state, score.currentStreak)) {
+    writeStreakInsuranceState(defaultStreakInsuranceState);
+    return;
+  }
+
+  writeStreakInsuranceState(defaultStreakInsuranceState);
 }
 
 export function clearStreakInsurance(): void {

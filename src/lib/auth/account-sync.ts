@@ -196,6 +196,14 @@ async function postAuthAction<T>(body: object, signal?: AbortSignal): Promise<T>
         message = 'Choose a password with at least 8 characters.';
       } else if (payload.error === 'account_creation_failed') {
         message = payload.message ?? 'Unable to create the account.';
+      } else if (payload.error === 'insurance_already_active') {
+        message = payload.message ?? 'Streak insurance is already armed for your next guess.';
+      } else if (payload.error === 'insurance_streak_too_low') {
+        message = payload.message ?? 'Build a 5-bird streak before buying streak insurance.';
+      } else if (payload.error === 'insufficient_seeds') {
+        message = payload.message ?? 'You do not have enough seeds for streak insurance.';
+      } else if (payload.error === 'insurance_purchase_failed') {
+        message = 'Unable to buy streak insurance right now.';
       }
     } catch {
       // Fall back to the generic message.

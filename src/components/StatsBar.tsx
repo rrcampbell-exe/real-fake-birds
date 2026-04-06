@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Flame, Target, Trophy, Zap } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { Flame, LoaderCircle, Target, Trophy, Zap } from 'lucide-react';
 import SeedIcon from '@/components/icons/SeedIcon';
 import { flushQueuedProgressEventsForSignedInUser } from '@/lib/auth/account-session';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -31,13 +32,20 @@ interface StatsBarProps {
   refreshTrigger?: unknown;
 }
 
+interface InsuranceErrorState {
+  interactionKey: string;
+  message: string;
+}
+
 export default function StatsBar({ refreshTrigger }: StatsBarProps) {
-  void refreshTrigger;
+  const pathname = usePathname();
+  const interactionKey = `${pathname}:${String(refreshTrigger)}`;
 
   const supabaseReady = hasSupabaseEnv();
   const storedStats = useStoredJson<typeof defaultBirdScore | null>('birdScore', null);
   const insuranceState = useStoredJson(STREAK_INSURANCE_STORAGE_KEY, defaultStreakInsuranceState);
-  const [insuranceError, setInsuranceError] = useState<string | null>(null);
+  const [insuranceErrorState, setInsuranceErrorState] = useState<InsuranceErrorState | null>(null);
+  const [isPurchasingInsurance, setIsPurchasingInsurance] = useState(false);
   const [isSignedIn, setIsSignedIn] = useState(false);
   const { birdsSeen, birdsIdentified, currentStreak, bestStreak, seeds } = normalizeBirdScore(storedStats);
   const accuracy = birdsSeen > 0 ? Math.floor((birdsIdentified / birdsSeen) * 100) : 0;
@@ -63,6 +71,9 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
     : 'All live themes unlocked';
   const canShowInsurance = effectiveInsuranceState.active
     || (currentStreak >= STREAK_INSURANCE_MIN_STREAK && seeds >= insuranceCost);
+  const insuranceError = insuranceErrorState?.interactionKey === interactionKey
+    ? insuranceErrorState.message
+    : null;
 
   useEffect(() => {
     if (!insuranceExpired) {
@@ -71,6 +82,19 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
 
     clearStreakInsurance();
   }, [insuranceExpired]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        setInsuranceErrorState(null);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (!supabaseReady) {
@@ -181,50 +205,71 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
                 </p>
                 <p className="mt-1 text-[0.7rem] leading-snug text-[var(--color-muted)]">
                   {effectiveInsuranceState.active
-                    ? `Armed. Your next wrong answer keeps the current streak alive.`
-                    : `Trade ${formatNumber(insuranceCost)} seeds to protect one miss.`}
+                    ? 'Armed for the next guess. If you miss it, your streak stays alive.'
+                    : `Trade ${formatNumber(insuranceCost)} seeds to protect the next guess.`}
                 </p>
               </div>
 
               <button
-                type="button"
-                disabled={effectiveInsuranceState.active || seeds < insuranceCost}
                 onClick={async () => {
-                  const result = isSignedIn
-                    ? await (async () => {
-                        try {
-                          await flushQueuedProgressEventsForSignedInUser();
-                          const response = await purchaseStreakInsuranceDirect();
-                          writeBirdScore(mergeNonRoundRemoteScore(response.progressSummary));
-                          writeStreakInsuranceState(response.insuranceState);
-                          return { ok: true, state: response.insuranceState };
-                        } catch (error) {
-                          return {
-                            ok: false,
-                            error: error instanceof Error ? error.message : 'Unable to buy streak insurance.',
-                            state: effectiveInsuranceState,
-                          };
-                        }
-                      })()
-                    : purchaseStreakInsurance();
-                  if (!result.ok) {
-                    setInsuranceError(result.error ?? 'Unable to buy streak insurance.');
+                  if (isPurchasingInsurance) {
                     return;
                   }
 
-                  setInsuranceError(null);
-                  track('streak_insurance_purchased', {
-                    cost: result.state.cost,
-                    purchased_at_streak: result.state.purchasedAtStreak,
-                  });
+                  setIsPurchasingInsurance(true);
+                  setInsuranceErrorState(null);
+                  try {
+                    const result = isSignedIn
+                      ? await (async () => {
+                          try {
+                            await flushQueuedProgressEventsForSignedInUser();
+                            const response = await purchaseStreakInsuranceDirect();
+                            writeBirdScore(mergeNonRoundRemoteScore(response.progressSummary));
+                            writeStreakInsuranceState(response.insuranceState);
+                            return { ok: true, state: response.insuranceState };
+                          } catch (error) {
+                            return {
+                              ok: false,
+                              error: error instanceof Error ? error.message : 'Unable to buy streak insurance.',
+                              state: effectiveInsuranceState,
+                            };
+                          }
+                        })()
+                      : purchaseStreakInsurance();
+                    if (!result.ok) {
+                      setInsuranceErrorState({
+                        interactionKey,
+                        message: result.error ?? 'Unable to buy streak insurance.',
+                      });
+                      return;
+                    }
+
+                    setInsuranceErrorState(null);
+                    track('streak_insurance_purchased', {
+                      cost: result.state.cost,
+                      purchased_at_streak: result.state.purchasedAtStreak,
+                    });
+                  } finally {
+                    setIsPurchasingInsurance(false);
+                  }
                 }}
+                disabled={isPurchasingInsurance || effectiveInsuranceState.active || seeds < insuranceCost}
                 className={`rounded-full px-3 py-1.5 text-[0.7rem] font-semibold transition ${
-                  effectiveInsuranceState.active || seeds < insuranceCost
+                  isPurchasingInsurance || effectiveInsuranceState.active || seeds < insuranceCost
                     ? 'bg-[var(--color-surface-border)] text-[var(--color-muted)]'
                     : 'bg-[var(--color-secondary)] text-[var(--color-on-secondary)]'
                 }`}
               >
-                {effectiveInsuranceState.active ? 'Protected' : `Protect Streak`}
+                <span className="inline-flex items-center gap-1.5">
+                  {isPurchasingInsurance ? (
+                    <LoaderCircle size={12} className="animate-spin" aria-hidden="true" />
+                  ) : null}
+                  {isPurchasingInsurance
+                    ? 'Protecting...'
+                    : effectiveInsuranceState.active
+                      ? 'Protected'
+                      : 'Protect Streak'}
+                </span>
               </button>
             </div>
 

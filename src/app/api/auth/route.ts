@@ -119,6 +119,13 @@ interface SyncDailyMissionCompletionRequest {
   date: string;
 }
 
+export function shouldClearServerStreakInsurance(
+  isActive: boolean,
+  pendingEvents: ProgressEvent[]
+): boolean {
+  return isActive && pendingEvents.some((event) => event.eventType === 'round-resolved');
+}
+
 interface AuthenticatedRequestContext {
   userId: string;
   email: string | null;
@@ -1294,7 +1301,7 @@ export async function POST(request: NextRequest) {
       const [{ data: progress }, { data: unlockedThemes }, { data: dailyHistory }, { data: milestoneRows }, { data: seenEvents }, leaderboardRow] = await Promise.all([
         admin
           .from('player_progress')
-          .select('birds_seen, birds_identified, current_streak, best_streak, current_daily_streak, best_daily_streak, seeds')
+          .select('birds_seen, birds_identified, current_streak, best_streak, current_daily_streak, best_daily_streak, seeds, streak_insurance_active, streak_insurance_purchased_at')
           .eq('user_id', context.userId)
           .maybeSingle(),
         admin
@@ -1322,6 +1329,10 @@ export async function POST(request: NextRequest) {
       const seenEventIds = new Set((seenEvents ?? []).map((event) => event.event_id as string));
       const pendingEvents = body.events.filter((event) => !seenEventIds.has(event.eventId));
       const ignoredEventIds = body.events.filter((event) => seenEventIds.has(event.eventId)).map((event) => event.eventId);
+      const clearServerStreakInsurance = shouldClearServerStreakInsurance(
+        Boolean(progress?.streak_insurance_active),
+        pendingEvents
+      );
 
       const nextSnapshot = reduceProgressEvents(
         createProgressSnapshot({
@@ -1366,6 +1377,12 @@ export async function POST(request: NextRequest) {
               current_daily_streak: nextSnapshot.score.currentDailyStreak,
               best_daily_streak: nextSnapshot.score.bestDailyStreak,
               seeds: nextSnapshot.score.seeds,
+              streak_insurance_active: clearServerStreakInsurance
+                ? false
+                : Boolean(progress?.streak_insurance_active),
+              streak_insurance_purchased_at: clearServerStreakInsurance
+                ? null
+                : progress?.streak_insurance_purchased_at ?? null,
             },
             { onConflict: 'user_id' }
           ),
@@ -1473,15 +1490,24 @@ export async function POST(request: NextRequest) {
       const insuranceCost = 25 + currentStreak * 2;
 
       if (progress?.streak_insurance_active) {
-        return NextResponse.json({ error: 'insurance_already_active' }, { status: 409 });
+        return NextResponse.json({
+          error: 'insurance_already_active',
+          message: 'Streak insurance is already armed for your next guess.',
+        }, { status: 409 });
       }
 
       if (currentStreak < 5) {
-        return NextResponse.json({ error: 'insurance_streak_too_low' }, { status: 409 });
+        return NextResponse.json({
+          error: 'insurance_streak_too_low',
+          message: 'Build a 5-bird streak before buying streak insurance.',
+        }, { status: 409 });
       }
 
       if (seeds < insuranceCost) {
-        return NextResponse.json({ error: 'insufficient_seeds' }, { status: 409 });
+        return NextResponse.json({
+          error: 'insufficient_seeds',
+          message: `You need ${insuranceCost} seeds for streak insurance.`,
+        }, { status: 409 });
       }
 
       await admin

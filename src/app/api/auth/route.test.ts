@@ -11,7 +11,7 @@ vi.mock('@/lib/supabase/server', () => ({
 
 import { hasSupabaseEnv } from '@/lib/supabase/env';
 import { createSupabaseAdminClient, createSupabaseServerClient } from '@/lib/supabase/server';
-import { POST } from './route';
+import { POST, shouldClearServerStreakInsurance } from './route';
 
 const mockedHasSupabaseEnv = vi.mocked(hasSupabaseEnv);
 const mockedCreateSupabaseAdminClient = vi.mocked(createSupabaseAdminClient);
@@ -493,5 +493,38 @@ describe('auth route', () => {
         purchasedAtStreak: 6,
       },
     });
+  });
+
+  it('clears server streak insurance after the next resolved round', () => {
+    expect(
+      shouldClearServerStreakInsurance(true, [
+        {
+          eventId: 'round-1',
+          eventType: 'round-resolved',
+          occurredAt: '2026-04-06T10:00:00.000Z',
+          payload: {
+            mode: 'classic',
+            isCorrect: true,
+            streakProtected: false,
+          },
+        },
+      ])
+    ).toBe(true);
+
+    expect(shouldClearServerStreakInsurance(true, [])).toBe(false);
+    expect(
+      shouldClearServerStreakInsurance(false, [
+        {
+          eventId: 'round-2',
+          eventType: 'round-resolved',
+          occurredAt: '2026-04-06T10:01:00.000Z',
+          payload: {
+            mode: 'classic',
+            isCorrect: false,
+            streakProtected: true,
+          },
+        },
+      ])
+    ).toBe(false);
   });
 });
