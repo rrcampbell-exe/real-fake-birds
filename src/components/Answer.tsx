@@ -10,6 +10,7 @@ import { correctnessText } from '@/lib/utils/correctness-text';
 import { useSound } from '@/hooks/useSound';
 import { useStoredJson } from '@/hooks/useStoredValue';
 import ShareButton from '@/components/ShareButton';
+import { isMajorStreakCheckpoint } from '@/lib/constants/streaks';
 import { defaultBirdScore, normalizeBirdScore } from '@/lib/utils/player-progress';
 import { buildMilestoneSharePayload, buildRoundSharePayload } from '@/lib/utils/share-data';
 import { formatNumber } from '@/lib/utils/number-format';
@@ -71,6 +72,7 @@ export default function Answer({
 }: AnswerProps) {
   const { play } = useSound();
   const score = normalizeBirdScore(useStoredJson<typeof defaultBirdScore | null>('birdScore', defaultBirdScore));
+  const isMajorStreak = isMajorStreakCheckpoint(score.currentStreak);
   const displayedFact = hints.fact?.content ?? fact;
   const [fakeFieldNote] = useState(getRandomFakeFieldNote);
   const sharePayload = isMilestone && earnedBadgeName
@@ -103,23 +105,25 @@ export default function Answer({
     if (isMilestone) {
       play('milestone');
     } else if (isStreak) {
-      play('streak');
+      play(isMajorStreak ? 'milestone' : 'streak');
     }
-  }, [isStreak, isMilestone, play]);
+  }, [isMajorStreak, isStreak, isMilestone, play]);
 
   useEffect(() => {
-    if (isStreak || isMilestone || newThemeUnlockName) {
-      const duration = 2500;
+    if (isMilestone || newThemeUnlockName || isStreak) {
+      const duration = isMilestone || newThemeUnlockName || isMajorStreak ? 2500 : 1200;
+      const particleCount = isMilestone || newThemeUnlockName || isMajorStreak ? 2 : 1;
+      const spread = isMilestone || newThemeUnlockName || isMajorStreak ? 55 : 40;
       const end = Date.now() + duration;
 
       const frame = () => {
-        confetti({ particleCount: 2, angle: 60, spread: 55, origin: { x: 0 }, colors: ['var(--color-secondary)', '#FFD700', '#fff'] });
-        confetti({ particleCount: 2, angle: 120, spread: 55, origin: { x: 1 }, colors: ['var(--color-secondary)', '#FFD700', '#fff'] });
+        confetti({ particleCount, angle: 60, spread, origin: { x: 0 }, colors: ['var(--color-secondary)', '#FFD700', '#fff'] });
+        confetti({ particleCount, angle: 120, spread, origin: { x: 1 }, colors: ['var(--color-secondary)', '#FFD700', '#fff'] });
         if (Date.now() < end) requestAnimationFrame(frame);
       };
       frame();
     }
-  }, [isStreak, isMilestone, newThemeUnlockName]);
+  }, [isMajorStreak, isStreak, isMilestone, newThemeUnlockName]);
 
   return (
     <div className="relative flex w-full flex-col items-center gap-5">

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Answer from './Answer';
 import type { HintState } from '@/types';
 
@@ -17,6 +17,11 @@ const emptyHints: HintState = {
 };
 
 describe('Answer', () => {
+  beforeEach(() => {
+    confettiMock.mockClear();
+    localStorage.clear();
+  });
+
   it('renders answer details and triggers the next-bird action', () => {
     localStorage.setItem(
       'birdScore',
@@ -56,14 +61,14 @@ describe('Answer', () => {
     expect(onAction).toHaveBeenCalled();
   });
 
-  it('fires confetti when a streak or milestone is achieved', () => {
+  it('fires confetti when a major streak checkpoint is achieved', () => {
     localStorage.setItem(
       'birdScore',
       JSON.stringify({
         birdsSeen: 8,
         birdsIdentified: 6,
-        currentStreak: 5,
-        bestStreak: 5,
+        currentStreak: 10,
+        bestStreak: 10,
         seeds: 2,
       })
     );
@@ -80,6 +85,39 @@ describe('Answer', () => {
         isCorrect
         isMilestone={false}
         seedsEarned={2}
+        newThemeUnlockName={null}
+        earnedBadgeName={null}
+        onAction={vi.fn()}
+      />
+    );
+
+    expect(confettiMock).toHaveBeenCalled();
+  });
+
+  it('fires confetti for a minor streak checkpoint', () => {
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 18,
+        birdsIdentified: 15,
+        currentStreak: 15,
+        bestStreak: 15,
+        seeds: 2,
+      })
+    );
+
+    render(
+      <Answer
+        birdData="Blue Robin"
+        isReal={false}
+        regionLabel={null}
+        sciName={null}
+        fact={null}
+        hints={emptyHints}
+        isStreak
+        isCorrect
+        isMilestone={false}
+        seedsEarned={6}
         newThemeUnlockName={null}
         earnedBadgeName={null}
         onAction={vi.fn()}
