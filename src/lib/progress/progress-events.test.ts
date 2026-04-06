@@ -53,7 +53,7 @@ describe('applyProgressEvents', () => {
       bestStreak: 10,
       currentDailyStreak: 0,
       bestDailyStreak: 0,
-      seeds: 38,
+      seeds: 33,
     });
     expect(snapshot.unlockedThemes).toContain('Raven');
     expect(snapshot.milestoneValues).toContain(10);
