@@ -71,6 +71,35 @@ export function normalizeBirdScore(scoreLike: Partial<BirdScore> | null | undefi
   };
 }
 
+export function mergeBirdScore(
+  scoreLike: Partial<BirdScore> | null | undefined,
+  baseScore: Partial<BirdScore> | null | undefined = readBirdScore()
+): BirdScore {
+  return normalizeBirdScore({
+    ...normalizeBirdScore(baseScore),
+    ...(scoreLike ?? {}),
+  });
+}
+
+export function mergeNonRoundRemoteScore(
+  scoreLike: Partial<BirdScore> | null | undefined,
+  localScore: BirdScore = readBirdScore()
+): BirdScore {
+  const remoteScore = mergeBirdScore(scoreLike, localScore);
+
+  return normalizeBirdScore({
+    ...localScore,
+    ...remoteScore,
+    birdsSeen: Math.max(localScore.birdsSeen, remoteScore.birdsSeen),
+    birdsIdentified: Math.max(localScore.birdsIdentified, remoteScore.birdsIdentified),
+    currentStreak: localScore.currentStreak,
+    justAchievedStreak: localScore.justAchievedStreak,
+    bestStreak: Math.max(localScore.bestStreak, remoteScore.bestStreak),
+    currentDailyStreak: Math.max(localScore.currentDailyStreak, remoteScore.currentDailyStreak),
+    bestDailyStreak: Math.max(localScore.bestDailyStreak, remoteScore.bestDailyStreak),
+  });
+}
+
 export function readBirdScore(): BirdScore {
   if (typeof window === 'undefined') return defaultBirdScore;
 
@@ -85,7 +114,7 @@ export function readBirdScore(): BirdScore {
 }
 
 export function writeBirdScore(scoreLike: Partial<BirdScore>, notify = true): BirdScore {
-  const score = normalizeBirdScore(scoreLike);
+  const score = mergeBirdScore(scoreLike);
   localStorage.setItem(BIRD_SCORE_STORAGE_KEY, JSON.stringify(score));
 
   if (notify) {
