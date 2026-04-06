@@ -308,4 +308,46 @@ describe('responseEval', () => {
       purchasedAtStreak: 0,
     });
   });
+
+  it('expires streak insurance after a correct answer', () => {
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 9,
+        birdsIdentified: 6,
+        currentStreak: 4,
+        justAchievedStreak: false,
+        bestStreak: 5,
+        seeds: 8,
+      })
+    );
+    localStorage.setItem(
+      'streakInsurance',
+      JSON.stringify({
+        active: true,
+        protectedMissesRemaining: 1,
+        cost: 33,
+        purchasedAtStreak: 4,
+      })
+    );
+
+    responseEval(
+      createEvent(),
+      true,
+      'real',
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn()
+    );
+
+    expect(JSON.parse(localStorage.getItem('streakInsurance')!)).toEqual({
+      active: false,
+      protectedMissesRemaining: 0,
+      cost: 0,
+      purchasedAtStreak: 0,
+    });
+  });
 });

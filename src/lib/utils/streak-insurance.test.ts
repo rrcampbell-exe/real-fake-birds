@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   consumeStreakInsurance,
   defaultStreakInsuranceState,
+  expireStreakInsuranceAfterGuess,
   getStreakInsuranceCost,
   isStreakInsuranceExpired,
   purchaseStreakInsurance,
@@ -93,6 +94,33 @@ describe('streak insurance', () => {
     );
 
     expect(consumeStreakInsurance()).toBe(false);
+    expect(readStreakInsuranceState()).toEqual(defaultStreakInsuranceState);
+  });
+
+  it('expires coverage after the next correct guess', () => {
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 14,
+        birdsIdentified: 10,
+        currentStreak: 6,
+        justAchievedStreak: false,
+        bestStreak: 6,
+        seeds: 100,
+      })
+    );
+    localStorage.setItem(
+      'streakInsurance',
+      JSON.stringify({
+        active: true,
+        protectedMissesRemaining: 1,
+        cost: 37,
+        purchasedAtStreak: 6,
+      })
+    );
+
+    expireStreakInsuranceAfterGuess();
+
     expect(readStreakInsuranceState()).toEqual(defaultStreakInsuranceState);
   });
 });

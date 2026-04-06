@@ -3,7 +3,7 @@ import { streakValues } from '../constants/streaks';
 import { getThemeUnlockByMilestoneValue } from '../constants/theme-unlocks';
 import { track } from '@/lib/analytics';
 import { applyRoundToSessionMissions } from './missions';
-import { consumeStreakInsurance } from './streak-insurance';
+import { consumeStreakInsurance, expireStreakInsuranceAfterGuess } from './streak-insurance';
 import {
   BIRD_MILESTONES_STORAGE_KEY,
   NEW_THEME_UNLOCK_STORAGE_KEY,
@@ -103,6 +103,7 @@ const responseEval = (
 
   if (isCorrect) {
     const birdScore = readBirdScore();
+    expireStreakInsuranceAfterGuess();
     const existingUnlockedThemeNames = new Set(getUnlockedThemeNames(birdScore));
     let { birdsSeen, birdsIdentified, currentStreak, bestStreak, seeds } = birdScore;
     const { justAchievedStreak } = birdScore;
