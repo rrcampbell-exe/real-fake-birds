@@ -1,8 +1,50 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('next/navigation', () => ({
+  usePathname: vi.fn(() => '/'),
+}));
+
+vi.mock('@/lib/supabase/env', () => ({
+  hasSupabaseEnv: vi.fn(() => false),
+}));
+
+vi.mock('@/lib/supabase/client', () => ({
+  getSupabaseBrowserClient: vi.fn(() => ({
+    auth: {
+      getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: 'user-1' } } } }),
+      onAuthStateChange: vi.fn(() => ({
+        data: {
+          subscription: {
+            unsubscribe: vi.fn(),
+          },
+        },
+      })),
+    },
+  })),
+}));
+
+vi.mock('@/lib/auth/account-session', () => ({
+  flushQueuedProgressEventsForSignedInUser: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@/lib/auth/account-sync', () => ({
+  purchaseStreakInsuranceDirect: vi.fn(),
+}));
+
 import StatsBar from './StatsBar';
+import { hasSupabaseEnv } from '@/lib/supabase/env';
+import { purchaseStreakInsuranceDirect } from '@/lib/auth/account-sync';
+
+const mockedHasSupabaseEnv = vi.mocked(hasSupabaseEnv);
+const mockedPurchaseStreakInsuranceDirect = vi.mocked(purchaseStreakInsuranceDirect);
 
 describe('StatsBar', () => {
+  beforeEach(() => {
+    mockedHasSupabaseEnv.mockReturnValue(false);
+    mockedPurchaseStreakInsuranceDirect.mockReset();
+  });
+
   it('renders nothing when no bird score exists', () => {
     const { container } = render(<StatsBar />);
     expect(container).toBeEmptyDOMElement();
@@ -78,5 +120,124 @@ describe('StatsBar', () => {
 
     expect(screen.getByText('14 to unlock Contour Feather Badge')).toBeInTheDocument();
     expect(screen.queryByText(/Robin Theme/i)).not.toBeInTheDocument();
+  });
+
+  it('clears insurance purchase errors after the player advances the round', async () => {
+    mockedHasSupabaseEnv.mockReturnValue(true);
+    mockedPurchaseStreakInsuranceDirect.mockRejectedValue(
+      new Error('Streak insurance is already armed for your next guess.')
+    );
+
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 10,
+        birdsIdentified: 7,
+        currentStreak: 5,
+        bestStreak: 9,
+        seeds: 40,
+      })
+    );
+
+    const view = render(<StatsBar refreshTrigger={0} />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Protect Streak' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Streak insurance is already armed for your next guess.')).toBeInTheDocument();
+    });
+
+    view.rerender(<StatsBar refreshTrigger={1} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Streak insurance is already armed for your next guess.')).not.toBeInTheDocument();
+    });
+  });
+
+  it('shows a loading state and blocks repeated taps while buying streak insurance', async () => {
+    mockedHasSupabaseEnv.mockReturnValue(true);
+
+    let resolvePurchase: ((value: {
+      action: 'purchase-streak-insurance';
+      progressSummary: {
+        birdsSeen: number;
+        birdsIdentified: number;
+        seeds: number;
+        currentStreak: number;
+        bestStreak: number;
+        currentDailyStreak: number;
+        bestDailyStreak: number;
+      };
+      insuranceState: {
+        active: boolean;
+        protectedMissesRemaining: number;
+        cost: number;
+        purchasedAtStreak: number;
+      };
+    }) => void) | null = null;
+
+    mockedPurchaseStreakInsuranceDirect.mockImplementation(
+      () => new Promise((resolve) => {
+        resolvePurchase = resolve;
+      })
+    );
+
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 10,
+        birdsIdentified: 7,
+        currentStreak: 5,
+        bestStreak: 9,
+        seeds: 40,
+      })
+    );
+
+    render(<StatsBar refreshTrigger={0} />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Protect Streak/i }));
+
+    await waitFor(() => {
+      expect(mockedPurchaseStreakInsuranceDirect).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.getByRole('button', { name: /Protecting/i })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: /Protecting/i }));
+    expect(mockedPurchaseStreakInsuranceDirect).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolvePurchase?.({
+        action: 'purchase-streak-insurance',
+        progressSummary: {
+          birdsSeen: 10,
+          birdsIdentified: 7,
+          seeds: 5,
+          currentStreak: 5,
+          bestStreak: 9,
+          currentDailyStreak: 0,
+          bestDailyStreak: 0,
+        },
+        insuranceState: {
+          active: true,
+          protectedMissesRemaining: 1,
+          cost: 35,
+          purchasedAtStreak: 5,
+        },
+      });
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /Protecting/i })).not.toBeInTheDocument();
+    });
   });
 });
