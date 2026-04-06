@@ -227,7 +227,7 @@ export function buildSignUpPromptContent(options: {
   let eyebrow = 'Protect your progress';
   let title = 'Don\'t lose your flock.';
   let body = 'Save your birds, streaks, seeds, badges, and themes so they show up everywhere you play.';
-  let summary = `${formatNumber(birdsSeen)} seen • ${formatNumber(birdsIdentified)} correct • ${formatNumber(seeds)} seeds`;
+  const summary = `${formatNumber(birdsSeen)} seen • ${formatNumber(birdsIdentified)} correct • ${formatNumber(seeds)} seeds`;
 
   if (birdsSeen >= 50) {
     eyebrow = 'This is real progress now';

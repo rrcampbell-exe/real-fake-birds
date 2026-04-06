@@ -19,7 +19,6 @@ export default function MissionPanel({
   const { play } = useSound();
   const {
     missions,
-    allClaimed,
     allCompleted,
     bonusClaimed,
     missionSetBonusSeeds,
