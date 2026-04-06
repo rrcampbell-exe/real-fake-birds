@@ -13,7 +13,7 @@ import { track } from '@/lib/analytics';
 import { getThemeUnlockByMilestoneValue } from '@/lib/constants/theme-unlocks';
 import { isNextMilestoneEval, isNextStreakEval } from '@/lib/utils/goals-evaluation';
 import { useStoredJson } from '@/hooks/useStoredValue';
-import { defaultBirdScore, getUnlockedThemeNames, normalizeBirdScore } from '@/lib/utils/player-progress';
+import { defaultBirdScore, getUnlockedThemeNames, mergeNonRoundRemoteScore, normalizeBirdScore } from '@/lib/utils/player-progress';
 import { formatNumber } from '@/lib/utils/number-format';
 import {
   clearStreakInsurance,
@@ -74,7 +74,6 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
 
   useEffect(() => {
     if (!supabaseReady) {
-      setIsSignedIn(false);
       return;
     }
 
@@ -196,15 +195,7 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
                         try {
                           await flushQueuedProgressEventsForSignedInUser();
                           const response = await purchaseStreakInsuranceDirect();
-                          writeBirdScore({
-                            birdsSeen: response.progressSummary.birdsSeen,
-                            birdsIdentified: response.progressSummary.birdsIdentified,
-                            seeds: response.progressSummary.seeds,
-                            currentStreak: response.progressSummary.currentStreak,
-                            bestStreak: response.progressSummary.bestStreak,
-                            currentDailyStreak: response.progressSummary.currentDailyStreak,
-                            bestDailyStreak: response.progressSummary.bestDailyStreak,
-                          });
+                          writeBirdScore(mergeNonRoundRemoteScore(response.progressSummary));
                           writeStreakInsuranceState(response.insuranceState);
                           return { ok: true, state: response.insuranceState };
                         } catch (error) {

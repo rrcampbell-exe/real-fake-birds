@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { Binoculars, Bird, BookOpen, Feather, Flame, Sprout, Target, Trophy, HatGlasses } from 'lucide-react';
 import ShareButton from '@/components/ShareButton';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import LeaderboardAvatar from '@/components/leaderboard/LeaderboardAvatar';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
+import { useHasHydrated } from '@/hooks/useHasHydrated';
 import { buildWeeklyLeaderboardSharePayload } from '@/lib/utils/share-data';
 import { getTimeRemainingInWeek, markLeaderboardWeekSeen } from '@/lib/utils/weekly-leaderboard';
 import type { WeeklyChallengeIcon } from '@/types';
@@ -22,20 +23,35 @@ const challengeIcons: Record<WeeklyChallengeIcon, typeof Trophy> = {
   target: Target,
 };
 
+function subscribeToMinuteTicker(onStoreChange: () => void) {
+  const interval = window.setInterval(onStoreChange, 60_000);
+  return () => {
+    window.clearInterval(interval);
+  };
+}
+
+function useMinuteTimestamp(enabled: boolean) {
+  return useSyncExternalStore(
+    enabled ? subscribeToMinuteTicker : () => () => {},
+    () => Date.now(),
+    () => 0
+  );
+}
+
 export default function LeaderboardPage() {
   const { accountUsername } = useAccountState();
   const { leaderboard, isLoading, error, reload } = useLeaderboard();
-  const [hasMounted, setHasMounted] = useState(false);
-  const [clock, setClock] = useState(() => ({
-    totalMs: 0,
-    days: 0,
-    hours: 0,
-    minutes: 0,
-  }));
-
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
+  const hasMounted = useHasHydrated();
+  const now = useMinuteTimestamp(Boolean(leaderboard));
+  const clock = useMemo(
+    () => (leaderboard ? getTimeRemainingInWeek(new Date(now), leaderboard.weekStart) : {
+      totalMs: 0,
+      days: 0,
+      hours: 0,
+      minutes: 0,
+    }),
+    [leaderboard, now]
+  );
 
   useEffect(() => {
     if (!leaderboard) {
@@ -43,15 +59,6 @@ export default function LeaderboardPage() {
     }
 
     markLeaderboardWeekSeen(leaderboard.weekStart);
-    setClock(getTimeRemainingInWeek(new Date(), leaderboard.weekStart));
-
-    const interval = window.setInterval(() => {
-      setClock(getTimeRemainingInWeek(new Date(), leaderboard.weekStart));
-    }, 60_000);
-
-    return () => {
-      window.clearInterval(interval);
-    };
   }, [leaderboard]);
 
   const sharePayload = useMemo(() => {

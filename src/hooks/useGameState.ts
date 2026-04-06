@@ -432,7 +432,7 @@ export function useGameState(options?: UseGameStateOptions) {
         }));
       }
     },
-    [birdData, birdScore.seeds, hasAnswered, hintLoading, hints, isError, isLoading, isReal, queueSeedRefund, queueSeedSpend, regionLabel, sciName]
+    [birdData, birdScore.seeds, hasAnswered, hintLoading, hints, hintsKey, isError, isLoading, isReal, mode, queueSeedRefund, queueSeedSpend, regionLabel, sciName]
   );
 
   const revealCurrentBird = useCallback(() => {
@@ -446,7 +446,7 @@ export function useGameState(options?: UseGameStateOptions) {
 
     writeCurrentRoundJournalRevealKey(currentBirdKey);
     queueSeedSpend(REVEAL_BIRD_COST);
-  }, [birdData, birdScore.seeds, canRevealCurrentBird, currentBirdKey, currentJournalEntry, hasAnswered, isError, isLoading, isReal, queueSeedSpend]);
+  }, [birdScore.seeds, canRevealCurrentBird, currentBirdKey, currentJournalEntry, hasAnswered, isError, isLoading, queueSeedSpend]);
 
   const skipCurrentBird = useCallback(() => {
     if (hasAnswered || isLoading || isError || !birdData || !canSkipCurrentBird) {

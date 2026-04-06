@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Bird, Menu } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useAccountState } from '@/components/account/AccountStateProvider';
+import { useHasHydrated } from '@/hooks/useHasHydrated';
 import { useStoredBoolean, useStoredJson } from '@/hooks/useStoredValue';
 import { useSound } from '@/hooks/useSound';
 import { NEW_THEME_UNLOCK_STORAGE_KEY, UNSEEN_BADGES_STORAGE_KEY } from '@/lib/utils/player-progress';
@@ -45,8 +46,7 @@ export default function BottomNav() {
     : undefined;
   const currentWeekStart = getCurrentWeekStart();
   const showLeaderboardNotification = Boolean(accountUsername) && lastSeenLeaderboardWeek !== currentWeekStart;
-  const [hasMounted, setHasMounted] = useState(false);
-  useEffect(() => { setHasMounted(true); }, []);
+  const hasMounted = useHasHydrated();
   const showMenuDot = useMemo(
     () => hasMounted && (hasIncompleteDaily || hasPendingRewardClaims || hasUnseenBadges || hasNewThemeUnlock || showLeaderboardNotification),
     [hasMounted, hasIncompleteDaily, hasNewThemeUnlock, hasPendingRewardClaims, hasUnseenBadges, showLeaderboardNotification]

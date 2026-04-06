@@ -39,7 +39,6 @@ export default function UsernameAvailabilityCard({
     isLoadingAccount,
     accountEmail,
     accountUsername,
-    remoteSummary,
     refreshAccountState,
   } = useAccountState();
   const { value, normalizedUsername, issues, available, isChecking, error, setValue } = useUsernameValidation();

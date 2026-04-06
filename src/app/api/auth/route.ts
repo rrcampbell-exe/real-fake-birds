@@ -1091,7 +1091,6 @@ export async function POST(request: NextRequest) {
         challenge,
         context?.userId ?? null
       );
-      const topEntries = ranked.entries.slice(0, 10);
       const currentUserEntry = ranked.currentUserEntry;
       const avatarUserIds = Array.from(
         new Set(

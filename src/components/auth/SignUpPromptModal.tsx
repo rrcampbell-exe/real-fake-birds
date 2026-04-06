@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bird, ShieldCheck, Sparkles, Trophy, X } from 'lucide-react';
 import UsernameAvailabilityCard from '@/components/auth/UsernameAvailabilityCard';
@@ -29,8 +29,29 @@ export default function SignUpPromptModal({
   onAuthenticated,
 }: SignUpPromptModalProps) {
   const unlockedThemeNames = useStoredJson<string[]>(UNLOCKED_THEMES_STORAGE_KEY, []);
+  const shouldLoadLeaderboard = birdsSeen >= 50 && hasSupabaseEnv();
   const [leaderboard, setLeaderboard] = useState<GetLeaderboardResponse['leaderboard'] | null>(null);
-  const [leaderboardStatus, setLeaderboardStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [leaderboardStatus, setLeaderboardStatus] = useState<'idle' | 'ready' | 'error'>('idle');
+
+  const handleDismiss = useCallback(() => {
+    track('signup_prompt_dismissed', {
+      threshold,
+      birds_seen: birdsSeen,
+      birds_identified: birdsIdentified,
+      challenge_id: leaderboard?.challenge.id,
+    });
+    onDismiss();
+  }, [birdsIdentified, birdsSeen, leaderboard, onDismiss, threshold]);
+
+  const handleAuthenticated = useCallback(() => {
+    track('signup_prompt_authenticated', {
+      threshold,
+      birds_seen: birdsSeen,
+      birds_identified: birdsIdentified,
+      challenge_id: leaderboard?.challenge.id,
+    });
+    onAuthenticated();
+  }, [birdsIdentified, birdsSeen, leaderboard, onAuthenticated, threshold]);
 
   useEffect(() => {
     track('signup_prompt_viewed', {
@@ -56,15 +77,14 @@ export default function SignUpPromptModal({
       document.body.style.overflow = '';
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [onDismiss]);
+  }, [handleDismiss]);
 
   useEffect(() => {
-    if (birdsSeen < 50 || !hasSupabaseEnv()) {
+    if (!shouldLoadLeaderboard) {
       return;
     }
 
     const controller = new AbortController();
-    setLeaderboardStatus('loading');
 
     fetchWeeklyLeaderboard(controller.signal)
       .then((response) => {
@@ -86,27 +106,15 @@ export default function SignUpPromptModal({
     return () => {
       controller.abort();
     };
-  }, [birdsSeen]);
+  }, [shouldLoadLeaderboard]);
 
-  const handleDismiss = () => {
-    track('signup_prompt_dismissed', {
-      threshold,
-      birds_seen: birdsSeen,
-      birds_identified: birdsIdentified,
-      challenge_id: leaderboard?.challenge.id,
-    });
-    onDismiss();
-  };
-
-  const handleAuthenticated = () => {
-    track('signup_prompt_authenticated', {
-      threshold,
-      birds_seen: birdsSeen,
-      birds_identified: birdsIdentified,
-      challenge_id: leaderboard?.challenge.id,
-    });
-    onAuthenticated();
-  };
+  const resolvedLeaderboardStatus = shouldLoadLeaderboard
+    ? leaderboardStatus === 'error'
+      ? 'error'
+      : leaderboard
+        ? 'ready'
+        : 'loading'
+    : 'idle';
 
   const content = useMemo(() => buildSignUpPromptContent({
     birdsSeen,
@@ -191,13 +199,13 @@ export default function SignUpPromptModal({
                 </motion.div>
 
                 <div className="mt-5 space-y-2.5">
-                  {leaderboardStatus === 'loading' && birdsSeen >= 50 ? (
+                  {resolvedLeaderboardStatus === 'loading' ? (
                     <motion.div
                       variants={{ hidden: { opacity: 0, x: -10 }, visible: { opacity: 1, x: 0 } }}
                       className="flex items-start gap-3 rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-4 py-3"
                     >
                       <Trophy size={18} className="mt-0.5 shrink-0 text-[var(--color-secondary)]" />
-                      <p className="text-sm leading-6 text-[var(--color-text)]">Checking this week's challenge pace.</p>
+                      <p className="text-sm leading-6 text-[var(--color-text)]">Checking this week&apos;s challenge pace.</p>
                     </motion.div>
                   ) : null}
 

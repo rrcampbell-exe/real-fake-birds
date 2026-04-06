@@ -1,6 +1,7 @@
 import { CURRENT_HINTS_STORAGE_KEY } from '@/lib/constants/hints';
 import { applyProgressEvents, pullAccountProgress, syncLocalProgress, type LocalProgressPayload } from '@/lib/auth/account-sync';
 import { applyPulledAccountProgress } from '@/lib/auth/account-sync-local';
+import type { ProgressEvent } from '@/lib/progress/progress-events';
 import { clearProgressEventOutbox, readProgressEventOutbox, removeQueuedProgressEvents } from '@/lib/progress/progress-event-outbox';
 import { readBirdJournal, writeBirdJournal } from '@/lib/utils/bird-journal';
 import {
@@ -14,10 +15,12 @@ import {
   defaultBirdScore,
   getEarnedMilestonesForBirds,
   getUnlockedThemeNames,
+  mergeBirdScore,
   setUnlockedThemeNames,
   writeBirdScore,
   readBirdScore,
 } from '@/lib/utils/player-progress';
+import type { BirdScore } from '@/types';
 import { resetSessionMissions } from '@/lib/utils/missions';
 import {
   defaultStreakInsuranceState,
@@ -64,6 +67,34 @@ function resetEphemeralLocalState(): void {
   localStorage.removeItem(`${CURRENT_HINTS_STORAGE_KEY}:daily`);
 }
 
+export function mergeFlushedProgressScore(
+  localScore: BirdScore,
+  remoteScoreLike: Partial<BirdScore>,
+  flushedEvents: ProgressEvent[]
+): BirdScore {
+  const remoteScore = mergeBirdScore(remoteScoreLike, defaultBirdScore);
+  const batchCanResetStreak = flushedEvents.some(
+    (event) =>
+      event.eventType === 'round-resolved' && !event.payload.isCorrect && !event.payload.streakProtected
+  );
+
+  return mergeBirdScore(
+    {
+      ...remoteScore,
+      birdsSeen: Math.max(localScore.birdsSeen, remoteScore.birdsSeen),
+      birdsIdentified: Math.max(localScore.birdsIdentified, remoteScore.birdsIdentified),
+      currentStreak: batchCanResetStreak
+        ? remoteScore.currentStreak
+        : Math.max(localScore.currentStreak, remoteScore.currentStreak),
+      justAchievedStreak: localScore.justAchievedStreak || remoteScore.justAchievedStreak,
+      bestStreak: Math.max(localScore.bestStreak, remoteScore.bestStreak),
+      currentDailyStreak: Math.max(localScore.currentDailyStreak, remoteScore.currentDailyStreak),
+      bestDailyStreak: Math.max(localScore.bestDailyStreak, remoteScore.bestDailyStreak),
+    },
+    localScore
+  );
+}
+
 export async function flushQueuedProgressEventsForSignedInUser(): Promise<void> {
   if (progressFlushPromise) {
     await progressFlushPromise;
@@ -79,7 +110,7 @@ export async function flushQueuedProgressEventsForSignedInUser(): Promise<void> 
 
       const response = await applyProgressEvents(queuedEvents);
       removeQueuedProgressEvents([...response.appliedEventIds, ...response.ignoredEventIds]);
-      writeBirdScore(response.snapshot.score);
+      writeBirdScore(mergeFlushedProgressScore(readBirdScore(), response.snapshot.score, queuedEvents));
       setUnlockedThemeNames(response.snapshot.unlockedThemes);
       writeDailyChallengeHistory(response.snapshot.dailyChallengeHistory);
     }
