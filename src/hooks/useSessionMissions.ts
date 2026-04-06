@@ -25,14 +25,17 @@ import {
   readSessionMissions,
   writeSessionMissions,
 } from '@/lib/utils/missions';
-import { readBirdScore, writeBirdScore } from '@/lib/utils/player-progress';
+import { getTodayChallengeDate } from '@/lib/utils/daily-challenge';
+import { mergeNonRoundRemoteScore, readBirdScore, writeBirdScore } from '@/lib/utils/player-progress';
 import type { DailyMissionHistoryEntry, SessionMissionsState } from '@/types';
+import { useLocalChallengeDate } from './useLocalChallengeDate';
 
 export function useSessionMissions() {
   const supabaseReady = hasSupabaseEnv();
+  const today = useLocalChallengeDate();
   const storedState = useStoredJson<SessionMissionsState>(
     SESSION_MISSIONS_STORAGE_KEY,
-    readSessionMissions()
+    readSessionMissions(today)
   );
   const missionHistory = useStoredJson<DailyMissionHistoryEntry[]>(
     DAILY_MISSION_HISTORY_STORAGE_KEY,
@@ -50,8 +53,13 @@ export function useSessionMissions() {
   }, [missionHistory]);
 
   useEffect(() => {
+    if (storedState.date !== today) {
+      writeSessionMissions(readSessionMissions(today));
+    }
+  }, [storedState.date, today]);
+
+  useEffect(() => {
     if (!supabaseReady) {
-      setIsSignedIn(false);
       return;
     }
 
@@ -96,15 +104,7 @@ export function useSessionMissions() {
       try {
         await flushQueuedProgressEventsForSignedInUser();
         const response = await syncDailyMissionCompletion(storedState.date);
-        writeBirdScore({
-          birdsSeen: response.progressSummary.birdsSeen,
-          birdsIdentified: response.progressSummary.birdsIdentified,
-          currentStreak: response.progressSummary.currentStreak,
-          seeds: response.progressSummary.seeds,
-          bestStreak: response.progressSummary.bestStreak,
-          currentDailyStreak: response.progressSummary.currentDailyStreak,
-          bestDailyStreak: response.progressSummary.bestDailyStreak,
-        });
+        writeBirdScore(mergeNonRoundRemoteScore(response.progressSummary));
       } catch {
         syncedCompletionDateRef.current = null;
       }
@@ -122,24 +122,17 @@ export function useSessionMissions() {
     }
 
     const previousScore = readBirdScore();
-    const previousState = readSessionMissions(storedState.date);
+    const currentDate = getTodayChallengeDate();
+    const previousState = readSessionMissions(currentDate);
     claimMissionReward(missionId);
 
     try {
       await flushQueuedProgressEventsForSignedInUser();
       const response = await claimMissionRewardDirect({
-        claimId: `${storedState.date}:${missionId}`,
+        claimId: `${currentDate}:${missionId}`,
         rewardSeeds: mission.rewardSeeds,
       });
-      writeBirdScore({
-        birdsSeen: response.progressSummary.birdsSeen,
-        birdsIdentified: response.progressSummary.birdsIdentified,
-        currentStreak: response.progressSummary.currentStreak,
-        seeds: response.progressSummary.seeds,
-        bestStreak: response.progressSummary.bestStreak,
-        currentDailyStreak: response.progressSummary.currentDailyStreak,
-        bestDailyStreak: response.progressSummary.bestDailyStreak,
-      });
+      writeBirdScore(mergeNonRoundRemoteScore(response.progressSummary));
       return markMissionRewardClaimed(missionId);
     } catch (error) {
       writeBirdScore(previousScore);
@@ -158,24 +151,17 @@ export function useSessionMissions() {
     }
 
     const previousScore = readBirdScore();
-    const previousState = readSessionMissions(storedState.date);
+    const currentDate = getTodayChallengeDate();
+    const previousState = readSessionMissions(currentDate);
     claimMissionSetBonus();
 
     try {
       await flushQueuedProgressEventsForSignedInUser();
       const response = await claimMissionSetBonusDirect({
-        claimId: `${storedState.date}:mission-set-bonus`,
+        claimId: `${currentDate}:mission-set-bonus`,
         rewardSeeds: DAILY_MISSION_BONUS_SEEDS,
       });
-      writeBirdScore({
-        birdsSeen: response.progressSummary.birdsSeen,
-        birdsIdentified: response.progressSummary.birdsIdentified,
-        currentStreak: response.progressSummary.currentStreak,
-        seeds: response.progressSummary.seeds,
-        bestStreak: response.progressSummary.bestStreak,
-        currentDailyStreak: response.progressSummary.currentDailyStreak,
-        bestDailyStreak: response.progressSummary.bestDailyStreak,
-      });
+      writeBirdScore(mergeNonRoundRemoteScore(response.progressSummary));
       return markMissionSetBonusClaimed();
     } catch (error) {
       writeBirdScore(previousScore);

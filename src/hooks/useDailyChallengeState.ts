@@ -11,7 +11,6 @@ import {
   createDailyChallengeState,
   getDailyChallengeRewardSeeds,
   getDailyChallengeHistoryStreak,
-  getTodayChallengeDate,
   readDailyChallengeHistory,
   readDailyChallengeState,
   recordDailyChallengeRound,
@@ -19,9 +18,10 @@ import {
 } from '@/lib/utils/daily-challenge';
 import { track } from '@/lib/analytics';
 import type { DailyChallengeHistoryEntry, DailyChallengeState, GameRoundResult } from '@/types';
+import { useLocalChallengeDate } from './useLocalChallengeDate';
 
 export function useDailyChallengeState() {
-  const today = getTodayChallengeDate();
+  const today = useLocalChallengeDate();
   const storedState = useStoredJson<DailyChallengeState>(
     DAILY_CHALLENGE_STORAGE_KEY,
     createDailyChallengeState(today)
