@@ -1487,7 +1487,19 @@ export async function POST(request: NextRequest) {
 
       const currentStreak = progress?.current_streak ?? 0;
       const seeds = progress?.seeds ?? 0;
-      const insuranceCost = 25 + currentStreak * 2;
+      const insuranceCost = currentStreak >= 75
+        ? 55
+        : currentStreak >= 50
+          ? 42
+          : currentStreak >= 35
+            ? 32
+            : currentStreak >= 25
+              ? 24
+              : currentStreak >= 15
+                ? 18
+                : currentStreak >= 10
+                  ? 14
+                  : 10;
 
       if (progress?.streak_insurance_active) {
         return NextResponse.json({

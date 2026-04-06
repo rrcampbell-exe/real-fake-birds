@@ -9,7 +9,7 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { hasSupabaseEnv } from '@/lib/supabase/env';
 import { purchaseStreakInsuranceDirect } from '@/lib/auth/account-sync';
 import { milestones } from '@/lib/constants/milestones';
-import { streakValues } from '@/lib/constants/streaks';
+import { majorStreakValues, streakValues } from '@/lib/constants/streaks';
 import { track } from '@/lib/analytics';
 import { getThemeUnlockByMilestoneValue } from '@/lib/constants/theme-unlocks';
 import { isNextMilestoneEval, isNextStreakEval } from '@/lib/utils/goals-evaluation';
@@ -50,7 +50,7 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
   const { birdsSeen, birdsIdentified, currentStreak, bestStreak, seeds } = normalizeBirdScore(storedStats);
   const accuracy = birdsSeen > 0 ? Math.floor((birdsIdentified / birdsSeen) * 100) : 0;
   const nextStreak = isNextStreakEval(streakValues, currentStreak);
-  const streakCountdown = nextStreak ? `${nextStreak - currentStreak} to bonus` : 'max streak tier';
+  const nextMajorStreak = isNextStreakEval(majorStreakValues, currentStreak);
   const milestoneValues = milestones.map((milestone) => milestone.value);
   const nextMilestone = isNextMilestoneEval(milestoneValues, birdsIdentified);
   const previousMilestone = [...milestoneValues].reverse().find((value) => value <= birdsIdentified) ?? 0;
@@ -62,15 +62,19 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
     ? ((birdsIdentified - previousMilestone) / (nextMilestone - previousMilestone)) * 100
     : 100;
   const insuranceCost = getStreakInsuranceCost(currentStreak);
+  const insuranceShortfall = Math.max(insuranceCost - seeds, 0);
   const insuranceExpired = isStreakInsuranceExpired(insuranceState, currentStreak);
   const effectiveInsuranceState = insuranceExpired ? defaultStreakInsuranceState : insuranceState;
+  const nextStreakLabel = nextStreak
+    ? `${nextStreak - currentStreak} to bonus`
+    : 'Top perch reached!';
   const unlockLabel = nextMilestone
     ? nextUnlock && !nextUnlock.comingSoon && !isNextThemeAlreadyUnlocked
       ? `${formatNumber(remainingMilestoneBirds)} to unlock ${nextUnlock.milestoneBadge} Badge and ${nextUnlock.themeName} Theme`
       : `${formatNumber(remainingMilestoneBirds)} to unlock ${milestones.find((milestone) => milestone.value === nextMilestone)?.badge} Badge`
     : 'All live themes unlocked';
   const canShowInsurance = effectiveInsuranceState.active
-    || (currentStreak >= STREAK_INSURANCE_MIN_STREAK && seeds >= insuranceCost);
+    || currentStreak >= STREAK_INSURANCE_MIN_STREAK;
   const insuranceError = insuranceErrorState?.interactionKey === interactionKey
     ? insuranceErrorState.message
     : null;
@@ -151,7 +155,7 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
             <div className="flex min-w-0 flex-col">
               <span className="font-bold text-sm leading-none">{formatNumber(currentStreak)}</span>
               <span className="text-[var(--color-muted)] text-[0.6rem] leading-tight truncate">
-                {streakCountdown}
+                {nextStreakLabel}
               </span>
             </div>
           </div>
@@ -206,7 +210,9 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
                 <p className="mt-1 text-[0.7rem] leading-snug text-[var(--color-muted)]">
                   {effectiveInsuranceState.active
                     ? 'Armed for the next guess. If you miss it, your streak stays alive.'
-                    : `Trade ${formatNumber(insuranceCost)} seeds to protect the next guess.`}
+                    : insuranceShortfall > 0
+                      ? `Bank ${formatNumber(insuranceShortfall)} more seeds to protect your next guess.`
+                      : `Trade ${formatNumber(insuranceCost)} seeds to protect the next guess.`}
                 </p>
               </div>
 
@@ -268,7 +274,9 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
                     ? 'Protecting...'
                     : effectiveInsuranceState.active
                       ? 'Protected'
-                      : 'Protect Streak'}
+                      : seeds < insuranceCost
+                        ? `Need ${formatNumber(insuranceShortfall)} more`
+                        : 'Protect Streak'}
                 </span>
               </button>
             </div>

@@ -10,9 +10,14 @@ import {
 } from './streak-insurance';
 
 describe('streak insurance', () => {
-  it('prices protection from the current streak', () => {
-    expect(getStreakInsuranceCost(5)).toBe(35);
-    expect(getStreakInsuranceCost(12)).toBe(49);
+  it('prices protection in streak bands', () => {
+    expect(getStreakInsuranceCost(5)).toBe(10);
+    expect(getStreakInsuranceCost(12)).toBe(14);
+    expect(getStreakInsuranceCost(18)).toBe(18);
+    expect(getStreakInsuranceCost(27)).toBe(24);
+    expect(getStreakInsuranceCost(38)).toBe(32);
+    expect(getStreakInsuranceCost(52)).toBe(42);
+    expect(getStreakInsuranceCost(80)).toBe(55);
   });
 
   it('purchases one protected miss when the player has a qualifying streak', () => {
@@ -34,10 +39,10 @@ describe('streak insurance', () => {
     expect(readStreakInsuranceState()).toEqual({
       active: true,
       protectedMissesRemaining: 1,
-      cost: 37,
+      cost: 10,
       purchasedAtStreak: 6,
     });
-    expect(JSON.parse(localStorage.getItem('birdScore') ?? '{}').seeds).toBe(63);
+    expect(JSON.parse(localStorage.getItem('birdScore') ?? '{}').seeds).toBe(90);
   });
 
   it('refuses to purchase protection before the minimum streak', () => {
@@ -65,7 +70,7 @@ describe('streak insurance', () => {
         {
           active: true,
           protectedMissesRemaining: 1,
-          cost: 35,
+          cost: 10,
           purchasedAtStreak: 5,
         },
         6
@@ -88,7 +93,7 @@ describe('streak insurance', () => {
       JSON.stringify({
         active: true,
         protectedMissesRemaining: 1,
-        cost: 35,
+        cost: 10,
         purchasedAtStreak: 5,
       })
     );
@@ -114,7 +119,7 @@ describe('streak insurance', () => {
       JSON.stringify({
         active: true,
         protectedMissesRemaining: 1,
-        cost: 37,
+        cost: 10,
         purchasedAtStreak: 6,
       })
     );

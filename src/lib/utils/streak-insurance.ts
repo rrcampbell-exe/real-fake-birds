@@ -36,7 +36,31 @@ function normalizeState(
 }
 
 export function getStreakInsuranceCost(currentStreak: number): number {
-  return 25 + currentStreak * 2;
+  if (currentStreak >= 75) {
+    return 55;
+  }
+
+  if (currentStreak >= 50) {
+    return 42;
+  }
+
+  if (currentStreak >= 35) {
+    return 32;
+  }
+
+  if (currentStreak >= 25) {
+    return 24;
+  }
+
+  if (currentStreak >= 15) {
+    return 18;
+  }
+
+  if (currentStreak >= 10) {
+    return 14;
+  }
+
+  return 10;
 }
 
 export function readStreakInsuranceState(): StreakInsuranceState {

@@ -68,6 +68,7 @@ describe('StatsBar', () => {
     expect(screen.getByText('70%')).toBeInTheDocument();
     expect(screen.getByText('9')).toBeInTheDocument();
     expect(screen.getByText('12')).toBeInTheDocument();
+    expect(screen.getByText('1 to bonus')).toBeInTheDocument();
     expect(screen.getByText('3 to unlock Downy Feather Badge and Raven Theme')).toBeInTheDocument();
   });
 
@@ -120,6 +121,25 @@ describe('StatsBar', () => {
 
     expect(screen.getByText('14 to unlock Contour Feather Badge')).toBeInTheDocument();
     expect(screen.queryByText(/Robin Theme/i)).not.toBeInTheDocument();
+  });
+
+  it('shows streak insurance before the player can afford it', () => {
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 10,
+        birdsIdentified: 7,
+        currentStreak: 5,
+        bestStreak: 9,
+        seeds: 9,
+      })
+    );
+
+    render(<StatsBar refreshTrigger={0} />);
+
+    expect(screen.getByText('Streak Insurance')).toBeInTheDocument();
+    expect(screen.getByText('Bank 1 more seeds to protect your next guess.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Need 1 more' })).toBeDisabled();
   });
 
   it('clears insurance purchase errors after the player advances the round', async () => {
@@ -220,7 +240,7 @@ describe('StatsBar', () => {
         progressSummary: {
           birdsSeen: 10,
           birdsIdentified: 7,
-          seeds: 5,
+          seeds: 30,
           currentStreak: 5,
           bestStreak: 9,
           currentDailyStreak: 0,
@@ -229,7 +249,7 @@ describe('StatsBar', () => {
         insuranceState: {
           active: true,
           protectedMissesRemaining: 1,
-          cost: 35,
+          cost: 10,
           purchasedAtStreak: 5,
         },
       });

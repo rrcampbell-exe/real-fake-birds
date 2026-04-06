@@ -439,7 +439,7 @@ describe('auth route', () => {
             data: {
               birds_seen: 12,
               birds_identified: 9,
-              seeds: 23,
+              seeds: 50,
               current_streak: 6,
               best_streak: 7,
               current_daily_streak: 3,
@@ -480,7 +480,7 @@ describe('auth route', () => {
       progressSummary: {
         birdsSeen: 12,
         birdsIdentified: 9,
-        seeds: 23,
+        seeds: 50,
         currentStreak: 6,
         bestStreak: 7,
         currentDailyStreak: 3,
@@ -489,7 +489,7 @@ describe('auth route', () => {
       insuranceState: {
         active: true,
         protectedMissesRemaining: 1,
-        cost: 37,
+        cost: 10,
         purchasedAtStreak: 6,
       },
     });
