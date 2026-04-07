@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react';
 import { getTodayChallengeDate } from '@/lib/utils/daily-challenge';
 
 function getNextMidnightDelayMs(now = new Date()): number {
-  const nextMidnight = new Date(now);
-  nextMidnight.setHours(24, 0, 0, 50);
+  const nextMidnight = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 50)
+  );
   return Math.max(nextMidnight.getTime() - now.getTime(), 50);
 }
 
