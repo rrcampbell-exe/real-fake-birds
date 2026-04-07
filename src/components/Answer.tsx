@@ -133,16 +133,13 @@ export default function Answer({
           eventLabel={isMilestone && earnedBadgeName ? 'milestone' : 'round-result'}
           className="min-h-11 rounded-xl px-4 py-2.5 text-sm shadow-[var(--shadow-button)]"
         />
-        <motion.button
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.35 }}
+        <button
           onClick={() => { play('whoosh'); onAction(); }}
           className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[var(--color-secondary)] px-4 py-2.5 font-[family-name:var(--font-display)] text-sm font-semibold text-[var(--color-on-secondary)] shadow-[var(--shadow-button)] transition-all duration-150 hover:brightness-110 active:scale-[0.97]"
         >
           {actionLabel}
           <ArrowRight size={16} strokeWidth={2.5} />
-        </motion.button>
+        </button>
       </div>
 
       {/* Correctness indicator */}
