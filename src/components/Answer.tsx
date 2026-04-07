@@ -127,8 +127,6 @@ export default function Answer({
   }, [isMajorStreak, isStreak, isMilestone, newThemeUnlockName]);
 
   useEffect(() => {
-    setIsNextBirdVisible(false);
-
     const timer = window.setTimeout(() => {
       setIsNextBirdVisible(true);
     }, 350);
