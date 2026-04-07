@@ -17,6 +17,7 @@ import {
   syncDailyMissionStreaksToBirdScore,
 } from '@/lib/utils/daily-mission-history';
 import {
+  createSessionMissionsStateForDate,
   claimMissionReward,
   claimMissionSetBonus,
   getMissionDefinitionsForState,
@@ -35,7 +36,7 @@ export function useSessionMissions() {
   const today = useLocalChallengeDate();
   const storedState = useStoredJson<SessionMissionsState>(
     SESSION_MISSIONS_STORAGE_KEY,
-    readSessionMissions(today)
+    createSessionMissionsStateForDate(today)
   );
   const missionHistory = useStoredJson<DailyMissionHistoryEntry[]>(
     DAILY_MISSION_HISTORY_STORAGE_KEY,

@@ -212,7 +212,7 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
                     ? 'Armed for the next guess. If you miss it, your streak stays alive.'
                     : insuranceShortfall > 0
                       ? `Bank ${formatNumber(insuranceShortfall)} more seeds to protect your next guess.`
-                      : `Trade ${formatNumber(insuranceCost)} seeds to protect the next guess.`}
+                      : `Protect your next guess for ${formatNumber(insuranceCost)} seeds.`}
                 </p>
               </div>
 

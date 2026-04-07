@@ -37,12 +37,12 @@ export default function BottomNav() {
   const { play } = useSound();
   const hasIncompleteDaily = sessionMissionsState.missions.some((mission) => !mission.completed);
   const rewardsNotificationLabel = hasPendingRewardClaims
-    ? 'Visit Rewards to claim what is waiting for you.'
+    ? 'Claim new rewards now!'
     : hasUnseenBadges
-      ? 'Visit Rewards to see your newest badge.'
+      ? 'See your newest badge now!'
       : undefined;
   const settingsNotificationLabel = hasNewThemeUnlock
-    ? 'Visit Settings to try your new theme.'
+    ? 'Try your new theme now!'
     : undefined;
   const currentWeekStart = getCurrentWeekStart();
   const showLeaderboardNotification = Boolean(accountUsername) && lastSeenLeaderboardWeek !== currentWeekStart;

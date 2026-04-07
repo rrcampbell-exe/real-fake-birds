@@ -26,7 +26,7 @@ function getMissionDefinitionById(missionId: string): MissionDefinition | undefi
   return missionDefinitions.find((mission) => mission.id === missionId);
 }
 
-function createStateForDate(date = getTodayChallengeDate()): SessionMissionsState {
+export function createSessionMissionsStateForDate(date = getTodayChallengeDate()): SessionMissionsState {
   const selectedMissions = [...missionDefinitions]
     .sort((left, right) => hashValue(`${date}:${left.id}`) - hashValue(`${date}:${right.id}`))
     .slice(0, DAILY_MISSION_COUNT)
@@ -48,7 +48,7 @@ function normalizeState(
   stateLike: Partial<SessionMissionsState> | null | undefined,
   fallbackDate = getTodayChallengeDate()
 ): SessionMissionsState {
-  const baseState = createStateForDate(fallbackDate);
+  const baseState = createSessionMissionsStateForDate(fallbackDate);
   if (!stateLike || typeof stateLike !== 'object') {
     return baseState;
   }
@@ -82,24 +82,24 @@ function normalizeState(
 
 export function readSessionMissions(date = getTodayChallengeDate()): SessionMissionsState {
   if (!isBrowser()) {
-    return createStateForDate(date);
+    return createSessionMissionsStateForDate(date);
   }
 
   const raw = localStorage.getItem(SESSION_MISSIONS_STORAGE_KEY);
   if (!raw) {
-    return createStateForDate(date);
+    return createSessionMissionsStateForDate(date);
   }
 
   try {
     const parsed = normalizeState(JSON.parse(raw) as Partial<SessionMissionsState>, date);
     if (parsed.date !== date) {
       syncDailyMissionStreaksToBirdScore();
-      return createStateForDate(date);
+      return createSessionMissionsStateForDate(date);
     }
 
     return parsed;
   } catch {
-    return createStateForDate(date);
+    return createSessionMissionsStateForDate(date);
   }
 }
 
@@ -111,7 +111,7 @@ export function writeSessionMissions(stateLike: Partial<SessionMissionsState>): 
 }
 
 export function resetSessionMissions(date = getTodayChallengeDate()): SessionMissionsState {
-  return writeSessionMissions(createStateForDate(date));
+  return writeSessionMissions(createSessionMissionsStateForDate(date));
 }
 
 function incrementForMission(definition: MissionDefinition, roundResult: GameRoundResult): number {

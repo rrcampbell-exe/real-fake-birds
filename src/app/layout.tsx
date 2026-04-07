@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Fredoka, DM_Sans } from "next/font/google";
+import Script from 'next/script';
 import { Analytics } from '@vercel/analytics/next';
 import "./globals.css";
 import ThemeProvider from "@/components/ThemeProvider";
@@ -73,7 +74,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${fredoka.variable} ${dmSans.variable}`} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
+        <Script
+          id="theme-bootstrap"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: themeBootstrapScript }}
+        />
       </head>
       <body className="flex min-h-dvh flex-col font-[family-name:var(--font-body)]">
         <ThemeProvider>
