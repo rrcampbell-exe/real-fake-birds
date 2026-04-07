@@ -10,6 +10,7 @@ import { finch } from '@/lib/themes';
 import type { BirdScore } from '@/types';
 import { useStoredJson } from '@/hooks/useStoredValue';
 import { buildMilestoneSharePayload, buildWeeklyChampionSharePayload } from '@/lib/utils/share-data';
+import { formatNumber } from '@/lib/utils/number-format';
 import { resolveTheme } from '@/lib/utils/theme-handler';
 
 export default function TrophyCase() {
@@ -27,6 +28,7 @@ export default function TrophyCase() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {milestones.map((milestone, i) => {
           const isEarned = earnedValues.has(milestone.value);
+          const milestoneLabel = formatNumber(milestone.value);
 
           return (
             <motion.div
@@ -40,18 +42,30 @@ export default function TrophyCase() {
                   : 'border-[var(--color-surface-border)] bg-[var(--color-surface)] opacity-50'
               }`}
             >
-              {isEarned ? (
-                <MilestoneBadgeSvg color={textColor} milestoneValue={milestone.value} />
-              ) : (
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-surface-border)]">
-                  <Lock size={20} className="text-[var(--color-muted)]" />
-                </div>
-              )}
+              <div className="relative flex h-14 w-14 items-center justify-center">
+                {isEarned ? (
+                  <MilestoneBadgeSvg color={textColor} milestoneValue={milestone.value} />
+                ) : (
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-surface-border)]">
+                    <Lock size={20} className="text-[var(--color-muted)]" />
+                  </div>
+                )}
+                <span
+                  aria-label={`${milestoneLabel} birds to earn ${milestone.badge}`}
+                  className={`absolute -bottom-1 -right-1 inline-flex min-w-9 items-center justify-center rounded-full border px-2 py-1 text-[0.65rem] font-semibold leading-none ${
+                    isEarned
+                      ? 'border-[var(--color-secondary)] bg-[var(--color-secondary)] text-[var(--color-on-secondary)]'
+                      : 'border-[var(--color-surface-border)] bg-[var(--color-surface)] text-[var(--color-text)]'
+                  }`}
+                >
+                  {milestoneLabel}
+                </span>
+              </div>
               <span className="font-[family-name:var(--font-display)] text-center text-xs font-semibold leading-tight">
                 {milestone.badge}
               </span>
               <span className="text-center text-[0.6rem] leading-snug text-[var(--color-muted)]">
-                {isEarned ? milestone.description : `Identify ${milestone.value} birds`}
+                {isEarned ? milestone.description : `Identify ${milestone.value} birds to unlock this feather.`}
               </span>
               {isEarned ? (
                 <ShareButton

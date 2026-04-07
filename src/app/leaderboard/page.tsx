@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Binoculars, Bird, BookOpen, Feather, Flame, Sprout, Target, Trophy, HatGlasses } from 'lucide-react';
+import { Binoculars, Bird, BookOpen, Feather, Flame, Sprout, Target, Trophy, HatGlasses, UserStar } from 'lucide-react';
 import ShareButton from '@/components/ShareButton';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import LeaderboardAvatar from '@/components/leaderboard/LeaderboardAvatar';
@@ -23,19 +23,24 @@ const challengeIcons: Record<WeeklyChallengeIcon, typeof Trophy> = {
   target: Target,
 };
 
-function subscribeToMinuteTicker(onStoreChange: () => void) {
-  const interval = window.setInterval(onStoreChange, 60_000);
-  return () => {
-    window.clearInterval(interval);
-  };
-}
-
 function useMinuteTimestamp(enabled: boolean) {
-  return useSyncExternalStore(
-    enabled ? subscribeToMinuteTicker : () => () => {},
-    () => Date.now(),
-    () => 0
-  );
+  const [timestamp, setTimestamp] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      setTimestamp(Date.now());
+    }, 60_000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [enabled]);
+
+  return timestamp;
 }
 
 export default function LeaderboardPage() {
@@ -73,7 +78,7 @@ export default function LeaderboardPage() {
     });
   }, [leaderboard]);
 
-  const Icon = leaderboard ? challengeIcons[leaderboard.challenge.icon] : Trophy;
+  const Icon = leaderboard ? challengeIcons[leaderboard.challenge.icon] : UserStar;
   const isSkeleton = isLoading && !leaderboard && !error;
 
   const renderSkeletonRows = () => (

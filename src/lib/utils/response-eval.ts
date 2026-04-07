@@ -1,5 +1,5 @@
 import { localStorageCheck } from './local-storage-check';
-import { streakValues } from '../constants/streaks';
+import { getStreakReward, isStreakCheckpoint } from '../constants/streaks';
 import { getThemeUnlockByMilestoneValue } from '../constants/theme-unlocks';
 import { track } from '@/lib/analytics';
 import { applyRoundToSessionMissions } from './missions';
@@ -21,15 +21,11 @@ import type { GameMode, GameRoundResult, HintType } from '@/types';
 const BASE_CORRECT_SEED_REWARD = 1;
 
 function calculateStreakSeedReward(currentStreak: number): number {
-  if (!streakValues.includes(currentStreak)) return 0;
-
-  return streakValues
-    .filter((value) => value <= currentStreak)
-    .reduce((totalSeeds, value) => totalSeeds + value, 0);
+  return getStreakReward(currentStreak);
 }
 
 const streakEval = (currentStreak: number, setIsStreak: (val: boolean) => void): number => {
-  const isStreakMilestone = streakValues.includes(currentStreak);
+  const isStreakMilestone = isStreakCheckpoint(currentStreak);
   setIsStreak(isStreakMilestone);
   localStorage.setItem('birdStreakAchieved', JSON.stringify(isStreakMilestone));
 
@@ -163,7 +159,7 @@ const responseEval = (
       birds_identified: birdsIdentified,
     });
 
-    if (currentStreak > 1 && streakValues.includes(currentStreak)) {
+    if (currentStreak > 1 && isStreakCheckpoint(currentStreak)) {
       track('streak_achieved', { mode, current_streak: currentStreak, seeds_earned: seedsEarned });
     }
 

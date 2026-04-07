@@ -125,7 +125,7 @@ describe('responseEval', () => {
     expect(JSON.parse(localStorage.getItem('unlockedThemes')!)).toContain('Raven');
   });
 
-  it('awards cumulative seeds at higher streak thresholds', () => {
+  it('awards the configured major payout at the 10 streak checkpoint', () => {
     localStorage.setItem(
       'birdScore',
       JSON.stringify({
@@ -157,8 +157,48 @@ describe('responseEval', () => {
       setEarnedBadgeName
     );
 
-    expect(setSeedsEarned).toHaveBeenCalledWith(18);
-    expect(JSON.parse(localStorage.getItem('birdScore')!)).toMatchObject({ seeds: 21 });
+    expect(setSeedsEarned).toHaveBeenCalledWith(13);
+    expect(JSON.parse(localStorage.getItem('birdScore')!)).toMatchObject({ seeds: 16 });
+  });
+
+  it('awards the configured 25 streak checkpoint payout', () => {
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 30,
+        birdsIdentified: 24,
+        currentStreak: 24,
+        justAchievedStreak: false,
+        bestStreak: 24,
+        seeds: 11,
+      })
+    );
+
+    const setIsCorrect = vi.fn();
+    const setIsStreak = vi.fn();
+    const setIsMilestone = vi.fn();
+    const setSeedsEarned = vi.fn();
+    const setUnlockedThemeName = vi.fn();
+    const setEarnedBadgeName = vi.fn();
+
+    responseEval(
+      createEvent(),
+      true,
+      'real',
+      setIsCorrect,
+      setIsStreak,
+      setIsMilestone,
+      setSeedsEarned,
+      setUnlockedThemeName,
+      setEarnedBadgeName
+    );
+
+    expect(setIsStreak).toHaveBeenCalledWith(true);
+    expect(setSeedsEarned).toHaveBeenCalledWith(21);
+    expect(JSON.parse(localStorage.getItem('birdScore')!)).toMatchObject({
+      currentStreak: 25,
+      seeds: 32,
+    });
   });
 
   it('does not re-announce theme unlock when milestone theme was already purchased', () => {

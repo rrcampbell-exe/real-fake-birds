@@ -3,13 +3,14 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import { Check, X } from 'lucide-react';
+import { ArrowRight, Check, X } from 'lucide-react';
 import Link from 'next/link';
 import SeedIcon from '@/components/icons/SeedIcon';
 import { correctnessText } from '@/lib/utils/correctness-text';
 import { useSound } from '@/hooks/useSound';
 import { useStoredJson } from '@/hooks/useStoredValue';
 import ShareButton from '@/components/ShareButton';
+import { isMajorStreakCheckpoint } from '@/lib/constants/streaks';
 import { defaultBirdScore, normalizeBirdScore } from '@/lib/utils/player-progress';
 import { buildMilestoneSharePayload, buildRoundSharePayload } from '@/lib/utils/share-data';
 import { formatNumber } from '@/lib/utils/number-format';
@@ -71,8 +72,10 @@ export default function Answer({
 }: AnswerProps) {
   const { play } = useSound();
   const score = normalizeBirdScore(useStoredJson<typeof defaultBirdScore | null>('birdScore', defaultBirdScore));
+  const isMajorStreak = isMajorStreakCheckpoint(score.currentStreak);
   const displayedFact = hints.fact?.content ?? fact;
   const [fakeFieldNote] = useState(getRandomFakeFieldNote);
+  const [isNextBirdVisible, setIsNextBirdVisible] = useState(false);
   const sharePayload = isMilestone && earnedBadgeName
     ? buildMilestoneSharePayload({
         badgeName: earnedBadgeName,
@@ -103,31 +106,53 @@ export default function Answer({
     if (isMilestone) {
       play('milestone');
     } else if (isStreak) {
-      play('streak');
+      play(isMajorStreak ? 'milestone' : 'streak');
     }
-  }, [isStreak, isMilestone, play]);
+  }, [isMajorStreak, isStreak, isMilestone, play]);
 
   useEffect(() => {
-    if (isStreak || isMilestone || newThemeUnlockName) {
-      const duration = 2500;
+    if (isMilestone || newThemeUnlockName || isStreak) {
+      const duration = isMilestone || newThemeUnlockName || isMajorStreak ? 2500 : 1200;
+      const particleCount = isMilestone || newThemeUnlockName || isMajorStreak ? 2 : 1;
+      const spread = isMilestone || newThemeUnlockName || isMajorStreak ? 55 : 40;
       const end = Date.now() + duration;
 
       const frame = () => {
-        confetti({ particleCount: 2, angle: 60, spread: 55, origin: { x: 0 }, colors: ['var(--color-secondary)', '#FFD700', '#fff'] });
-        confetti({ particleCount: 2, angle: 120, spread: 55, origin: { x: 1 }, colors: ['var(--color-secondary)', '#FFD700', '#fff'] });
+        confetti({ particleCount, angle: 60, spread, origin: { x: 0 }, colors: ['var(--color-secondary)', '#FFD700', '#fff'] });
+        confetti({ particleCount, angle: 120, spread, origin: { x: 1 }, colors: ['var(--color-secondary)', '#FFD700', '#fff'] });
         if (Date.now() < end) requestAnimationFrame(frame);
       };
       frame();
     }
-  }, [isStreak, isMilestone, newThemeUnlockName]);
+  }, [isMajorStreak, isStreak, isMilestone, newThemeUnlockName]);
+
+  useEffect(() => {
+    setIsNextBirdVisible(false);
+
+    const timer = window.setTimeout(() => {
+      setIsNextBirdVisible(true);
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, []);
 
   return (
-    <div className="relative flex w-full flex-col items-center gap-5">
-      <div className="absolute left-0 top-0 z-10">
+    <div className="relative flex w-full flex-col items-center gap-4 md:gap-5">
+      <div className="flex w-full items-start justify-between gap-3">
         <ShareButton
           payload={sharePayload}
           eventLabel={isMilestone && earnedBadgeName ? 'milestone' : 'round-result'}
+          className="min-h-11 rounded-xl px-4 py-2.5 text-sm shadow-[var(--shadow-button)]"
         />
+        <button
+          onClick={() => { play('whoosh'); onAction(); }}
+          className={`inline-flex min-h-11 items-center gap-2 rounded-xl bg-[var(--color-secondary)] px-4 py-2.5 font-[family-name:var(--font-display)] text-sm font-semibold text-[var(--color-on-secondary)] shadow-[var(--shadow-button)] transition-[opacity,filter,transform] duration-200 hover:brightness-110 active:scale-[0.97] ${isNextBirdVisible ? 'opacity-100' : 'opacity-0'}`}
+        >
+          {actionLabel}
+          <ArrowRight size={16} strokeWidth={2.5} />
+        </button>
       </div>
 
       {/* Correctness indicator */}
@@ -190,7 +215,7 @@ export default function Answer({
       )}
 
       {/* Bird name + real/fake badge */}
-      <div className="text-center">
+      <div className="-mt-1 text-center md:mt-0">
         <h2 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl font-bold leading-tight mb-2">
           {birdData}
         </h2>
@@ -252,20 +277,6 @@ export default function Answer({
           )}
         </div>
       </div>
-
-      {/* Try again button */}
-      <motion.button
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.35 }}
-        onClick={() => { play('whoosh'); onAction(); }}
-        className="mt-2 py-3 px-8 rounded-xl font-[family-name:var(--font-display)] font-semibold text-base
-          bg-[var(--color-secondary)] text-[var(--color-on-secondary)] border-none
-          shadow-[var(--shadow-button)] hover:brightness-110 active:scale-[0.97]
-          transition-all duration-150 cursor-pointer"
-      >
-        {actionLabel}
-      </motion.button>
     </div>
   );
 }

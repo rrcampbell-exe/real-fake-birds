@@ -1,6 +1,6 @@
 import { DAILY_CHALLENGE_CONFIG } from '@/lib/constants/daily-challenge';
 import { milestones } from '@/lib/constants/milestones';
-import { streakValues } from '@/lib/constants/streaks';
+import { getStreakReward } from '@/lib/constants/streaks';
 import { getThemeUnlockByMilestoneValue } from '@/lib/constants/theme-unlocks';
 import { defaultBirdScore, normalizeBirdScore } from '@/lib/utils/player-progress';
 import type { BirdScore, DailyChallengeHistoryEntry, GameMode } from '@/types';
@@ -59,13 +59,7 @@ function uniqueNumbers(values: number[]): number[] {
 }
 
 function calculateStreakSeedReward(currentStreak: number): number {
-  if (!streakValues.includes(currentStreak)) {
-    return 0;
-  }
-
-  return streakValues
-    .filter((value) => value <= currentStreak)
-    .reduce((totalSeeds, value) => totalSeeds + value, 0);
+  return getStreakReward(currentStreak);
 }
 
 function normalizeHistory(history: DailyChallengeHistoryEntry[]): DailyChallengeHistoryEntry[] {

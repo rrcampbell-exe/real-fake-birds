@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Answer from './Answer';
 import type { HintState } from '@/types';
 
@@ -11,12 +11,21 @@ vi.mock('canvas-confetti', () => ({
   default: confettiMock,
 }));
 
+vi.mock('@/hooks/useSound', () => ({
+  useSound: () => ({ play: vi.fn() }),
+}));
+
 const emptyHints: HintState = {
   fact: null,
   image: null,
 };
 
 describe('Answer', () => {
+  beforeEach(() => {
+    confettiMock.mockClear();
+    localStorage.clear();
+  });
+
   it('renders answer details and triggers the next-bird action', () => {
     localStorage.setItem(
       'birdScore',
@@ -52,18 +61,51 @@ describe('Answer', () => {
     expect(screen.getByText('Real')).toBeInTheDocument();
     expect(screen.getByText('Spotted in Algeria')).toBeInTheDocument();
     expect(screen.getByText('Cyanocitta cristata')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Next Bird' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Next Bird' })[0]);
     expect(onAction).toHaveBeenCalled();
   });
 
-  it('fires confetti when a streak or milestone is achieved', () => {
+  it('keeps the next-bird action in the top row above the answer content on all screen sizes', () => {
+    const onAction = vi.fn();
+
+    render(
+      <Answer
+        birdData="Blue Robin"
+        isReal
+        regionLabel="Algeria"
+        sciName="Cyanocitta cristata"
+        fact="Blue Robin is known for its vivid plumage."
+        hints={emptyHints}
+        isStreak={false}
+        isCorrect
+        isMilestone={false}
+        seedsEarned={0}
+        newThemeUnlockName={null}
+        earnedBadgeName={null}
+        onAction={onAction}
+      />
+    );
+
+    const nextButton = screen.getByRole('button', { name: 'Next Bird' });
+    const shareButton = screen.getByRole('button', { name: 'Share' });
+    const notesHeading = screen.getByText('Field Notes');
+
+    expect(shareButton.compareDocumentPosition(nextButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(nextButton.compareDocumentPosition(notesHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    fireEvent.click(nextButton);
+
+    expect(onAction).toHaveBeenCalledTimes(1);
+  });
+
+  it('fires confetti when a major streak checkpoint is achieved', () => {
     localStorage.setItem(
       'birdScore',
       JSON.stringify({
         birdsSeen: 8,
         birdsIdentified: 6,
-        currentStreak: 5,
-        bestStreak: 5,
+        currentStreak: 10,
+        bestStreak: 10,
         seeds: 2,
       })
     );
@@ -80,6 +122,39 @@ describe('Answer', () => {
         isCorrect
         isMilestone={false}
         seedsEarned={2}
+        newThemeUnlockName={null}
+        earnedBadgeName={null}
+        onAction={vi.fn()}
+      />
+    );
+
+    expect(confettiMock).toHaveBeenCalled();
+  });
+
+  it('fires confetti for a minor streak checkpoint', () => {
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 18,
+        birdsIdentified: 15,
+        currentStreak: 15,
+        bestStreak: 15,
+        seeds: 2,
+      })
+    );
+
+    render(
+      <Answer
+        birdData="Blue Robin"
+        isReal={false}
+        regionLabel={null}
+        sciName={null}
+        fact={null}
+        hints={emptyHints}
+        isStreak
+        isCorrect
+        isMilestone={false}
+        seedsEarned={6}
         newThemeUnlockName={null}
         earnedBadgeName={null}
         onAction={vi.fn()}
