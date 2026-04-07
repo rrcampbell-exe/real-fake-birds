@@ -75,6 +75,7 @@ export default function Answer({
   const isMajorStreak = isMajorStreakCheckpoint(score.currentStreak);
   const displayedFact = hints.fact?.content ?? fact;
   const [fakeFieldNote] = useState(getRandomFakeFieldNote);
+  const [isNextBirdVisible, setIsNextBirdVisible] = useState(false);
   const sharePayload = isMilestone && earnedBadgeName
     ? buildMilestoneSharePayload({
         badgeName: earnedBadgeName,
@@ -125,6 +126,18 @@ export default function Answer({
     }
   }, [isMajorStreak, isStreak, isMilestone, newThemeUnlockName]);
 
+  useEffect(() => {
+    setIsNextBirdVisible(false);
+
+    const timer = window.setTimeout(() => {
+      setIsNextBirdVisible(true);
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, []);
+
   return (
     <div className="relative flex w-full flex-col items-center gap-4 md:gap-5">
       <div className="flex w-full items-start justify-between gap-3">
@@ -135,7 +148,7 @@ export default function Answer({
         />
         <button
           onClick={() => { play('whoosh'); onAction(); }}
-          className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[var(--color-secondary)] px-4 py-2.5 font-[family-name:var(--font-display)] text-sm font-semibold text-[var(--color-on-secondary)] shadow-[var(--shadow-button)] transition-all duration-150 hover:brightness-110 active:scale-[0.97]"
+          className={`inline-flex min-h-11 items-center gap-2 rounded-xl bg-[var(--color-secondary)] px-4 py-2.5 font-[family-name:var(--font-display)] text-sm font-semibold text-[var(--color-on-secondary)] shadow-[var(--shadow-button)] transition-[opacity,filter,transform] duration-200 hover:brightness-110 active:scale-[0.97] ${isNextBirdVisible ? 'opacity-100' : 'opacity-0'}`}
         >
           {actionLabel}
           <ArrowRight size={16} strokeWidth={2.5} />
