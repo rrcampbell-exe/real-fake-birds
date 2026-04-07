@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertCircle, BookOpenText, ChevronDown, ImageIcon, LoaderCircle, SkipForward, Sparkles, WandSparkles } from 'lucide-react';
@@ -95,9 +96,11 @@ function ImageHintPreview({ birdName, content }: { birdName: string; content: st
       <div className="px-4 py-3 font-[family-name:var(--font-display)] text-sm font-semibold text-[var(--color-text)]">
         Image Hint
       </div>
-      <img
+      <Image
         src={content}
         alt={`Hint image for ${birdName}`}
+        width={800}
+        height={800}
         className="block aspect-square w-full object-cover"
       />
     </div>

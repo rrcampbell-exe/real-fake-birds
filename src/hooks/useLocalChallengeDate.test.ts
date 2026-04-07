@@ -5,14 +5,14 @@ import { useLocalChallengeDate } from './useLocalChallengeDate';
 describe('useLocalChallengeDate', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 3, 6, 23, 59, 50));
+    vi.setSystemTime(new Date('2026-04-06T23:59:50.000Z'));
   });
 
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it('rolls over to the next local date after midnight without a page reload', async () => {
+  it('rolls over to the next UTC date after midnight without a page reload', async () => {
     const { result } = renderHook(() => useLocalChallengeDate());
 
     expect(result.current).toBe('2026-04-06');

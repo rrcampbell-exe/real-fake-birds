@@ -11,6 +11,7 @@ import AnalyticsProvider from '@/components/analytics/AnalyticsProvider';
 const themeBootstrapScript = `
   (() => {
     try {
+      document.documentElement.setAttribute('data-app-booting', 'true');
       const stored = window.localStorage.getItem('birdTheme');
       const score = JSON.parse(window.localStorage.getItem('birdScore') || '{}');
       const birdsIdentified = typeof score?.birdsIdentified === 'number' ? score.birdsIdentified : 0;

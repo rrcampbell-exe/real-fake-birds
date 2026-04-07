@@ -17,9 +17,9 @@ function isBrowser(): boolean {
 }
 
 export function getTodayChallengeDate(now = new Date()): string {
-  const year = now.getFullYear();
-  const month = `${now.getMonth() + 1}`.padStart(2, '0');
-  const day = `${now.getDate()}`.padStart(2, '0');
+  const year = now.getUTCFullYear();
+  const month = `${now.getUTCMonth() + 1}`.padStart(2, '0');
+  const day = `${now.getUTCDate()}`.padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 

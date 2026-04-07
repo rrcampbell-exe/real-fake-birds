@@ -1,7 +1,17 @@
 import { notifyStoredValueChanged } from '@/hooks/useStoredValue';
 import { DAILY_CHALLENGE_CONFIG, DAILY_CHALLENGE_HISTORY_STORAGE_KEY } from '@/lib/constants/daily-challenge';
-import { getTodayChallengeDate, resetDailyChallengeState, writeDailyChallengeHistory, writeDailyChallengeState } from '@/lib/utils/daily-challenge';
-import { DAILY_MISSION_HISTORY_STORAGE_KEY, writeDailyMissionHistory } from '@/lib/utils/daily-mission-history';
+import {
+  getTodayChallengeDate,
+  readDailyChallengeHistory,
+  resetDailyChallengeState,
+  writeDailyChallengeHistory,
+  writeDailyChallengeState,
+} from '@/lib/utils/daily-challenge';
+import {
+  DAILY_MISSION_HISTORY_STORAGE_KEY,
+  readDailyMissionHistory,
+  writeDailyMissionHistory,
+} from '@/lib/utils/daily-mission-history';
 import {
   BIRD_JOURNAL_STORAGE_KEY,
   mergeBirdJournalStores,
@@ -10,8 +20,10 @@ import {
 } from '@/lib/utils/bird-journal';
 import {
   BIRD_SCORE_STORAGE_KEY,
+  mergeNonRoundRemoteScore,
   setUnlockedThemeNames,
   UNLOCKED_THEMES_STORAGE_KEY,
+  getUnlockedThemeNames,
   writeBirdScore,
 } from '@/lib/utils/player-progress';
 import { getMissionDefinitionsForState, readSessionMissions, resetSessionMissions, writeSessionMissions } from '@/lib/utils/missions';
@@ -57,6 +69,41 @@ function isBrowser(): boolean {
   return typeof window !== 'undefined';
 }
 
+function mergeDailyChallengeHistory(
+  localHistory: DailyChallengeHistoryEntry[],
+  remoteHistory: DailyChallengeHistoryEntry[]
+): DailyChallengeHistoryEntry[] {
+  const merged = new Map<string, DailyChallengeHistoryEntry>();
+
+  for (const entry of [...localHistory, ...remoteHistory]) {
+    const existing = merged.get(entry.date);
+    if (!existing) {
+      merged.set(entry.date, entry);
+      continue;
+    }
+
+    merged.set(entry.date, {
+      date: entry.date,
+      correctAnswers: Math.max(existing.correctAnswers, entry.correctAnswers),
+      roundsPlayed: Math.max(existing.roundsPlayed, entry.roundsPlayed),
+      completed: existing.completed || entry.completed,
+    });
+  }
+
+  return [...merged.values()].sort((left, right) => right.date.localeCompare(left.date));
+}
+
+function mergeDailyMissionHistory(
+  localHistory: DailyMissionHistoryEntry[],
+  remoteHistory: DailyMissionHistoryEntry[]
+): DailyMissionHistoryEntry[] {
+  return Array.from(
+    new Map(
+      [...localHistory, ...remoteHistory].map((entry) => [entry.date, { date: entry.date }])
+    ).values()
+  ).sort((left, right) => right.date.localeCompare(left.date));
+}
+
 export function readAccountSyncMeta(): AccountSyncMeta {
   if (!isBrowser()) {
     return defaultAccountSyncMeta;
@@ -91,10 +138,14 @@ export function writeAccountSyncMeta(metaLike: Partial<AccountSyncMeta>): Accoun
 }
 
 export function applyPulledAccountProgress(progress: PulledAccountProgress): void {
-  writeBirdScore(progress.score);
-  setUnlockedThemeNames(progress.unlockedThemes);
-  writeDailyChallengeHistory(progress.dailyChallengeHistory);
-  writeDailyMissionHistory(progress.dailyMissionHistory);
+  writeBirdScore(mergeNonRoundRemoteScore(progress.score));
+  setUnlockedThemeNames([...getUnlockedThemeNames(), ...progress.unlockedThemes]);
+  writeDailyChallengeHistory(
+    mergeDailyChallengeHistory(readDailyChallengeHistory(), progress.dailyChallengeHistory)
+  );
+  writeDailyMissionHistory(
+    mergeDailyMissionHistory(readDailyMissionHistory(), progress.dailyMissionHistory)
+  );
   writeBirdJournal(
     mergeBirdJournalStores(
       readBirdJournal(),

@@ -9,7 +9,7 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { hasSupabaseEnv } from '@/lib/supabase/env';
 import { purchaseStreakInsuranceDirect } from '@/lib/auth/account-sync';
 import { milestones } from '@/lib/constants/milestones';
-import { majorStreakValues, streakValues } from '@/lib/constants/streaks';
+import { streakValues } from '@/lib/constants/streaks';
 import { track } from '@/lib/analytics';
 import { getThemeUnlockByMilestoneValue } from '@/lib/constants/theme-unlocks';
 import { isNextMilestoneEval, isNextStreakEval } from '@/lib/utils/goals-evaluation';
@@ -50,7 +50,6 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
   const { birdsSeen, birdsIdentified, currentStreak, bestStreak, seeds } = normalizeBirdScore(storedStats);
   const accuracy = birdsSeen > 0 ? Math.floor((birdsIdentified / birdsSeen) * 100) : 0;
   const nextStreak = isNextStreakEval(streakValues, currentStreak);
-  const nextMajorStreak = isNextStreakEval(majorStreakValues, currentStreak);
   const milestoneValues = milestones.map((milestone) => milestone.value);
   const nextMilestone = isNextMilestoneEval(milestoneValues, birdsIdentified);
   const previousMilestone = [...milestoneValues].reverse().find((value) => value <= birdsIdentified) ?? 0;

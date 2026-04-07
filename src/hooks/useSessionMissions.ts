@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+import { useAccountState } from '@/components/account/AccountStateProvider';
 import { useStoredJson } from './useStoredValue';
 import { flushQueuedProgressEventsForSignedInUser } from '@/lib/auth/account-session';
 import { DAILY_MISSION_BONUS_SEEDS, SESSION_MISSIONS_STORAGE_KEY } from '@/lib/constants/missions';
@@ -9,8 +10,6 @@ import {
   claimMissionSetBonusDirect,
   syncDailyMissionCompletion,
 } from '@/lib/auth/account-sync';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
-import { hasSupabaseEnv } from '@/lib/supabase/env';
 import {
   DAILY_MISSION_HISTORY_STORAGE_KEY,
   readDailyMissionHistory,
@@ -32,7 +31,7 @@ import type { DailyMissionHistoryEntry, SessionMissionsState } from '@/types';
 import { useLocalChallengeDate } from './useLocalChallengeDate';
 
 export function useSessionMissions() {
-  const supabaseReady = hasSupabaseEnv();
+  const { isSignedIn } = useAccountState();
   const today = useLocalChallengeDate();
   const storedState = useStoredJson<SessionMissionsState>(
     SESSION_MISSIONS_STORAGE_KEY,
@@ -42,7 +41,6 @@ export function useSessionMissions() {
     DAILY_MISSION_HISTORY_STORAGE_KEY,
     readDailyMissionHistory()
   );
-  const [isSignedIn, setIsSignedIn] = useState(false);
   const syncedCompletionDateRef = useRef<string | null>(null);
 
   const missions = useMemo(() => getMissionDefinitionsForState(storedState), [storedState]);
@@ -58,41 +56,6 @@ export function useSessionMissions() {
       writeSessionMissions(readSessionMissions(today));
     }
   }, [storedState.date, today]);
-
-  useEffect(() => {
-    if (!supabaseReady) {
-      return;
-    }
-
-    const supabase = getSupabaseBrowserClient();
-    let active = true;
-
-    const refreshSession = async () => {
-      try {
-        const { data } = await supabase.auth.getSession();
-        if (active) {
-          setIsSignedIn(Boolean(data.session?.user));
-        }
-      } catch {
-        if (active) {
-          setIsSignedIn(false);
-        }
-      }
-    };
-
-    void refreshSession();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
-      void refreshSession();
-    });
-
-    return () => {
-      active = false;
-      subscription.unsubscribe();
-    };
-  }, [supabaseReady]);
 
   useEffect(() => {
     if (!isSignedIn || !allCompleted || syncedCompletionDateRef.current === storedState.date) {

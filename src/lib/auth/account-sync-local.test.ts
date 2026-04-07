@@ -111,4 +111,103 @@ describe('account-sync-local', () => {
       ])
     );
   });
+
+  it('merges pulled progress with newer local stats instead of overwriting them', () => {
+    vi.setSystemTime(new Date('2026-04-04T15:00:00.000Z'));
+
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 21,
+        birdsIdentified: 16,
+        currentStreak: 5,
+        justAchievedStreak: false,
+        bestStreak: 8,
+        currentDailyStreak: 1,
+        bestDailyStreak: 1,
+        seeds: 12,
+      })
+    );
+    localStorage.setItem(
+      'dailyMissionHistory',
+      JSON.stringify([{ date: '2026-04-05' }])
+    );
+    localStorage.setItem(
+      'dailyChallengeHistory',
+      JSON.stringify([
+        { date: '2026-04-05', correctAnswers: 5, roundsPlayed: 5, completed: true },
+      ])
+    );
+    localStorage.setItem(
+      'birdJournal',
+      JSON.stringify({
+        'real:owl': {
+          birdKey: 'real:owl',
+          birdName: 'Owl',
+          isReal: true,
+          seenCount: 4,
+          correctCount: 3,
+          incorrectCount: 1,
+          lastSeenAt: '2026-04-05T01:00:00.000Z',
+          metadata: {},
+        },
+      })
+    );
+
+    applyPulledAccountProgress({
+      score: {
+        birdsSeen: 15,
+        birdsIdentified: 11,
+        currentStreak: 2,
+        justAchievedStreak: false,
+        bestStreak: 7,
+        currentDailyStreak: 0,
+        bestDailyStreak: 0,
+        seeds: 28,
+      },
+      unlockedThemes: ['Finch', 'Raven'],
+      dailyChallengeHistory: [
+        { date: '2026-04-04', correctAnswers: 4, roundsPlayed: 5, completed: true },
+      ],
+      dailyMissionHistory: [{ date: '2026-04-04' }],
+      milestones: [10],
+      journalEntries: [
+        {
+          birdKey: 'real:owl',
+          birdName: 'Owl',
+          isReal: true,
+          seenCount: 2,
+          correctCount: 2,
+          incorrectCount: 0,
+          lastSeenAt: '2026-04-04T01:00:00.000Z',
+          metadata: {},
+        },
+      ],
+      lastLocalSyncAt: '2026-04-04T14:45:00.000Z',
+      todayDailyChallenge: null,
+      todayMissionClaims: null,
+    });
+
+    expect(JSON.parse(localStorage.getItem('birdScore') ?? '{}')).toMatchObject({
+      birdsSeen: 21,
+      birdsIdentified: 16,
+      bestStreak: 8,
+      seeds: 28,
+    });
+    expect(JSON.parse(localStorage.getItem('dailyMissionHistory') ?? '[]')).toEqual([
+      { date: '2026-04-05' },
+      { date: '2026-04-04' },
+    ]);
+    expect(JSON.parse(localStorage.getItem('dailyChallengeHistory') ?? '[]')).toEqual([
+      { date: '2026-04-05', correctAnswers: 5, roundsPlayed: 5, completed: true },
+      { date: '2026-04-04', correctAnswers: 4, roundsPlayed: 5, completed: true },
+    ]);
+    expect(JSON.parse(localStorage.getItem('birdJournal') ?? '{}')).toMatchObject({
+      'real:owl': expect.objectContaining({
+        seenCount: 4,
+        correctCount: 3,
+        incorrectCount: 1,
+      }),
+    });
+  });
 });

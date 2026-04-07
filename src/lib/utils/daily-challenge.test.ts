@@ -3,6 +3,7 @@ import {
   claimDailyChallengeBonuses,
   createDailyChallengeState,
   getDailyChallengeStreaks,
+  getTodayChallengeDate,
   getUnclaimedDailyChallengeRewardSeeds,
   recordDailyChallengeRound,
   writeDailyChallengeState,
@@ -83,6 +84,12 @@ describe('daily challenge utilities', () => {
       currentStreak: 2,
       bestStreak: 3,
     });
+  });
+
+  it('uses a UTC day key so two devices agree on the same challenge date', () => {
+    expect(getTodayChallengeDate(new Date('2026-04-03T00:30:00.000Z'))).toBe('2026-04-03');
+    expect(getTodayChallengeDate(new Date('2026-04-02T17:30:00.000-07:00'))).toBe('2026-04-03');
+    expect(getTodayChallengeDate(new Date('2026-04-03T09:30:00.000+09:00'))).toBe('2026-04-03');
   });
 
   it('stores challenge history without mutating the mission-based daily streak fields', () => {
