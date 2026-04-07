@@ -10,11 +10,13 @@ import { formatNumber } from '@/lib/utils/number-format';
 interface MissionPanelProps {
   showClaimActions?: boolean;
   containerClassName?: string;
+  isLoading?: boolean;
 }
 
 export default function MissionPanel({
   showClaimActions = true,
   containerClassName = 'w-full max-w-md px-4',
+  isLoading = false,
 }: MissionPanelProps) {
   const { play } = useSound();
   const {
@@ -25,6 +27,51 @@ export default function MissionPanel({
     claimMissionReward,
     claimMissionSetBonus,
   } = useSessionMissions();
+
+  if (isLoading) {
+    return (
+      <section className={containerClassName}>
+        <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-card)] animate-pulse">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="h-3 w-24 rounded bg-[var(--color-surface-border)]" />
+              <div className="mt-2 h-6 w-40 rounded bg-[var(--color-surface-border)]" />
+            </div>
+            <div className="h-7 w-12 rounded-full bg-[var(--color-surface-border)]" />
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div
+                key={`mission-skeleton-${index}`}
+                className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="h-4 w-4/5 rounded bg-[var(--color-surface-border)]" />
+                    <div className="mt-2 h-3 w-24 rounded bg-[var(--color-surface-border)]" />
+                  </div>
+                  <div className="h-7 w-14 rounded-full bg-[var(--color-surface)]" />
+                </div>
+
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--color-surface-border)]">
+                  <div
+                    className="h-full rounded-full bg-[color-mix(in_srgb,var(--color-secondary)_40%,var(--color-surface-border))]"
+                    style={{ width: `${35 + index * 20}%` }}
+                  />
+                </div>
+
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <div className="h-3 w-20 rounded bg-[var(--color-surface-border)]" />
+                  <div className="h-8 w-16 rounded-full bg-[var(--color-surface-border)]" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   if (missions.length === 0) {
     return null;

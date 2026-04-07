@@ -6,6 +6,10 @@ vi.mock('@/hooks/useSessionMissions', () => ({
   useSessionMissions: vi.fn(),
 }));
 
+vi.mock('@/hooks/usePageProgressSync', () => ({
+  usePageProgressSync: vi.fn(),
+}));
+
 vi.mock('@/components/rewards/TrophyCase', () => ({
   default: () => <div>TrophyCase</div>,
 }));
@@ -27,11 +31,18 @@ vi.mock('@/components/game/MissionPanel', () => ({
 }));
 
 import { useSessionMissions } from '@/hooks/useSessionMissions';
+import { usePageProgressSync } from '@/hooks/usePageProgressSync';
 
 const mockedUseSessionMissions = vi.mocked(useSessionMissions);
+const mockedUsePageProgressSync = vi.mocked(usePageProgressSync);
 
 describe('RewardsPage', () => {
   it('shows claimable mission rewards in the rewards tab', () => {
+    mockedUsePageProgressSync.mockReturnValue({
+      isPageSyncLoading: false,
+      isPageBackgroundRefreshing: false,
+      isSignedIn: true,
+    });
     mockedUseSessionMissions.mockReturnValue({
       state: {
         date: '2026-04-03',
@@ -59,6 +70,11 @@ describe('RewardsPage', () => {
   });
 
   it('claims mission rewards from the rewards tab', async () => {
+    mockedUsePageProgressSync.mockReturnValue({
+      isPageSyncLoading: false,
+      isPageBackgroundRefreshing: false,
+      isSignedIn: true,
+    });
     const claimMissionReward = vi.fn().mockResolvedValue(undefined);
     mockedUseSessionMissions.mockReturnValue({
       state: {
@@ -89,6 +105,11 @@ describe('RewardsPage', () => {
   });
 
   it('shows and runs claim all for all available rewards', async () => {
+    mockedUsePageProgressSync.mockReturnValue({
+      isPageSyncLoading: false,
+      isPageBackgroundRefreshing: false,
+      isSignedIn: true,
+    });
     const claimMissionReward = vi.fn().mockResolvedValue(undefined);
     const claimMissionSetBonus = vi.fn().mockResolvedValue(undefined);
 
@@ -128,6 +149,11 @@ describe('RewardsPage', () => {
   });
 
   it('shows no claims waiting when nothing is pending', () => {
+    mockedUsePageProgressSync.mockReturnValue({
+      isPageSyncLoading: false,
+      isPageBackgroundRefreshing: true,
+      isSignedIn: true,
+    });
     mockedUseSessionMissions.mockReturnValue({
       state: {
         date: '2026-04-03',
@@ -153,6 +179,7 @@ describe('RewardsPage', () => {
     render(<RewardsPage />);
 
     expect(screen.getByText('Your bird-watching achievements and claimable bonuses.')).toBeInTheDocument();
+    expect(screen.getByText('Polishing your trophy shelf...')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Nothing to claim' })).toBeInTheDocument();
   });
 });

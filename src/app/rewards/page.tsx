@@ -1,15 +1,19 @@
 'use client';
 
 import { useEffect } from 'react';
+import { Bird } from 'lucide-react';
 import ShareButton from '@/components/ShareButton';
 import DailyRewardsPanel from '@/components/rewards/DailyRewardsPanel';
 import TrophyCase from '@/components/rewards/TrophyCase';
 import PersonalBests from '@/components/rewards/PersonalBests';
+import { usePageProgressSync } from '@/hooks/usePageProgressSync';
 import { useStoredJson } from '@/hooks/useStoredValue';
 import { buildStatsSharePayload } from '@/lib/utils/share-data';
 import { defaultBirdScore, normalizeBirdScore, setStoredBoolean, UNSEEN_BADGES_STORAGE_KEY } from '@/lib/utils/player-progress';
 
 export default function RewardsPage() {
+  const { isPageBackgroundRefreshing } = usePageProgressSync();
+
   useEffect(() => {
     setStoredBoolean(UNSEEN_BADGES_STORAGE_KEY, false);
   }, []);
@@ -35,6 +39,12 @@ export default function RewardsPage() {
         <p className="text-sm text-[var(--color-muted)]">
           Your bird-watching achievements and claimable bonuses.
         </p>
+        {isPageBackgroundRefreshing ? (
+          <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted)]">
+            <Bird size={14} className="text-[var(--color-secondary)]" />
+            Polishing your trophy shelf...
+          </div>
+        ) : null}
       </div>
 
       <DailyRewardsPanel />

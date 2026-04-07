@@ -10,18 +10,53 @@ vi.mock('@/hooks/useStoredValue', () => ({
   useStoredJson: vi.fn(),
 }));
 
+vi.mock('@/hooks/usePageProgressSync', () => ({
+  usePageProgressSync: vi.fn(),
+}));
+
 vi.mock('@/components/game/MissionPanel', () => ({
   default: () => <div>MissionPanel</div>,
 }));
 
 import { useSessionMissions } from '@/hooks/useSessionMissions';
 import { useStoredJson } from '@/hooks/useStoredValue';
+import { usePageProgressSync } from '@/hooks/usePageProgressSync';
 
 const mockedUseSessionMissions = vi.mocked(useSessionMissions);
 const mockedUseStoredJson = vi.mocked(useStoredJson);
+const mockedUsePageProgressSync = vi.mocked(usePageProgressSync);
 
 describe('DailyChallengePage', () => {
+  it('shows a background refresh badge while signed-in progress is syncing', () => {
+    mockedUsePageProgressSync.mockReturnValue({
+      isPageSyncLoading: false,
+      isPageBackgroundRefreshing: true,
+      isSignedIn: true,
+    });
+    mockedUseSessionMissions.mockReturnValue({
+      state: { date: '2026-04-05', missions: [], bonusClaimed: false },
+      missions: [],
+      allCompleted: false,
+      allClaimed: false,
+      bonusClaimed: false,
+      missionSetBonusSeeds: 15,
+      claimMissionReward: vi.fn(),
+      claimMissionSetBonus: vi.fn(),
+    });
+    mockedUseStoredJson.mockReturnValue([]);
+
+    render(<DailyChallengePage />);
+
+    expect(screen.getByText('Checking today\'s flock tasks...')).toBeInTheDocument();
+    expect(screen.getByText('MissionPanel')).toBeInTheDocument();
+  });
+
   it('renders the mission hub copy and streak summary', () => {
+    mockedUsePageProgressSync.mockReturnValue({
+      isPageSyncLoading: false,
+      isPageBackgroundRefreshing: false,
+      isSignedIn: true,
+    });
     mockedUseSessionMissions.mockReturnValue({
       state: {
         date: '2026-04-05',
@@ -60,6 +95,11 @@ describe('DailyChallengePage', () => {
   });
 
   it('shows the clean sweep unlocked state once all missions are complete', () => {
+    mockedUsePageProgressSync.mockReturnValue({
+      isPageSyncLoading: false,
+      isPageBackgroundRefreshing: false,
+      isSignedIn: true,
+    });
     mockedUseSessionMissions.mockReturnValue({
       state: {
         date: '2026-04-05',

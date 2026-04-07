@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { BookOpen, Sparkles } from 'lucide-react';
+import { Bird, BookOpen, Sparkles } from 'lucide-react';
 import BirdCard from '@/components/journal/BirdCard';
 import JournalControls, { type JournalFilter, type JournalSort } from '@/components/journal/JournalControls';
 import { useBirdJournal } from '@/hooks/useBirdJournal';
+import { usePageProgressSync } from '@/hooks/usePageProgressSync';
 import { useStoredJson } from '@/hooks/useStoredValue';
 import { REVEAL_BIRD_COST } from '@/lib/constants/hints';
 import {
@@ -18,6 +19,7 @@ import { defaultBirdScore, normalizeBirdScore } from '@/lib/utils/player-progres
 import { spendSeeds } from '@/lib/utils/seed-spend';
 
 export default function JournalPage() {
+  const { isPageBackgroundRefreshing } = usePageProgressSync();
   const [filter, setFilter] = useState<JournalFilter>('all');
   const [sort, setSort] = useState<JournalSort>('recent');
   const {
@@ -78,6 +80,13 @@ export default function JournalPage() {
     });
   }, [currentRoundBirdKey, currentRoundRevealKey, filter, journal, sort]);
 
+  const refreshBadge = isPageBackgroundRefreshing ? (
+    <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted)]">
+      <Bird size={14} className="text-[var(--color-secondary)]" />
+      Updating your field notes...
+    </div>
+  ) : null;
+
   if (journal.length === 0) {
     return (
       <div className="mx-auto flex w-full max-w-lg flex-col gap-6 px-4 py-8">
@@ -86,6 +95,7 @@ export default function JournalPage() {
           <p className="mt-1 text-sm text-[var(--color-muted)]">
             A running field guide of every bird you&apos;ve met so far.
           </p>
+          {refreshBadge}
         </div>
 
         <section className="rounded-3xl border border-[var(--color-surface-border)] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_55%),var(--color-surface)] p-8 text-center shadow-[var(--shadow-card)]">
@@ -117,6 +127,7 @@ export default function JournalPage() {
         <p className="mt-1 text-sm text-[var(--color-muted)]">
           Track every bird you&apos;ve seen, how often it fooled you, and which ones you&apos;ve mastered.
         </p>
+        {refreshBadge}
       </div>
 
       <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">

@@ -1,14 +1,16 @@
 'use client';
 
-import { CalendarDays, Flame, Gift, Sprout } from 'lucide-react';
+import { Bird, CalendarDays, Flame, Gift, Sprout } from 'lucide-react';
 import Link from 'next/link';
 import MissionPanel from '@/components/game/MissionPanel';
+import { usePageProgressSync } from '@/hooks/usePageProgressSync';
 import { useSessionMissions } from '@/hooks/useSessionMissions';
 import { useStoredJson } from '@/hooks/useStoredValue';
 import { DAILY_MISSION_HISTORY_STORAGE_KEY, getDailyMissionStreaks } from '@/lib/utils/daily-mission-history';
 import type { DailyMissionHistoryEntry } from '@/types';
 
 export default function DailyChallengePage() {
+  const { isPageBackgroundRefreshing } = usePageProgressSync();
   const { missions, allCompleted, bonusClaimed } = useSessionMissions();
   const missionHistory = useStoredJson<DailyMissionHistoryEntry[]>(DAILY_MISSION_HISTORY_STORAGE_KEY, []);
   const { currentStreak } = getDailyMissionStreaks(missionHistory);
@@ -29,6 +31,12 @@ export default function DailyChallengePage() {
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-muted)]">
             Complete three missions each day to keep your daily streak alive.
           </p>
+          {isPageBackgroundRefreshing ? (
+            <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted)]">
+              <Bird size={14} className="text-[var(--color-secondary)]" />
+              Checking today&apos;s flock tasks...
+            </div>
+          ) : null}
 
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-4">
