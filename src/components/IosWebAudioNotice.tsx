@@ -32,8 +32,8 @@ export default function IosWebAudioNotice() {
   }
 
   return (
-    <div className="fixed inset-x-4 top-[calc(env(safe-area-inset-top)+4.75rem)] z-[60] md:top-20 md:left-1/2 md:right-auto md:w-full md:max-w-xl md:-translate-x-1/2">
-      <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface)]/95 p-4 shadow-[var(--shadow-card)] backdrop-blur-md">
+    <div className="fixed inset-x-4 top-3 z-[60] md:top-4 md:left-1/2 md:right-auto md:w-full md:max-w-xl md:-translate-x-1/2">
+      <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[color-mix(in_srgb,var(--color-primary)_94%,black_6%)] p-4 shadow-[var(--shadow-card)]">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 rounded-full bg-[var(--color-secondary)]/15 p-2 text-[var(--color-secondary)]">
             <Volume2 size={18} />
