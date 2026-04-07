@@ -215,7 +215,7 @@ export default function Answer({
       )}
 
       {/* Bird name + real/fake badge */}
-      <div className="-mt-1 text-center md:mt-0">
+      <div className="-mt-1 w-full text-center md:mt-0">
         <h2 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl font-bold leading-tight mb-2">
           {birdData}
         </h2>
@@ -243,9 +243,9 @@ export default function Answer({
           </div>
         ) : null}
 
-        <div className="mt-4 space-y-3 text-left">
+        <div className="mt-4 w-full space-y-3 text-left">
           {isReal ? (
-            <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4">
+            <div className="w-full rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
                 Field Notes
               </p>
@@ -266,7 +266,7 @@ export default function Answer({
               ) : null}
             </div>
           ) : (
-            <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4">
+            <div className="w-full rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
                 Fake Field Notes
               </p>
