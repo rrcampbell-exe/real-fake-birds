@@ -42,6 +42,17 @@ Vitest is configured for local unit and component testing with coverage reportin
 - Coverage thresholds are enforced in `vitest.config.ts`
 - The GitHub Actions workflow runs lint, production build, and coverage on pushes and pull requests
 
+## Boot Screen Inspection
+
+The full-screen app boot loader can be held open during local development for visual review.
+
+- Add `?inspectBoot=1` to the URL for the default `2500ms` delay
+- Add `?inspectBoot=5000` to hold it open for a custom delay in milliseconds, up to `10000`
+- Or set `localStorage.setItem('rfb:inspectBootDelayMs', '4000')` in DevTools to persist the delay across reloads
+- Remove the local storage key with `localStorage.removeItem('rfb:inspectBootDelayMs')` when you are done
+
+This inspection toggle is development-only and does not affect production behavior.
+
 ## Project Structure
 
 ```text
