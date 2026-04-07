@@ -85,7 +85,7 @@ export default function BirdCard({
                 className="flex flex-col items-center gap-6"
               >
                 {/* Bird name */}
-                <h2 className="font-[family-name:var(--font-display)] text-2xl md:text-4xl font-bold text-center leading-tight">
+                <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl font-bold text-center leading-tight">
                   {birdName}
                 </h2>
 
