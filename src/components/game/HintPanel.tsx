@@ -215,7 +215,6 @@ export default function HintPanel({
           Get a Hint
         </span>
         <span className="flex items-center gap-2 text-xs text-[var(--color-muted)]">
-          <span>{formatNumber(seedsBalance)} seeds</span>
           <ChevronDown
             size={16}
             className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}

@@ -65,7 +65,7 @@ export default function TrophyCase() {
                 {milestone.badge}
               </span>
               <span className="text-center text-[0.6rem] leading-snug text-[var(--color-muted)]">
-                {isEarned ? milestone.description : `Identify ${milestone.value} birds to unlock this feather.`}
+                {isEarned ? milestone.description : `Identify ${formatNumber(milestone.value)} birds to unlock this feather.`}
               </span>
               {isEarned ? (
                 <ShareButton
