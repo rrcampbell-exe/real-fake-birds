@@ -1,8 +1,10 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/lib/supabase/env', () => ({
-  hasSupabaseEnv: vi.fn(() => false),
+vi.mock('@/components/account/AccountStateProvider', () => ({
+  useAccountState: vi.fn(() => ({
+    isSignedIn: false,
+  })),
 }));
 
 import { useSessionMissions } from './useSessionMissions';
@@ -12,7 +14,7 @@ describe('useSessionMissions midnight rollover', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 3, 6, 23, 59, 50));
+    vi.setSystemTime(new Date('2026-04-06T23:59:50.000Z'));
   });
 
   afterEach(() => {

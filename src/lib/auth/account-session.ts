@@ -29,6 +29,7 @@ import {
 
 export const ACCOUNT_STATE_CHANGED_EVENT = 'rfb-account-state-changed';
 let progressFlushPromise: Promise<void> | null = null;
+let signedInSyncPromise: Promise<void> | null = null;
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined';
@@ -121,9 +122,17 @@ export async function flushQueuedProgressEventsForSignedInUser(): Promise<void> 
   await progressFlushPromise;
 }
 
-export async function hydrateSignedInAccountToLocalState(): Promise<void> {
+export async function hydrateSignedInAccountToLocalState(options?: { notify?: boolean }): Promise<void> {
   resetEphemeralLocalState();
-  clearProgressEventOutbox();
+
+  if (readProgressEventOutbox().length > 0) {
+    try {
+      await flushQueuedProgressEventsForSignedInUser();
+    } catch {
+      // Keep queued events in place so a later sync can retry.
+    }
+  }
+
   const response = await pullAccountProgress();
   applyPulledAccountProgress({
     ...response.progress,
@@ -131,7 +140,39 @@ export async function hydrateSignedInAccountToLocalState(): Promise<void> {
     todayDailyChallenge: response.todayDailyChallenge,
     todayMissionClaims: response.todayMissionClaims,
   });
-  notifyAccountStateChanged();
+  if (options?.notify !== false) {
+    notifyAccountStateChanged();
+  }
+}
+
+export async function syncSignedInAccountToLocalState(options?: { notify?: boolean }): Promise<void> {
+  if (signedInSyncPromise) {
+    await signedInSyncPromise;
+    return;
+  }
+
+  signedInSyncPromise = (async () => {
+    try {
+      await flushQueuedProgressEventsForSignedInUser();
+    } catch {
+      // Pull the latest snapshot even if local event flush fails.
+    }
+
+    const response = await pullAccountProgress();
+    applyPulledAccountProgress({
+      ...response.progress,
+      lastLocalSyncAt: response.lastLocalSyncAt,
+      todayDailyChallenge: response.todayDailyChallenge,
+      todayMissionClaims: response.todayMissionClaims,
+    });
+    if (options?.notify !== false) {
+      notifyAccountStateChanged();
+    }
+  })().finally(() => {
+    signedInSyncPromise = null;
+  });
+
+  await signedInSyncPromise;
 }
 
 export async function pushCurrentLocalProgressToAccount(): Promise<void> {
