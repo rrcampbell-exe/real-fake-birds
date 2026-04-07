@@ -62,7 +62,7 @@ const MAX_BOOT_INSPECTION_DELAY_MS = 10_000;
 const MIN_BOOT_SCREEN_DURATION_MS = 1_400;
 const BOOT_EXIT_DURATION_MS = 450;
 const CONTENT_REVEAL_DELAY_MS = BOOT_EXIT_DURATION_MS;
-const CHROME_REVEAL_DELAY_MS = BOOT_EXIT_DURATION_MS + 140;
+const CHROME_REVEAL_DELAY_MS = BOOT_EXIT_DURATION_MS;
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined';
@@ -519,7 +519,7 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
     <AccountStateContext.Provider value={value}>
       <motion.div
         initial={false}
-        animate={isContentVisible ? { opacity: 1, y: 0, filter: 'blur(0px)' } : { opacity: 0, y: 18, filter: 'blur(8px)' }}
+        animate={isContentVisible ? { opacity: 1 } : { opacity: 0 }}
         transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
         className="flex min-h-dvh flex-1 flex-col"
       >
