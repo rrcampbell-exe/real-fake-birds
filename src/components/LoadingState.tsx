@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Bird } from 'lucide-react';
+import { useEffect } from 'react';
 import { useSound } from '@/hooks/useSound';
+import LoadingBirdAnimation from '@/components/LoadingBirdAnimation';
 
 export default function LoadingState() {
   const { startLoop, stopLoop } = useSound();
@@ -15,12 +15,7 @@ export default function LoadingState() {
 
   return (
     <div className="flex flex-col items-center gap-4 py-2">
-      <motion.div
-        animate={{ y: [0, -8, 0] }}
-        transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-      >
-        <Bird size={48} className="text-[var(--color-secondary)]" />
-      </motion.div>
+      <LoadingBirdAnimation />
 
       <div className="flex flex-col items-center gap-2">
         <p className="font-[family-name:var(--font-display)] text-lg font-medium">

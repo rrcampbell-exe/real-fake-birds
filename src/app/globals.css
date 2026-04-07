@@ -274,6 +274,21 @@ button:disabled {
   --color-muted: rgba(255,255,255,0.5);
 }
 
+html[data-app-booting="true"] {
+  --color-primary: #1B5C1B;
+  --color-primary-light: #267326;
+  --color-secondary: #3F1212;
+  --color-text: #FFFFFF;
+  --color-real-fake-text: #3F1212;
+  --color-on-secondary: #FFFFFF;
+  --color-surface: rgba(255,255,255,0.08);
+  --color-surface-hover: rgba(255,255,255,0.14);
+  --color-surface-border: rgba(255,255,255,0.12);
+  --color-muted: rgba(255,255,255,0.55);
+  --shadow-card: 0 8px 32px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.15);
+  --shadow-button: 0 2px 8px rgba(0,0,0,0.2);
+}
+
 /* ─── Tailwind Theme Tokens ─── */
 
 @theme inline {

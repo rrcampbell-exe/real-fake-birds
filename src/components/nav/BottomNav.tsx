@@ -21,7 +21,7 @@ import MenuDrawer from './MenuDrawer';
 export default function BottomNav() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  const { accountUsername } = useAccountState();
+  const { accountUsername, isAppChromeVisible } = useAccountState();
   const hasUnseenBadges = useStoredBoolean(UNSEEN_BADGES_STORAGE_KEY);
   const hasNewThemeUnlock = useStoredBoolean(NEW_THEME_UNLOCK_STORAGE_KEY);
   const lastSeenLeaderboardWeek = useStoredJson<string | null>(LEADERBOARD_LAST_SEEN_WEEK_STORAGE_KEY, null);
@@ -52,6 +52,10 @@ export default function BottomNav() {
     [hasMounted, hasIncompleteDaily, hasNewThemeUnlock, hasPendingRewardClaims, hasUnseenBadges, showLeaderboardNotification]
   );
   const playActive = pathname === '/';
+
+  if (!isAppChromeVisible) {
+    return null;
+  }
 
   return (
     <>
