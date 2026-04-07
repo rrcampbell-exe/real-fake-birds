@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import { Check, X } from 'lucide-react';
+import { ArrowRight, Check, X } from 'lucide-react';
 import Link from 'next/link';
 import SeedIcon from '@/components/icons/SeedIcon';
 import { correctnessText } from '@/lib/utils/correctness-text';
@@ -126,12 +126,23 @@ export default function Answer({
   }, [isMajorStreak, isStreak, isMilestone, newThemeUnlockName]);
 
   return (
-    <div className="relative flex w-full flex-col items-center gap-5">
-      <div className="absolute left-0 top-0 z-10">
+    <div className="relative flex w-full flex-col items-center gap-4 md:gap-5">
+      <div className="flex w-full items-start justify-between gap-3">
         <ShareButton
           payload={sharePayload}
           eventLabel={isMilestone && earnedBadgeName ? 'milestone' : 'round-result'}
+          className="min-h-11 rounded-xl px-4 py-2.5 text-sm shadow-[var(--shadow-button)]"
         />
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.35 }}
+          onClick={() => { play('whoosh'); onAction(); }}
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[var(--color-secondary)] px-4 py-2.5 font-[family-name:var(--font-display)] text-sm font-semibold text-[var(--color-on-secondary)] shadow-[var(--shadow-button)] transition-all duration-150 hover:brightness-110 active:scale-[0.97]"
+        >
+          {actionLabel}
+          <ArrowRight size={16} strokeWidth={2.5} />
+        </motion.button>
       </div>
 
       {/* Correctness indicator */}
@@ -194,7 +205,7 @@ export default function Answer({
       )}
 
       {/* Bird name + real/fake badge */}
-      <div className="text-center">
+      <div className="-mt-1 text-center md:mt-0">
         <h2 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl font-bold leading-tight mb-2">
           {birdData}
         </h2>
@@ -256,20 +267,6 @@ export default function Answer({
           )}
         </div>
       </div>
-
-      {/* Try again button */}
-      <motion.button
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.35 }}
-        onClick={() => { play('whoosh'); onAction(); }}
-        className="mt-2 py-3 px-8 rounded-xl font-[family-name:var(--font-display)] font-semibold text-base
-          bg-[var(--color-secondary)] text-[var(--color-on-secondary)] border-none
-          shadow-[var(--shadow-button)] hover:brightness-110 active:scale-[0.97]
-          transition-all duration-150 cursor-pointer"
-      >
-        {actionLabel}
-      </motion.button>
     </div>
   );
 }

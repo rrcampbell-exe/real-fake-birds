@@ -11,6 +11,10 @@ vi.mock('canvas-confetti', () => ({
   default: confettiMock,
 }));
 
+vi.mock('@/hooks/useSound', () => ({
+  useSound: () => ({ play: vi.fn() }),
+}));
+
 const emptyHints: HintState = {
   fact: null,
   image: null,
@@ -57,8 +61,41 @@ describe('Answer', () => {
     expect(screen.getByText('Real')).toBeInTheDocument();
     expect(screen.getByText('Spotted in Algeria')).toBeInTheDocument();
     expect(screen.getByText('Cyanocitta cristata')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Next Bird' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Next Bird' })[0]);
     expect(onAction).toHaveBeenCalled();
+  });
+
+  it('keeps the next-bird action in the top row above the answer content on all screen sizes', () => {
+    const onAction = vi.fn();
+
+    render(
+      <Answer
+        birdData="Blue Robin"
+        isReal
+        regionLabel="Algeria"
+        sciName="Cyanocitta cristata"
+        fact="Blue Robin is known for its vivid plumage."
+        hints={emptyHints}
+        isStreak={false}
+        isCorrect
+        isMilestone={false}
+        seedsEarned={0}
+        newThemeUnlockName={null}
+        earnedBadgeName={null}
+        onAction={onAction}
+      />
+    );
+
+    const nextButton = screen.getByRole('button', { name: 'Next Bird' });
+    const shareButton = screen.getByRole('button', { name: 'Share' });
+    const notesHeading = screen.getByText('Field Notes');
+
+    expect(shareButton.compareDocumentPosition(nextButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(nextButton.compareDocumentPosition(notesHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    fireEvent.click(nextButton);
+
+    expect(onAction).toHaveBeenCalledTimes(1);
   });
 
   it('fires confetti when a major streak checkpoint is achieved', () => {
