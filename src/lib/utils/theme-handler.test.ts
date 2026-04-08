@@ -68,7 +68,6 @@ describe('theme-handler', () => {
         primary: '#C43E00',
         secondary: '#FFF176',
         textColor: '#3B1A00',
-        realFakeTextColor: '#5C2600',
         themeSong: '/sounds/themes/finch.mp3',
       })
     );
