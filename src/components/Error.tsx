@@ -21,7 +21,7 @@ export default function Error({ onTryAgain }: ErrorProps) {
         className="rounded-2xl bg-[var(--color-surface)] border border-[var(--color-surface-border)] backdrop-blur-sm p-8 flex flex-col items-center gap-4"
         style={{ boxShadow: 'var(--shadow-card)' }}
       >
-        <AlertCircle size={40} className="text-red-400" />
+        <AlertCircle size={40} className="text-[var(--color-error)]" />
         <p className="font-[family-name:var(--font-display)] text-lg font-medium">
           No birds found
         </p>

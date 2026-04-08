@@ -160,8 +160,8 @@ export default function Answer({
         transition={{ type: 'spring', stiffness: 400, damping: 15, delay: 0.1 }}
         className={`w-14 h-14 rounded-full flex items-center justify-center ${
           isCorrect
-            ? 'bg-emerald-500/20 text-emerald-400'
-            : 'bg-red-500/20 text-red-400'
+            ? 'bg-[color-mix(in_srgb,var(--color-success)_18%,transparent)] text-[var(--color-success)]'
+            : 'bg-[color-mix(in_srgb,var(--color-error)_18%,transparent)] text-[var(--color-error)]'
         }`}
       >
         {isCorrect ? <Check size={28} strokeWidth={3} /> : <X size={28} strokeWidth={3} />}
@@ -223,8 +223,8 @@ export default function Answer({
           transition={{ delay: 0.2 }}
           className={`inline-block px-4 py-1 rounded-full text-sm font-bold tracking-wide uppercase ${
             isReal
-              ? 'bg-emerald-500/20 text-emerald-400'
-              : 'bg-red-500/20 text-red-400'
+              ? 'bg-[color-mix(in_srgb,var(--color-success)_18%,transparent)] text-[var(--color-success)]'
+              : 'bg-[color-mix(in_srgb,var(--color-error)_18%,transparent)] text-[var(--color-error)]'
           }`}
         >
           {isReal ? 'Real' : 'Fake'}
