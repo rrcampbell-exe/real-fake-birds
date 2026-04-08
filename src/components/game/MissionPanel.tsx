@@ -126,7 +126,7 @@ export default function MissionPanel({
 
                 <div className="mt-3 flex items-center justify-between gap-3">
                   {mission.completed ? (
-                    <div className="inline-flex items-center gap-1 text-[0.7rem] font-semibold text-emerald-400">
+                    <div className="inline-flex items-center gap-1 text-[0.7rem] font-semibold text-[var(--color-success)]">
                       <CheckCircle2 size={14} />
                       {mission.claimed ? 'Claimed' : 'Ready to claim'}
                     </div>

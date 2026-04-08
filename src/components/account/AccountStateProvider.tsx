@@ -319,7 +319,7 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
     }
 
     const root = document.documentElement;
-    const shouldLockBootTheme = isBooting || !isContentVisible;
+    const shouldLockBootTheme = isBooting;
 
     if (shouldLockBootTheme) {
       root.setAttribute('data-app-booting', 'true');
@@ -331,7 +331,7 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
     root.removeAttribute('data-app-booting');
 
     return undefined;
-  }, [isBooting, isContentVisible]);
+  }, [isBooting]);
 
   useEffect(() => {
     if (!supabaseReady) {

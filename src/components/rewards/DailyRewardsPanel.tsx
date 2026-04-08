@@ -82,7 +82,7 @@ export default function DailyRewardsPanel() {
       <MissionPanel containerClassName="w-full" />
 
       {claimError ? (
-        <p className="text-[0.7rem] text-red-400">{claimError}</p>
+        <p className="text-[0.7rem] text-[var(--color-error)]">{claimError}</p>
       ) : null}
 
       {hasMissionSetBonusReady ? (

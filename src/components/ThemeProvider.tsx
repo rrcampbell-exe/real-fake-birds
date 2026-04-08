@@ -19,7 +19,7 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
   }, []);
 
   useEffect(() => {
-    if (storedTheme.name !== currentTheme.name || storedTheme.themeSong !== currentTheme.themeSong || storedTheme.primary !== currentTheme.primary || storedTheme.secondary !== currentTheme.secondary || storedTheme.textColor !== currentTheme.textColor || storedTheme.realFakeTextColor !== currentTheme.realFakeTextColor) {
+    if (storedTheme.name !== currentTheme.name || storedTheme.themeSong !== currentTheme.themeSong || storedTheme.primary !== currentTheme.primary || storedTheme.secondary !== currentTheme.secondary || storedTheme.textColor !== currentTheme.textColor) {
       setTheme(currentTheme);
     }
   }, [currentTheme, storedTheme]);

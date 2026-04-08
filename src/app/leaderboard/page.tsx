@@ -164,7 +164,7 @@ export default function LeaderboardPage() {
           renderSkeletonRows()
         ) : error ? (
           <div className="flex flex-col gap-3 p-4">
-            <p className="text-sm text-red-300">{error}</p>
+            <p className="text-sm text-[var(--color-error)]">{error}</p>
             <button
               type="button"
               onClick={() => void reload()}

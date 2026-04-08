@@ -408,9 +408,9 @@ export default function UsernameAvailabilityCard({
                     {isChecking ? (
                       <LoaderCircle size={16} className="mt-0.5 shrink-0 animate-spin text-[var(--color-secondary)]" />
                     ) : issues.length > 0 || error ? (
-                      <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-400" />
+                      <AlertCircle size={16} className="mt-0.5 shrink-0 text-[var(--color-error)]" />
                     ) : (
-                      <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-400" />
+                      <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-[var(--color-success)]" />
                     )}
                     <div>
                       <p>{error ?? statusMessage}</p>
@@ -418,7 +418,7 @@ export default function UsernameAvailabilityCard({
                   </div>
 
                   {issues.length > 0 ? (
-                    <ul className="mt-3 space-y-1 text-xs text-red-300">
+                    <ul className="mt-3 space-y-1 text-xs text-[var(--color-error)]">
                       {issues.map((issue) => (
                         <li key={issue}>- {issue.replace(/_/g, ' ')}</li>
                       ))}
@@ -543,7 +543,7 @@ export default function UsernameAvailabilityCard({
           ) : null}
 
           {authError ? (
-            <p className="mt-3 text-xs text-red-300">{authError}</p>
+            <p className="mt-3 text-xs text-[var(--color-error)]">{authError}</p>
           ) : null}
           {authNotice ? (
             <p className="mt-3 text-xs text-emerald-300">{authNotice}</p>

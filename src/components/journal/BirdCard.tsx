@@ -52,8 +52,8 @@ export default function BirdCard({ entry, isMaskedForCurrentRound, canAffordReve
               <span
                 className={`rounded-full px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] ${
                   entry.isReal
-                  ? 'bg-emerald-500/20 text-emerald-400'
-                  : 'bg-red-500/20 text-red-400'
+                  ? 'bg-[color-mix(in_srgb,var(--color-success)_18%,transparent)] text-[var(--color-success)]'
+                  : 'bg-[color-mix(in_srgb,var(--color-error)_18%,transparent)] text-[var(--color-error)]'
                 }`}
               >
                 {entry.isReal ? 'Real' : 'Fake'}

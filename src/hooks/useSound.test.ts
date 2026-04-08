@@ -74,9 +74,8 @@ describe('useSound', () => {
       JSON.stringify({
         name: 'Raven',
         primary: '#0a0a14',
-        secondary: '#1B1B5C',
+        secondary: '#7676D9',
         textColor: '#FFFFFF',
-        realFakeTextColor: '#B6B6FF',
         themeSong: '/sounds/themes/raven.mp3',
       })
     );

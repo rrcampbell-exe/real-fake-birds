@@ -144,11 +144,11 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
             <div className="relative">
               <Flame
                 size={18}
-                className={currentStreak > 0 ? 'text-orange-400' : 'text-[var(--color-muted)]'}
+                className={currentStreak > 0 ? 'text-[var(--color-streak)]' : 'text-[var(--color-muted)]'}
                 fill={currentStreak > 0 ? 'currentColor' : 'none'}
               />
               {currentStreak >= 5 && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-400 rounded-full animate-ping" />
+                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[var(--color-streak)] animate-ping" />
               )}
             </div>
             <div className="flex min-w-0 flex-col">
@@ -281,7 +281,7 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
             </div>
 
             {insuranceError ? (
-              <p className="mt-2 text-[0.65rem] text-red-400">{insuranceError}</p>
+              <p className="mt-2 text-[0.65rem] text-[var(--color-error)]">{insuranceError}</p>
             ) : null}
           </div>
         ) : null}
