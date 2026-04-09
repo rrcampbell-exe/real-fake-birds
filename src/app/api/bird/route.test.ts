@@ -15,6 +15,7 @@ vi.mock('@/lib/server/utils/percent-of-time', () => ({
 }));
 
 vi.mock('@/lib/server/wikipedia', () => ({
+  fetchWikipediaBirdSummary: vi.fn(),
   fetchWikipediaFact: vi.fn(),
   fetchWikipediaImage: vi.fn(),
 }));
@@ -23,12 +24,20 @@ import { nameGenerator } from '@/lib/server/name-generator';
 import { generateFakeImage, generateRealBirdFact } from '@/lib/server/openai';
 import { resetRateLimitStore } from '@/lib/server/rate-limiter';
 import { percentOfTime } from '@/lib/server/utils/percent-of-time';
-import { fetchWikipediaFact, fetchWikipediaImage } from '@/lib/server/wikipedia';
+import { fetchWikipediaBirdSummary, fetchWikipediaFact, fetchWikipediaImage } from '@/lib/server/wikipedia';
 import { GET, POST } from './route';
 
 describe('bird route', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    vi.mocked(nameGenerator).mockReset();
+    vi.mocked(generateFakeImage).mockReset();
+    vi.mocked(generateRealBirdFact).mockReset();
+    vi.mocked(percentOfTime).mockReset();
+    vi.mocked(fetchWikipediaBirdSummary).mockReset();
+    vi.mocked(fetchWikipediaFact).mockReset();
+    vi.mocked(fetchWikipediaImage).mockReset();
     resetRateLimitStore();
   });
 
@@ -43,6 +52,14 @@ describe('bird route', () => {
 
   it('returns a real bird with sciName from eBird data', async () => {
     vi.mocked(percentOfTime).mockReturnValue(false);
+    vi.mocked(fetchWikipediaBirdSummary).mockResolvedValue({
+      title: 'Blue Jay',
+      description: 'bird',
+      fact: 'A widespread songbird.',
+      summary: 'A widespread songbird.',
+      imageUrl: 'https://images.example.com/blue-jay.jpg',
+      articleUrl: 'https://en.wikipedia.org/wiki/Blue_Jay',
+    });
     vi.mocked(fetchWikipediaFact).mockResolvedValue('A widespread songbird.');
     vi.spyOn(Math, 'random').mockReturnValue(0);
     vi.spyOn(global, 'fetch').mockResolvedValue({
@@ -57,6 +74,9 @@ describe('bird route', () => {
       regionLabel: 'Algeria',
       sciName: 'Cyanocitta cristata',
       fact: 'A widespread songbird.',
+      summary: 'A widespread songbird.',
+      articleUrl: 'https://en.wikipedia.org/wiki/Blue_Jay',
+      imageUrl: 'https://images.example.com/blue-jay.jpg',
     });
   });
 
