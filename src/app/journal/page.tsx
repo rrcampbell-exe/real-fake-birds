@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Bird, BookOpen, Sparkles } from 'lucide-react';
 import BirdCard from '@/components/journal/BirdCard';
 import JournalControls, { type JournalFilter, type JournalSort } from '@/components/journal/JournalControls';
@@ -22,6 +22,7 @@ export default function JournalPage() {
   const { isPageBackgroundRefreshing } = usePageProgressSync();
   const [filter, setFilter] = useState<JournalFilter>('all');
   const [sort, setSort] = useState<JournalSort>('recent');
+  const [linkedBirdKey, setLinkedBirdKey] = useState<string | null>(null);
   const {
     journal,
     uniqueBirdCount,
@@ -79,6 +80,30 @@ export default function JournalPage() {
       return right.lastSeenAt.localeCompare(left.lastSeenAt);
     });
   }, [currentRoundBirdKey, currentRoundRevealKey, filter, journal, sort]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const hash = window.location.hash.slice(1);
+    if (!hash) {
+      setLinkedBirdKey(null);
+      return;
+    }
+
+    const decodedHash = decodeURIComponent(hash);
+    setLinkedBirdKey(decodedHash);
+
+    const target = document.getElementById(decodedHash);
+    if (!target) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [filteredJournal]);
 
   const refreshBadge = isPageBackgroundRefreshing ? (
     <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted)]">
@@ -156,11 +181,12 @@ export default function JournalPage() {
         onSortChange={setSort}
       />
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <section className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
         {filteredJournal.map((entry) => (
           <BirdCard
             key={entry.birdKey}
             entry={entry}
+            isLinkedTarget={entry.birdKey === linkedBirdKey}
             isMaskedForCurrentRound={isJournalEntryMaskedForCurrentRound({
               entry,
               currentRoundBirdKey,

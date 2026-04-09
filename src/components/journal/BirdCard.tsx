@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import Image from 'next/image';
+import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronUp, MapPin } from 'lucide-react';
 import type { BirdJournalEntry } from '@/types';
 import { REVEAL_BIRD_COST } from '@/lib/constants/hints';
@@ -10,6 +11,7 @@ interface JournalBirdCardProps {
   isMaskedForCurrentRound: boolean;
   canAffordReveal: boolean;
   onRevealForCurrentRound: (birdKey: string) => void;
+  isLinkedTarget?: boolean;
 }
 
 function formatLastSeen(date: string): string {
@@ -25,48 +27,63 @@ function formatLastSeen(date: string): string {
   }).format(parsed);
 }
 
-export default function BirdCard({ entry, isMaskedForCurrentRound, canAffordReveal, onRevealForCurrentRound }: JournalBirdCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+export default function BirdCard({ entry, isMaskedForCurrentRound, canAffordReveal, onRevealForCurrentRound, isLinkedTarget = false }: JournalBirdCardProps) {
+  const [isExpanded, setIsExpanded] = useState(isLinkedTarget);
+  const [imageStatus, setImageStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>(entry.metadata.imageUrl ? 'loading' : 'idle');
   const accuracy = entry.seenCount > 0
     ? Math.floor((entry.correctCount / entry.seenCount) * 100)
     : 0;
+  const summaryText = entry.metadata.summary ?? entry.metadata.fact;
+  const hasImage = Boolean(entry.metadata.imageUrl);
+  const showExpandedArticleHeader = isExpanded && !isMaskedForCurrentRound && hasImage;
+
+  useEffect(() => {
+    if (isLinkedTarget) {
+      setIsExpanded(true);
+    }
+  }, [isLinkedTarget]);
+
+  useEffect(() => {
+    setImageStatus(entry.metadata.imageUrl ? 'loading' : 'idle');
+  }, [entry.metadata.imageUrl]);
 
   return (
-    <article className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-card)] transition hover:bg-[var(--color-surface-hover)]">
+    <article id={entry.birdKey} className="scroll-mt-28 rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-card)] transition hover:bg-[var(--color-surface-hover)]">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-[family-name:var(--font-display)] text-lg font-bold leading-tight text-[var(--color-text)]">
-              {entry.birdName}
-            </h3>
-            {isMaskedForCurrentRound ? (
-              <button
-                type="button"
-                onClick={() => onRevealForCurrentRound(entry.birdKey)}
-                disabled={!canAffordReveal}
-                className="rounded-full bg-[var(--color-surface-hover)] px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-text)] transition enabled:cursor-pointer enabled:hover:bg-[var(--color-surface)] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Reveal for {REVEAL_BIRD_COST} seeds
-              </button>
-            ) : (
-              <span
-                className={`rounded-full px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] ${
-                  entry.isReal
-                  ? 'bg-[color-mix(in_srgb,var(--color-success)_18%,transparent)] text-[var(--color-success)]'
-                  : 'bg-[color-mix(in_srgb,var(--color-error)_18%,transparent)] text-[var(--color-error)]'
-                }`}
-              >
-                {entry.isReal ? 'Real' : 'Fake'}
-              </span>
-            )}
+        {!showExpandedArticleHeader ? (
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="font-[family-name:var(--font-display)] text-lg font-bold leading-tight text-[var(--color-text)]">
+                {entry.birdName}
+              </h3>
+              {isMaskedForCurrentRound ? (
+                <button
+                  type="button"
+                  onClick={() => onRevealForCurrentRound(entry.birdKey)}
+                  disabled={!canAffordReveal}
+                  className="rounded-full bg-[var(--color-surface-hover)] px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-text)] transition enabled:cursor-pointer enabled:hover:bg-[var(--color-surface)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Reveal for {REVEAL_BIRD_COST} seeds
+                </button>
+              ) : (
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] ${
+                    entry.isReal
+                    ? 'bg-[color-mix(in_srgb,var(--color-success)_18%,transparent)] text-[var(--color-success)]'
+                    : 'bg-[color-mix(in_srgb,var(--color-error)_18%,transparent)] text-[var(--color-error)]'
+                  }`}
+                >
+                  {entry.isReal ? 'Real' : 'Fake'}
+                </span>
+              )}
+            </div>
+            <p className="mt-2 text-sm text-[var(--color-muted)]">
+              {isMaskedForCurrentRound
+                ? 'Seen ??? times'
+                : `Seen ${entry.seenCount} ${entry.seenCount === 1 ? 'time' : 'times'} • Last seen on ${formatLastSeen(entry.lastSeenAt)}`}
+            </p>
           </div>
-          <p className="mt-2 text-sm text-[var(--color-muted)]">
-            Seen {isMaskedForCurrentRound ? '??? times' : `${entry.seenCount} ${entry.seenCount === 1 ? 'time' : 'times'}`}
-          </p>
-          <p className="mt-1 text-sm text-[var(--color-muted)]">
-            Last seen on {isMaskedForCurrentRound ? '???' : formatLastSeen(entry.lastSeenAt)}
-          </p>
-        </div>
+        ) : <div className="min-w-0" />}
 
         {!isMaskedForCurrentRound ? (
           <button
@@ -81,37 +98,96 @@ export default function BirdCard({ entry, isMaskedForCurrentRound, canAffordReve
         ) : null}
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-3">
-          <p className="text-[0.65rem] uppercase tracking-[0.14em] text-[var(--color-muted)]">Accuracy</p>
-          <p className="mt-2 font-[family-name:var(--font-display)] text-xl font-bold text-[var(--color-text)]">{isMaskedForCurrentRound ? '???' : `${accuracy}%`}</p>
-        </div>
-        <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-3">
-          <p className="text-[0.65rem] uppercase tracking-[0.14em] text-[var(--color-muted)]">Correct</p>
-          <p className="mt-2 font-[family-name:var(--font-display)] text-xl font-bold text-[var(--color-text)]">{isMaskedForCurrentRound ? '???' : entry.correctCount}</p>
-        </div>
-      </div>
-
       {isExpanded && !isMaskedForCurrentRound ? (
-        <div className="mt-4 space-y-3 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-4">
-          {entry.metadata.regionLabel ? (
-            <p className="flex items-center gap-2 text-sm text-[var(--color-text)]">
-              <MapPin size={14} className="text-[var(--color-muted)]" />
-              {entry.metadata.regionLabel}
-            </p>
+        <div className="mt-4 space-y-3">
+          {hasImage ? (
+            <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface)]">
+              {imageStatus === 'loading' ? (
+                <div
+                  aria-hidden="true"
+                  data-testid="journal-image-shimmer"
+                  className="absolute inset-0 bg-[linear-gradient(110deg,var(--color-surface-hover)_8%,color-mix(in_srgb,var(--color-surface)_65%,white_35%)_18%,var(--color-surface-hover)_33%)] bg-[length:200%_100%] animate-[shimmer_1.25s_linear_infinite]"
+                />
+              ) : null}
+              {imageStatus === 'error' ? (
+                <div className="absolute inset-0 flex items-center justify-center bg-[var(--color-surface-hover)] px-4 text-center text-sm font-medium text-[var(--color-muted)]">
+                  Image unavailable
+                </div>
+              ) : null}
+              <Image
+                src={entry.metadata.imageUrl ?? ''}
+                alt={entry.birdName}
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                className={`object-cover object-center transition-opacity duration-200 ${imageStatus === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
+                loading="lazy"
+                unoptimized
+                onLoad={() => setImageStatus('loaded')}
+                onError={() => setImageStatus('error')}
+              />
+            </div>
           ) : null}
 
-          {entry.metadata.sciName ? (
-            <p className="text-sm italic text-[var(--color-muted)]">{entry.metadata.sciName}</p>
+          {showExpandedArticleHeader ? (
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <h3 className="font-[family-name:var(--font-display)] text-lg font-bold leading-tight text-[var(--color-text)]">
+                  {entry.birdName}
+                </h3>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] ${
+                    entry.isReal
+                    ? 'bg-[color-mix(in_srgb,var(--color-success)_18%,transparent)] text-[var(--color-success)]'
+                    : 'bg-[color-mix(in_srgb,var(--color-error)_18%,transparent)] text-[var(--color-error)]'
+                  }`}
+                >
+                  {entry.isReal ? 'Real' : 'Fake'}
+                </span>
+              </div>
+              {entry.metadata.sciName ? (
+                <p className="text-[0.95rem] italic leading-tight text-[var(--color-muted)]">{entry.metadata.sciName}</p>
+              ) : null}
+              <p className="text-sm leading-tight text-[var(--color-muted)]">
+                Seen {entry.seenCount} {entry.seenCount === 1 ? 'time' : 'times'} • Last seen on {formatLastSeen(entry.lastSeenAt)}
+              </p>
+              {entry.metadata.regionLabel ? (
+                <p className="flex items-center gap-1.5 text-sm leading-tight text-[var(--color-text)]">
+                  <MapPin size={13} className="text-[var(--color-muted)]" />
+                  {entry.metadata.regionLabel}
+                </p>
+              ) : null}
+            </div>
           ) : null}
 
-          {entry.metadata.fact ? (
-            <p className="text-sm leading-6 text-[var(--color-text)]">{entry.metadata.fact}</p>
+          {summaryText ? (
+            <p className="text-sm leading-6 text-[var(--color-text)]">{summaryText}</p>
           ) : (
             <p className="text-sm leading-6 text-[var(--color-muted)]">
               No field notes saved for this bird yet.
             </p>
           )}
+
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-3">
+              <p className="text-[0.65rem] uppercase tracking-[0.14em] text-[var(--color-muted)]">Accuracy</p>
+              <p className="mt-2 font-[family-name:var(--font-display)] text-xl font-bold text-[var(--color-text)]">{`${accuracy}%`}</p>
+            </div>
+            <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-3">
+              <p className="text-[0.65rem] uppercase tracking-[0.14em] text-[var(--color-muted)]">Correct</p>
+              <p className="mt-2 font-[family-name:var(--font-display)] text-xl font-bold text-[var(--color-text)]">{entry.correctCount}</p>
+            </div>
+          </div>
+        </div>
+      ) : !isMaskedForCurrentRound ? (
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-3">
+            <p className="text-[0.65rem] uppercase tracking-[0.14em] text-[var(--color-muted)]">Accuracy</p>
+            <p className="mt-2 font-[family-name:var(--font-display)] text-xl font-bold text-[var(--color-text)]">{`${accuracy}%`}</p>
+          </div>
+          <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-3">
+            <p className="text-[0.65rem] uppercase tracking-[0.14em] text-[var(--color-muted)]">Correct</p>
+            <p className="mt-2 font-[family-name:var(--font-display)] text-xl font-bold text-[var(--color-text)]">{entry.correctCount}</p>
+          </div>
         </div>
       ) : null}
     </article>
