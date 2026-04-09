@@ -160,10 +160,18 @@ export interface WeeklyOverview {
 
 export type GameMode = 'classic' | 'daily';
 
+export interface MissionRewardSummary {
+  missionId: string;
+  description: string;
+  toastDescription: string;
+  rewardSeeds: number;
+}
+
 export interface GameRoundResult {
   isCorrect: boolean;
   isReal: boolean;
   chosenResponse: 'real' | 'fake';
+  roundSeedsEarned: number;
   seedsEarned: number;
   currentStreak: number;
   bestStreak: number;
@@ -173,6 +181,10 @@ export interface GameRoundResult {
   streakProtected: boolean;
   earnedBadgeName: string | null;
   unlockedThemeName: string | null;
+  missionRewards: MissionRewardSummary[];
+  missionSetBonusSeedsEarned: number;
+  completedDailyMissionSet: boolean;
+  dailyMissionStreak: number | null;
 }
 
 export interface DailyChallengeState {
@@ -209,6 +221,7 @@ export type MissionType =
 export interface MissionDefinition {
   id: string;
   description: string;
+  toastDescription: string;
   type: MissionType;
   target: number;
   rewardSeeds: number;

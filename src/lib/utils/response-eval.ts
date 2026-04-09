@@ -110,8 +110,8 @@ const responseEval = (
     bestStreak = currentStreak > bestStreak ? currentStreak : bestStreak;
 
     const streakSeedsEarned = streakEval(currentStreak, setIsStreak);
-    const seedsEarned = BASE_CORRECT_SEED_REWARD + streakSeedsEarned;
-    seeds = seeds + seedsEarned;
+    const roundSeedsEarned = BASE_CORRECT_SEED_REWARD + streakSeedsEarned;
+    seeds = seeds + roundSeedsEarned;
 
     const updatedBirdScore = {
       ...birdScore,
@@ -125,7 +125,6 @@ const responseEval = (
 
     writeBirdScore(updatedBirdScore);
 
-    setSeedsEarned(seedsEarned);
     const milestoneResult = milestoneEval(
       updatedBirdScore.birdsIdentified,
       existingUnlockedThemeNames,
@@ -138,7 +137,8 @@ const responseEval = (
       isCorrect: true,
       isReal,
       chosenResponse,
-      seedsEarned,
+      roundSeedsEarned,
+      seedsEarned: roundSeedsEarned,
       currentStreak,
       bestStreak,
       birdsSeen,
@@ -147,6 +147,10 @@ const responseEval = (
       streakProtected: false,
       earnedBadgeName: milestoneResult.earnedBadgeName,
       unlockedThemeName: milestoneResult.unlockedThemeName,
+      missionRewards: [],
+      missionSetBonusSeedsEarned: 0,
+      completedDailyMissionSet: false,
+      dailyMissionStreak: null,
     } satisfies GameRoundResult;
 
     track('game_round_complete', {
@@ -154,13 +158,13 @@ const responseEval = (
       is_correct: true,
       is_real: isReal,
       hint_count: usedHintTypes.length,
-      seeds_earned: seedsEarned,
+      seeds_earned: roundSeedsEarned,
       current_streak: currentStreak,
       birds_identified: birdsIdentified,
     });
 
     if (currentStreak > 1 && isStreakCheckpoint(currentStreak)) {
-      track('streak_achieved', { mode, current_streak: currentStreak, seeds_earned: seedsEarned });
+      track('streak_achieved', { mode, current_streak: currentStreak, seeds_earned: roundSeedsEarned });
     }
 
     if (milestoneResult.earnedBadgeName) {
@@ -179,14 +183,27 @@ const responseEval = (
       });
     }
 
-    const { newlyCompletedMissionIds } = applyRoundToSessionMissions(result);
+    const missionUpdate = applyRoundToSessionMissions(result);
+    const { newlyCompletedMissionIds } = missionUpdate;
     newlyCompletedMissionIds.forEach((missionId) => {
       track('mission_completed', { mission_id: missionId, mode });
     });
 
-    options?.onRoundResolved?.(result);
+    const missionSeedsEarned = missionUpdate.totalRewardSeeds;
+    const finalResult = {
+      ...result,
+      seedsEarned: roundSeedsEarned + missionSeedsEarned,
+      missionRewards: missionUpdate.missionRewards,
+      missionSetBonusSeedsEarned: missionUpdate.missionSetBonusSeedsEarned,
+      completedDailyMissionSet: missionUpdate.completedDailyMissionSet,
+      dailyMissionStreak: missionUpdate.dailyMissionStreak,
+    } satisfies GameRoundResult;
 
-    return result;
+    setSeedsEarned(finalResult.seedsEarned);
+
+    options?.onRoundResolved?.(finalResult);
+
+    return finalResult;
   }
 
   const birdScore = readBirdScore();
@@ -218,6 +235,7 @@ const responseEval = (
     isCorrect: false,
     isReal,
     chosenResponse,
+    roundSeedsEarned: 0,
     seedsEarned: 0,
     currentStreak: updatedBirdScore.currentStreak,
     bestStreak,
@@ -227,6 +245,10 @@ const responseEval = (
     streakProtected,
     earnedBadgeName: null,
     unlockedThemeName: null,
+    missionRewards: [],
+    missionSetBonusSeedsEarned: 0,
+    completedDailyMissionSet: false,
+    dailyMissionStreak: null,
   } satisfies GameRoundResult;
 
   track('game_round_complete', {
@@ -246,14 +268,26 @@ const responseEval = (
     });
   }
 
-  const { newlyCompletedMissionIds } = applyRoundToSessionMissions(result);
+  const missionUpdate = applyRoundToSessionMissions(result);
+  const { newlyCompletedMissionIds } = missionUpdate;
   newlyCompletedMissionIds.forEach((missionId) => {
     track('mission_completed', { mission_id: missionId, mode });
   });
 
-  options?.onRoundResolved?.(result);
+  const finalResult = {
+    ...result,
+    seedsEarned: missionUpdate.totalRewardSeeds,
+    missionRewards: missionUpdate.missionRewards,
+    missionSetBonusSeedsEarned: missionUpdate.missionSetBonusSeedsEarned,
+    completedDailyMissionSet: missionUpdate.completedDailyMissionSet,
+    dailyMissionStreak: missionUpdate.dailyMissionStreak,
+  } satisfies GameRoundResult;
 
-  return result;
+  setSeedsEarned(finalResult.seedsEarned);
+
+  options?.onRoundResolved?.(finalResult);
+
+  return finalResult;
 };
 
 export default responseEval;

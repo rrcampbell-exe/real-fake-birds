@@ -5,8 +5,8 @@ import {
   SESSION_MISSIONS_STORAGE_KEY,
   missionDefinitions,
 } from '@/lib/constants/missions';
-import type { GameRoundResult, MissionDefinition, SessionMissionsState } from '@/types';
-import { getTodayChallengeDate } from './daily-challenge';
+import type { GameRoundResult, MissionDefinition, MissionRewardSummary, SessionMissionsState } from '@/types';
+import { getTodayMissionDate } from './daily-mission-date';
 import { recordDailyMissionCompletion, syncDailyMissionStreaksToBirdScore } from './daily-mission-history';
 import { readBirdScore, writeBirdScore } from './player-progress';
 
@@ -26,7 +26,7 @@ function getMissionDefinitionById(missionId: string): MissionDefinition | undefi
   return missionDefinitions.find((mission) => mission.id === missionId);
 }
 
-export function createSessionMissionsStateForDate(date = getTodayChallengeDate()): SessionMissionsState {
+export function createSessionMissionsStateForDate(date = getTodayMissionDate()): SessionMissionsState {
   const selectedMissions = [...missionDefinitions]
     .sort((left, right) => hashValue(`${date}:${left.id}`) - hashValue(`${date}:${right.id}`))
     .slice(0, DAILY_MISSION_COUNT)
@@ -46,7 +46,7 @@ export function createSessionMissionsStateForDate(date = getTodayChallengeDate()
 
 function normalizeState(
   stateLike: Partial<SessionMissionsState> | null | undefined,
-  fallbackDate = getTodayChallengeDate()
+  fallbackDate = getTodayMissionDate()
 ): SessionMissionsState {
   const baseState = createSessionMissionsStateForDate(fallbackDate);
   if (!stateLike || typeof stateLike !== 'object') {
@@ -80,7 +80,7 @@ function normalizeState(
   };
 }
 
-export function readSessionMissions(date = getTodayChallengeDate()): SessionMissionsState {
+export function readSessionMissions(date = getTodayMissionDate()): SessionMissionsState {
   if (!isBrowser()) {
     return createSessionMissionsStateForDate(date);
   }
@@ -110,8 +110,35 @@ export function writeSessionMissions(stateLike: Partial<SessionMissionsState>): 
   return state;
 }
 
-export function resetSessionMissions(date = getTodayChallengeDate()): SessionMissionsState {
+export function resetSessionMissions(date = getTodayMissionDate()): SessionMissionsState {
   return writeSessionMissions(createSessionMissionsStateForDate(date));
+}
+
+export function getMissionRewardEventId(date: string, missionId: string): string {
+  return missionId === 'mission-set-bonus' ? `${date}:mission-set-bonus` : `${date}:${missionId}`;
+}
+
+export function createMissionRewardSummary(missionId: string): MissionRewardSummary | null {
+  if (missionId === 'mission-set-bonus') {
+    return {
+      missionId,
+      description: 'Clean sweep bonus',
+      toastDescription: 'Clean sweep bonus',
+      rewardSeeds: DAILY_MISSION_BONUS_SEEDS,
+    };
+  }
+
+  const definition = getMissionDefinitionById(missionId);
+  if (!definition) {
+    return null;
+  }
+
+  return {
+    missionId,
+    description: definition.description,
+    toastDescription: definition.toastDescription,
+    rewardSeeds: definition.rewardSeeds,
+  };
 }
 
 function incrementForMission(definition: MissionDefinition, roundResult: GameRoundResult): number {
@@ -138,16 +165,39 @@ function incrementForMission(definition: MissionDefinition, roundResult: GameRou
 export function applyRoundToSessionMissions(roundResult: GameRoundResult): {
   nextState: SessionMissionsState;
   newlyCompletedMissionIds: string[];
+  missionRewards: MissionRewardSummary[];
+  missionSetBonusSeedsEarned: number;
+  totalRewardSeeds: number;
+  completedDailyMissionSet: boolean;
+  dailyMissionStreak: number | null;
 } {
   const current = readSessionMissions();
   const newlyCompletedMissionIds: string[] = [];
+  const missionRewards: MissionRewardSummary[] = [];
+  let missionSetBonusSeedsEarned = 0;
+  let completedDailyMissionSet = false;
+  let dailyMissionStreak: number | null = null;
+  const previousAllCompleted = current.missions.every((mission) => mission.completed);
 
-  const nextState = writeSessionMissions({
+  const nextStateDraft: SessionMissionsState = {
     ...current,
     missions: current.missions.map((missionState) => {
       const definition = getMissionDefinitionById(missionState.missionId);
-      if (!definition || missionState.completed) {
+      if (!definition) {
         return missionState;
+      }
+
+      if (missionState.completed) {
+        if (!missionState.claimed) {
+          missionRewards.push({
+            missionId: definition.id,
+            description: definition.description,
+            toastDescription: definition.toastDescription,
+            rewardSeeds: definition.rewardSeeds,
+          });
+        }
+
+        return missionState.claimed ? missionState : { ...missionState, claimed: true };
       }
 
       const nextProgress = Math.min(
@@ -157,87 +207,60 @@ export function applyRoundToSessionMissions(roundResult: GameRoundResult): {
       const completed = nextProgress >= definition.target;
       if (completed && !missionState.completed) {
         newlyCompletedMissionIds.push(missionState.missionId);
+        missionRewards.push({
+          missionId: definition.id,
+          description: definition.description,
+          toastDescription: definition.toastDescription,
+          rewardSeeds: definition.rewardSeeds,
+        });
       }
 
       return {
         ...missionState,
         progress: nextProgress,
         completed,
+        claimed: completed ? true : missionState.claimed,
       };
     }),
-  });
+    bonusClaimed: current.bonusClaimed,
+  };
 
-  if (nextState.missions.every((mission) => mission.completed)) {
+  const allCompleted = nextStateDraft.missions.every((mission) => mission.completed);
+  if (allCompleted) {
+    nextStateDraft.bonusClaimed = true;
+  }
+
+  const nextState = writeSessionMissions(nextStateDraft);
+  const missionRewardSeeds = missionRewards.reduce((total, mission) => total + mission.rewardSeeds, 0);
+
+  if (allCompleted) {
     recordDailyMissionCompletion(nextState.date);
+    dailyMissionStreak = readBirdScore().currentDailyStreak;
+
+    if (!previousAllCompleted || !current.bonusClaimed) {
+      missionSetBonusSeedsEarned = DAILY_MISSION_BONUS_SEEDS;
+      completedDailyMissionSet = true;
+    }
+  }
+
+  const totalRewardSeeds = missionRewardSeeds + missionSetBonusSeedsEarned;
+  if (totalRewardSeeds > 0) {
+    const score = readBirdScore();
+    writeBirdScore({
+      ...score,
+      seeds: score.seeds + totalRewardSeeds,
+    });
   }
 
   return {
     nextState,
     newlyCompletedMissionIds,
+    missionRewards,
+    missionSetBonusSeedsEarned,
+    totalRewardSeeds,
+    completedDailyMissionSet,
+    dailyMissionStreak,
   };
-}
-
-export function claimMissionReward(missionId: string): SessionMissionsState {
-  const current = readSessionMissions();
-  const missionState = current.missions.find((mission) => mission.missionId === missionId);
-  const definition = getMissionDefinitionById(missionId);
-
-  if (!missionState || !definition || !missionState.completed || missionState.claimed) {
-    return current;
-  }
-
-  const score = readBirdScore();
-  writeBirdScore({
-    ...score,
-    seeds: score.seeds + definition.rewardSeeds,
-  });
-
-  return writeSessionMissions({
-    ...current,
-    missions: current.missions.map((mission) =>
-      mission.missionId === missionId ? { ...mission, claimed: true } : mission
-    ),
-  });
-}
-
-export function claimMissionSetBonus(): SessionMissionsState {
-  const current = readSessionMissions();
-  const allCompleted = current.missions.every((mission) => mission.completed);
-
-  if (!allCompleted || current.bonusClaimed) {
-    return current;
-  }
-
-  const score = readBirdScore();
-  writeBirdScore({
-    ...score,
-    seeds: score.seeds + DAILY_MISSION_BONUS_SEEDS,
-  });
-
-  return writeSessionMissions({
-    ...current,
-    bonusClaimed: true,
-  });
-}
-
-export function markMissionRewardClaimed(missionId: string): SessionMissionsState {
-  const current = readSessionMissions();
-
-  return writeSessionMissions({
-    ...current,
-    missions: current.missions.map((mission) =>
-      mission.missionId === missionId ? { ...mission, claimed: true } : mission
-    ),
-  });
-}
-
-export function markMissionSetBonusClaimed(): SessionMissionsState {
-  const current = readSessionMissions();
-
-  return writeSessionMissions({
-    ...current,
-    bonusClaimed: true,
-  });
 }
 
 export function getMissionDefinitionsForState(state: SessionMissionsState = readSessionMissions()) {

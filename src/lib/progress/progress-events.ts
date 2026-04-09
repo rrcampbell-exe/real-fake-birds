@@ -24,6 +24,16 @@ export type ProgressEvent =
     }
   | {
       eventId: string;
+      eventType: 'mission-reward-granted';
+      occurredAt: string;
+      payload: {
+        missionDate: string;
+        missionId: string;
+        rewardSeeds: number;
+      };
+    }
+  | {
+      eventId: string;
       eventType: 'hint-spent';
       occurredAt: string;
       payload: {
@@ -114,6 +124,17 @@ export function applyProgressEvents(
   let snapshot = createProgressSnapshot(initialSnapshot);
 
   for (const event of events) {
+    if (event.eventType === 'mission-reward-granted') {
+      snapshot = {
+        ...snapshot,
+        score: {
+          ...snapshot.score,
+          seeds: snapshot.score.seeds + Math.max(0, Math.floor(event.payload.rewardSeeds)),
+        },
+      };
+      continue;
+    }
+
     if (event.eventType === 'hint-spent') {
       snapshot = {
         ...snapshot,

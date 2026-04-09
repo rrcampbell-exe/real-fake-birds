@@ -81,6 +81,7 @@ describe('useGameState', () => {
       isCorrect: true,
       isReal: true,
       chosenResponse: 'real',
+      roundSeedsEarned: 1,
       seedsEarned: 1,
       currentStreak: 1,
       bestStreak: 1,
@@ -90,6 +91,10 @@ describe('useGameState', () => {
       streakProtected: false,
       earnedBadgeName: null,
       unlockedThemeName: null,
+      missionRewards: [],
+      missionSetBonusSeedsEarned: 0,
+      completedDailyMissionSet: false,
+      dailyMissionStreak: null,
     });
 
     vi.mocked(useStoredJson).mockImplementation((key: string) => {

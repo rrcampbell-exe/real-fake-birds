@@ -61,6 +61,7 @@ interface ResolveSignInIdentifierRequest {
 
 interface PullAccountProgressRequest {
   action: AuthAction;
+  missionDate: string;
 }
 
 interface PurchaseThemeRequest {
@@ -185,7 +186,7 @@ function isPullAccountProgressRequest(value: unknown): value is PullAccountProgr
   }
 
   const candidate = value as Partial<PullAccountProgressRequest>;
-  return candidate.action === 'pull-account-progress';
+  return candidate.action === 'pull-account-progress' && typeof candidate.missionDate === 'string';
 }
 
 function isSaveProfileRequest(value: unknown): value is SaveProfileRequest {
@@ -233,6 +234,10 @@ function isProgressEvent(value: unknown): value is ProgressEvent {
         && (candidate.payload?.isNewBirdEncounter === undefined || typeof candidate.payload.isNewBirdEncounter === 'boolean')
         && (candidate.payload?.currentStreak === undefined || typeof candidate.payload.currentStreak === 'number')
         && (candidate.payload?.seedsEarned === undefined || typeof candidate.payload.seedsEarned === 'number'))
+      || (candidate.eventType === 'mission-reward-granted'
+        && typeof candidate.payload?.missionDate === 'string'
+        && typeof candidate.payload?.missionId === 'string'
+        && typeof candidate.payload?.rewardSeeds === 'number')
       || ((candidate.eventType === 'hint-spent' || candidate.eventType === 'hint-refunded')
         && typeof candidate.payload?.mode === 'string'
         && typeof candidate.payload?.cost === 'number')
@@ -614,6 +619,11 @@ function createWeeklyStatsUpdate(options: {
   let weeklyLastPlayedAt: string | null = null;
 
   for (const event of options.pendingEvents) {
+    if (event.eventType === 'mission-reward-granted') {
+      weeklySeedsEarned += Math.max(0, Math.floor(event.payload.rewardSeeds));
+      continue;
+    }
+
     if (event.eventType !== 'round-resolved') {
       continue;
     }
@@ -1651,8 +1661,9 @@ export async function POST(request: NextRequest) {
       const admin = createSupabaseAdminClient();
       await finalizeExpiredWeeklyLeaderboards(admin);
       const today = getTodayChallengeDate();
-      const todayMissionIds = getDailyMissionIdsForDate(today);
-      const todayMissionClaimIds = todayMissionIds.map((missionId) => `${today}:${missionId}`);
+      const missionDate = body.missionDate;
+      const todayMissionIds = getDailyMissionIdsForDate(missionDate);
+      const todayMissionClaimIds = todayMissionIds.map((missionId) => `${missionDate}:${missionId}`);
       const [{ data: progress }, { data: themes }, { data: dailyHistory }, { data: dailyMissionHistory }, { data: milestoneRows }, { data: todayMissionEvents }, { data: journalRows }] = await Promise.all([
         admin
           .from('player_progress')
@@ -1682,7 +1693,7 @@ export async function POST(request: NextRequest) {
           .from('progress_event_log')
           .select('event_id')
           .eq('user_id', context.userId)
-          .in('event_id', [...todayMissionClaimIds, `${today}:mission-set-bonus`]),
+          .in('event_id', [...todayMissionClaimIds, `${missionDate}:mission-set-bonus`]),
         admin
           .from('bird_journal')
           .select('bird_key, bird_name, is_real, seen_count, correct_count, incorrect_count, last_seen_at, metadata')
@@ -1745,9 +1756,9 @@ export async function POST(request: NextRequest) {
             }
           : null,
         todayMissionClaims: {
-          date: today,
-          claimedMissionIds: todayMissionIds.filter((missionId) => todayEventIds.has(`${today}:${missionId}`)),
-          bonusClaimed: todayEventIds.has(`${today}:mission-set-bonus`),
+          date: missionDate,
+          claimedMissionIds: todayMissionIds.filter((missionId) => todayEventIds.has(`${missionDate}:${missionId}`)),
+          bonusClaimed: todayEventIds.has(`${missionDate}:mission-set-bonus`),
         },
       });
     } catch {

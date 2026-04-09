@@ -14,7 +14,7 @@ describe('useSessionMissions midnight rollover', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-04-06T23:59:50.000Z'));
+    vi.setSystemTime(new Date(2026, 3, 6, 23, 59, 50));
   });
 
   afterEach(() => {
