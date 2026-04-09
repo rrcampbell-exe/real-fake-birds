@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import responseEval from './response-eval';
+import { createSessionMissionsStateForDate, writeSessionMissions } from './missions';
 
 function createEvent() {
   return {
@@ -8,6 +9,22 @@ function createEvent() {
 }
 
 describe('responseEval', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.setSystemTime(new Date(2026, 3, 5, 12, 0, 0));
+    const state = createSessionMissionsStateForDate('2026-04-05');
+    writeSessionMissions({
+      ...state,
+      missions: state.missions.map((mission) => ({
+        ...mission,
+        progress: -1000,
+        completed: false,
+        claimed: false,
+      })),
+      bonusClaimed: false,
+    });
+  });
+
   it('initializes score and updates correct guesses', () => {
     const setIsCorrect = vi.fn();
     const setIsStreak = vi.fn();

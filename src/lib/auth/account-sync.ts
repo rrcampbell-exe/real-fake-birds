@@ -270,9 +270,10 @@ export function syncDailyMissionCompletion(date: string): Promise<SyncDailyMissi
   });
 }
 
-export function pullAccountProgress(): Promise<PullAccountProgressResponse> {
+export function pullAccountProgress(missionDate: string): Promise<PullAccountProgressResponse> {
   return postAuthAction<PullAccountProgressResponse>({
     action: 'pull-account-progress',
+    missionDate,
   });
 }
 

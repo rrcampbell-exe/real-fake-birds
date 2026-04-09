@@ -22,6 +22,8 @@ import {
   emptyHintState,
 } from '@/lib/constants/hints';
 import { getTodayChallengeDate } from '@/lib/utils/daily-challenge';
+import { getTodayMissionDate } from '@/lib/utils/daily-mission-date';
+import { getMissionRewardEventId } from '@/lib/utils/missions';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { hasSupabaseEnv } from '@/lib/supabase/env';
 import { createProgressEventId, queueProgressEvent } from '@/lib/progress/progress-event-outbox';
@@ -375,9 +377,37 @@ export function useGameState(options?: UseGameStateOptions) {
             isRealBird: isReal,
             isNewBirdEncounter: journalEntry.seenCount === 1,
             currentStreak: result.currentStreak,
-            seedsEarned: result.seedsEarned,
+            seedsEarned: result.roundSeedsEarned,
           },
         });
+
+        const missionDate = getTodayMissionDate();
+        result.missionRewards.forEach((missionReward) => {
+          queueProgressEvent({
+            eventId: getMissionRewardEventId(missionDate, missionReward.missionId),
+            eventType: 'mission-reward-granted',
+            occurredAt: new Date().toISOString(),
+            payload: {
+              missionDate,
+              missionId: missionReward.missionId,
+              rewardSeeds: missionReward.rewardSeeds,
+            },
+          });
+        });
+
+        if (result.missionSetBonusSeedsEarned > 0) {
+          queueProgressEvent({
+            eventId: getMissionRewardEventId(missionDate, 'mission-set-bonus'),
+            eventType: 'mission-reward-granted',
+            occurredAt: new Date().toISOString(),
+            payload: {
+              missionDate,
+              missionId: 'mission-set-bonus',
+              rewardSeeds: result.missionSetBonusSeedsEarned,
+            },
+          });
+        }
+
         scheduleProgressFlush();
       }
 

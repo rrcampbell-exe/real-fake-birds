@@ -109,14 +109,14 @@ function buildAchievementLine(birdsIdentified: number, unlockedThemeNames: strin
   const recentThemes = earnedThemeNames.slice(-2);
 
   if (recentBadges.length > 0 && recentThemes.length > 0) {
-    return `You've already earned ${formatList(recentBadges)} and unlocked ${formatList(recentThemes)}. Keep them tied to an account instead of one browser.`;
+    return `You've already earned the ${formatList(recentBadges)} and unlocked the ${formatList(recentThemes)} ${recentThemes.length === 1 ? 'theme' : 'themes'}. Create an account to save your hard-earned progress.`;
   }
 
   if (recentBadges.length > 0) {
-    return `You've already earned ${formatList(recentBadges)}. Create an account so those badges stay attached to you.`;
+    return `You've already earned the ${formatList(recentBadges)}. Create an account to save your hard-earned progress.`;
   }
 
-  return `You've already unlocked ${formatList(recentThemes)}. Create an account so those themes follow you across devices.`;
+  return `You've already unlocked the ${formatList(recentThemes)} ${recentThemes.length === 1 ? 'theme' : 'themes'}. Create an account to save your hard-earned progress.`;
 }
 
 function buildNextRewardLine(birdsIdentified: number): string | null {
@@ -130,7 +130,7 @@ function buildNextRewardLine(birdsIdentified: number): string | null {
   const nextThemeUnlock = getThemeUnlockByMilestoneValue(nextMilestone.value);
 
   if (nextThemeUnlock && !nextThemeUnlock.comingSoon) {
-    return `${formatNumber(remainingBirds)} more correct ${remainingBirds === 1 ? 'bird' : 'birds'} to unlock the ${nextMilestone.badge} badge and ${nextThemeUnlock.themeName} theme.`;
+    return `${formatNumber(remainingBirds)} more correct ${remainingBirds === 1 ? 'bird' : 'birds'} to unlock the ${nextMilestone.badge} badge and the ${nextThemeUnlock.themeName} theme. Create an account to save your hard-earned progress.`;
   }
 
   return `${formatNumber(remainingBirds)} more correct ${remainingBirds === 1 ? 'bird' : 'birds'} to unlock the ${nextMilestone.badge} badge.`;
@@ -172,12 +172,12 @@ function buildChallengeSpecificLeaderboardLine(
     case 'plumage-precision': {
       if (birdsSeen < (leaderboard.challenge.minimumBirdsSeen ?? 50)) {
         return qualificationLine
-          ? `${qualificationLine} Create an account before that qualifying run is trapped on one device.`
-          : 'This week rewards sharp accuracy over a real sample size. Create an account before that qualifying run is trapped on one device.';
+          ? `${qualificationLine} Create an account to soar up onto the leaderboard.`
+          : 'This week rewards sharp accuracy over a real sample size. Create an account to soar up onto the leaderboard.';
       }
 
       if (!cutoffEntry) {
-        return 'You already cleared this week\'s qualification line. Create an account so your accuracy can actually compete.';
+        return 'You already cleared this week\'s qualification line. Create an account to compete on this week\'s leaderboard!';
       }
 
       return `You already cleared the ${leaderboard.challenge.minimumBirdsSeen ?? 50}-bird qualification line for ${leaderboard.challenge.name}. Top 10 is sitting at ${cutoffEntry.primaryDisplayValue}, with ${cutoffEntry.tiebreakerDisplayValue} deciding ties.`;
@@ -226,19 +226,19 @@ export function buildSignUpPromptContent(options: {
 
   let eyebrow = 'Protect your progress';
   let title = 'Don\'t lose your flock.';
-  let body = 'Save your birds, streaks, seeds, badges, and themes so they show up everywhere you play.';
+  let body = 'Save your birds, streaks, seeds, badges, and themes for good.';
   const summary = `${formatNumber(birdsSeen)} seen • ${formatNumber(birdsIdentified)} correct • ${formatNumber(seeds)} seeds`;
 
   if (birdsSeen >= 50) {
     eyebrow = 'This is real progress now';
-    title = 'Guest mode is starting to leave real progress on the table.';
+    title = 'Remaining a guest leaves real rewards on the table.';
     body = leaderboard
-      ? `This week\'s ${leaderboard.challenge.name} is live. Create an account so this run can turn into something that survives and competes.`
-      : 'At this point you are building a real collection. An account keeps your unlocks safe, lets future rounds count toward the leaderboard, and makes this save portable.';
+      ? `This week\'s ${leaderboard.challenge.name} is live. Create an account so this run can turn into something worth bragging about.`
+      : 'At this point you\'re building a real collection. An account keeps your rewards safe and makes you eligible for weekly challenges!';
   } else if (birdsSeen >= 25) {
     eyebrow = 'Your collection is taking shape';
     title = 'Keep the streak, unlocks, and journal entries attached to you.';
-    body = 'You are past the dabbling stage. An account means your progress follows you instead of living in one local browser store.';
+    body = 'You\'re past the dabbling stage. An account means your progress follows you everywhere you play.';
   }
 
   return {

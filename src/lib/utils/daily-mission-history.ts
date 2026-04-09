@@ -1,17 +1,125 @@
 import { notifyStoredValueChanged } from '@/hooks/useStoredValue';
 import type { DailyMissionHistoryEntry } from '@/types';
+import { getTodayMissionDate, shiftMissionDate } from './daily-mission-date';
 import { readBirdScore, writeBirdScore } from './player-progress';
-import { getTodayChallengeDate } from './daily-challenge';
 
 export const DAILY_MISSION_HISTORY_STORAGE_KEY = 'dailyMissionHistory';
+export const DAILY_MISSION_STREAK_MIGRATION_STORAGE_KEY = 'dailyMissionStreakMigration';
 
 interface DailyMissionStreaks {
   currentStreak: number;
   bestStreak: number;
 }
 
+interface DailyMissionStreakMigrationState {
+  version: 1;
+  preservedCurrentStreak: number;
+  preservedBestStreak: number;
+  graceExpiresOn: string;
+}
+
+const settledDailyMissionStreakMigrationState: DailyMissionStreakMigrationState = {
+  version: 1,
+  preservedCurrentStreak: 0,
+  preservedBestStreak: 0,
+  graceExpiresOn: '0000-00-00',
+};
+
 function isBrowser(): boolean {
   return typeof window !== 'undefined';
+}
+
+function readDailyMissionStreakMigrationState(): DailyMissionStreakMigrationState | null {
+  if (!isBrowser()) {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(DAILY_MISSION_STREAK_MIGRATION_STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<DailyMissionStreakMigrationState>;
+    if (
+      parsed.version !== 1
+      || typeof parsed.preservedCurrentStreak !== 'number'
+      || typeof parsed.preservedBestStreak !== 'number'
+      || typeof parsed.graceExpiresOn !== 'string'
+    ) {
+      return null;
+    }
+
+    return {
+      version: 1,
+      preservedCurrentStreak: parsed.preservedCurrentStreak,
+      preservedBestStreak: parsed.preservedBestStreak,
+      graceExpiresOn: parsed.graceExpiresOn,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeDailyMissionStreakMigrationState(
+  state: DailyMissionStreakMigrationState | null
+): DailyMissionStreakMigrationState | null {
+  if (!isBrowser()) {
+    return state;
+  }
+
+  if (!state) {
+    window.localStorage.removeItem(DAILY_MISSION_STREAK_MIGRATION_STORAGE_KEY);
+    notifyStoredValueChanged(DAILY_MISSION_STREAK_MIGRATION_STORAGE_KEY);
+    return null;
+  }
+
+  window.localStorage.setItem(DAILY_MISSION_STREAK_MIGRATION_STORAGE_KEY, JSON.stringify(state));
+  notifyStoredValueChanged(DAILY_MISSION_STREAK_MIGRATION_STORAGE_KEY);
+  return state;
+}
+
+function ensureDailyMissionStreakMigrationState(now = new Date()): DailyMissionStreakMigrationState | null {
+  const existing = readDailyMissionStreakMigrationState();
+  if (existing) {
+    return existing;
+  }
+
+  if (!isBrowser()) {
+    return null;
+  }
+
+  const score = readBirdScore();
+  if (score.currentDailyStreak <= 0 && score.bestDailyStreak <= 0) {
+    return null;
+  }
+
+  return writeDailyMissionStreakMigrationState({
+    version: 1,
+    preservedCurrentStreak: score.currentDailyStreak,
+    preservedBestStreak: score.bestDailyStreak,
+    graceExpiresOn: shiftMissionDate(getTodayMissionDate(now), 1),
+  });
+}
+
+function applyDailyMissionStreakMigrationGrace(
+  streaks: DailyMissionStreaks,
+  now = new Date()
+): DailyMissionStreaks {
+  const migrationState = ensureDailyMissionStreakMigrationState(now);
+  if (!migrationState) {
+    return streaks;
+  }
+
+  if (getTodayMissionDate(now) > migrationState.graceExpiresOn) {
+    writeDailyMissionStreakMigrationState(settledDailyMissionStreakMigrationState);
+    return streaks;
+  }
+
+  return {
+    currentStreak: Math.max(streaks.currentStreak, migrationState.preservedCurrentStreak),
+    bestStreak: Math.max(streaks.bestStreak, migrationState.preservedBestStreak),
+  };
 }
 
 function normalizeHistory(historyLike: DailyMissionHistoryEntry[]): DailyMissionHistoryEntry[] {
@@ -57,24 +165,24 @@ export function getDailyMissionStreaks(
 ): DailyMissionStreaks {
   const normalizedHistory = normalizeHistory(history);
   if (normalizedHistory.length === 0) {
-    return {
+    return applyDailyMissionStreakMigrationGrace({
       currentStreak: 0,
       bestStreak: 0,
-    };
+    }, now);
   }
 
   const completedDates = new Set(normalizedHistory.map((entry) => entry.date));
-  const currentCursor = new Date(`${getTodayChallengeDate(now)}T12:00:00`);
+  let currentCursor = getTodayMissionDate(now);
   let currentStreak = 0;
 
-  const todayKey = getTodayChallengeDate(currentCursor);
+  const todayKey = currentCursor;
   if (!completedDates.has(todayKey)) {
-    currentCursor.setDate(currentCursor.getDate() - 1);
+    currentCursor = shiftMissionDate(currentCursor, -1);
   }
 
-  while (completedDates.has(getTodayChallengeDate(currentCursor))) {
+  while (completedDates.has(currentCursor)) {
     currentStreak += 1;
-    currentCursor.setDate(currentCursor.getDate() - 1);
+    currentCursor = shiftMissionDate(currentCursor, -1);
   }
 
   const ascending = [...normalizedHistory].sort((left, right) => left.date.localeCompare(right.date));
@@ -82,10 +190,7 @@ export function getDailyMissionStreaks(
   let runningStreak = 1;
 
   for (let index = 1; index < ascending.length; index += 1) {
-    const previous = new Date(`${ascending[index - 1].date}T12:00:00`);
-    previous.setDate(previous.getDate() + 1);
-
-    if (ascending[index].date === getTodayChallengeDate(previous)) {
+    if (ascending[index].date === shiftMissionDate(ascending[index - 1].date, 1)) {
       runningStreak += 1;
       bestStreak = Math.max(bestStreak, runningStreak);
       continue;
@@ -94,10 +199,10 @@ export function getDailyMissionStreaks(
     runningStreak = 1;
   }
 
-  return {
+  return applyDailyMissionStreakMigrationGrace({
     currentStreak,
     bestStreak,
-  };
+  }, now);
 }
 
 export function writeDailyMissionHistory(history: DailyMissionHistoryEntry[]): DailyMissionHistoryEntry[] {
@@ -117,7 +222,7 @@ export function hasCompletedDailyMissions(date: string, history = readDailyMissi
   return history.some((entry) => entry.date === date);
 }
 
-export function recordDailyMissionCompletion(date = getTodayChallengeDate()): DailyMissionHistoryEntry[] {
+export function recordDailyMissionCompletion(date = getTodayMissionDate()): DailyMissionHistoryEntry[] {
   if (hasCompletedDailyMissions(date)) {
     return readDailyMissionHistory();
   }
@@ -132,8 +237,9 @@ export function syncDailyMissionStreaksToBirdScore(history = readDailyMissionHis
 
   const score = readBirdScore();
   const { currentStreak, bestStreak } = getDailyMissionStreaks(history);
+  const nextBestDailyStreak = Math.max(score.bestDailyStreak, bestStreak);
 
-  if (score.currentDailyStreak === currentStreak && score.bestDailyStreak === bestStreak) {
+  if (score.currentDailyStreak === currentStreak && score.bestDailyStreak === nextBestDailyStreak) {
     return;
   }
 
@@ -141,7 +247,7 @@ export function syncDailyMissionStreaksToBirdScore(history = readDailyMissionHis
     {
       ...score,
       currentDailyStreak: currentStreak,
-      bestDailyStreak: bestStreak,
+      bestDailyStreak: nextBestDailyStreak,
     },
     false
   );

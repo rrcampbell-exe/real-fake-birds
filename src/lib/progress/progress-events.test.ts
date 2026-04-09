@@ -64,4 +64,37 @@ describe('applyProgressEvents', () => {
       completed: false,
     });
   });
+
+  it('adds mission reward grant events to the player seed total', () => {
+    const events: ProgressEvent[] = [
+      {
+        eventId: 'mission-1',
+        eventType: 'mission-reward-granted',
+        occurredAt: '2026-04-04T12:00:00.000Z',
+        payload: {
+          missionDate: '2026-04-04',
+          missionId: 'warmup-rounds',
+          rewardSeeds: 8,
+        },
+      },
+    ];
+
+    const snapshot = applyProgressEvents(
+      createProgressSnapshot({
+        score: {
+          birdsSeen: 0,
+          birdsIdentified: 0,
+          currentStreak: 0,
+          justAchievedStreak: false,
+          bestStreak: 0,
+          currentDailyStreak: 0,
+          bestDailyStreak: 0,
+          seeds: 3,
+        },
+      }),
+      events
+    );
+
+    expect(snapshot.score.seeds).toBe(11);
+  });
 });

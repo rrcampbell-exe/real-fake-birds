@@ -37,7 +37,7 @@ export default function RewardsPage() {
           Rewards
         </h1>
         <p className="text-sm text-[var(--color-muted)]">
-          Your bird-watching achievements and claimable bonuses.
+          Your bird-watching achievements.
         </p>
         {isPageBackgroundRefreshing ? (
           <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted)]">

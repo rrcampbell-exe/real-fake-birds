@@ -164,6 +164,7 @@ describe('StatsBar', () => {
       isCorrect: true,
       isReal: true,
       chosenResponse: 'real',
+      roundSeedsEarned: 7,
       seedsEarned: 7,
       currentStreak: 5,
       bestStreak: 10,
@@ -173,6 +174,10 @@ describe('StatsBar', () => {
       streakProtected: false,
       earnedBadgeName: null,
       unlockedThemeName: null,
+      missionRewards: [],
+      missionSetBonusSeedsEarned: 0,
+      completedDailyMissionSet: false,
+      dailyMissionStreak: null,
     };
 
     view.rerender(<StatsBar refreshTrigger={1} roundAnimation={{ id: 1, result: roundResult }} />);

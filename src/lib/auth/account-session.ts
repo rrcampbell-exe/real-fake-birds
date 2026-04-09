@@ -10,6 +10,7 @@ import {
   resetDailyChallengeState,
   writeDailyChallengeHistory,
 } from '@/lib/utils/daily-challenge';
+import { getTodayMissionDate } from '@/lib/utils/daily-mission-date';
 import { readDailyMissionHistory, writeDailyMissionHistory } from '@/lib/utils/daily-mission-history';
 import {
   defaultBirdScore,
@@ -62,7 +63,7 @@ function resetEphemeralLocalState(): void {
   }
 
   resetDailyChallengeState(getTodayChallengeDate());
-  resetSessionMissions(getTodayChallengeDate());
+  resetSessionMissions(getTodayMissionDate());
   writeStreakInsuranceState(defaultStreakInsuranceState);
   localStorage.removeItem(`${CURRENT_HINTS_STORAGE_KEY}:classic`);
   localStorage.removeItem(`${CURRENT_HINTS_STORAGE_KEY}:daily`);
@@ -133,7 +134,7 @@ export async function hydrateSignedInAccountToLocalState(options?: { notify?: bo
     }
   }
 
-  const response = await pullAccountProgress();
+  const response = await pullAccountProgress(getTodayMissionDate());
   applyPulledAccountProgress({
     ...response.progress,
     lastLocalSyncAt: response.lastLocalSyncAt,
@@ -158,7 +159,7 @@ export async function syncSignedInAccountToLocalState(options?: { notify?: boole
       // Pull the latest snapshot even if local event flush fails.
     }
 
-    const response = await pullAccountProgress();
+    const response = await pullAccountProgress(getTodayMissionDate());
     applyPulledAccountProgress({
       ...response.progress,
       lastLocalSyncAt: response.lastLocalSyncAt,

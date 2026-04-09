@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import RewardsPage from './page';
 
@@ -37,7 +37,7 @@ const mockedUseSessionMissions = vi.mocked(useSessionMissions);
 const mockedUsePageProgressSync = vi.mocked(usePageProgressSync);
 
 describe('RewardsPage', () => {
-  it('shows claimable mission rewards in the rewards tab', () => {
+  it('shows automatic mission reward copy in the rewards tab', () => {
     mockedUsePageProgressSync.mockReturnValue({
       isPageSyncLoading: false,
       isPageBackgroundRefreshing: false,
@@ -58,24 +58,21 @@ describe('RewardsPage', () => {
       allClaimed: false,
       bonusClaimed: true,
       missionSetBonusSeeds: 15,
-      claimMissionReward: vi.fn(),
-      claimMissionSetBonus: vi.fn(),
     });
 
     render(<RewardsPage />);
 
-    expect(screen.getByText('Your bird-watching achievements and claimable bonuses.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Claim All (1)' })).toBeInTheDocument();
+    expect(screen.getByText('Your bird-watching achievements.')).toBeInTheDocument();
+    expect(screen.getByText(/Mission rewards now land automatically in your seed total/i)).toBeInTheDocument();
     expect(screen.queryByText('Classic Run Bonus')).not.toBeInTheDocument();
   });
 
-  it('claims mission rewards from the rewards tab', async () => {
+  it('summarizes paid mission rewards from the rewards tab', () => {
     mockedUsePageProgressSync.mockReturnValue({
       isPageSyncLoading: false,
       isPageBackgroundRefreshing: false,
       isSignedIn: true,
     });
-    const claimMissionReward = vi.fn().mockResolvedValue(undefined);
     mockedUseSessionMissions.mockReturnValue({
       state: {
         date: '2026-04-03',
@@ -85,33 +82,25 @@ describe('RewardsPage', () => {
         bonusClaimed: true,
       },
       missions: [
-        { id: 'warmup-rounds', missionId: 'warmup-rounds', description: 'Warmup', target: 3, rewardSeeds: 8, progress: 3, completed: true, claimed: false, type: 'play_rounds' },
+        { id: 'warmup-rounds', missionId: 'warmup-rounds', description: 'Warmup', target: 3, rewardSeeds: 8, progress: 3, completed: true, claimed: true, type: 'play_rounds' },
       ],
       allCompleted: false,
-      allClaimed: false,
+      allClaimed: true,
       bonusClaimed: true,
       missionSetBonusSeeds: 15,
-      claimMissionReward,
-      claimMissionSetBonus: vi.fn(),
     });
 
     render(<RewardsPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Claim All (1)' }));
-
-    await waitFor(() => {
-      expect(claimMissionReward).toHaveBeenCalledWith('warmup-rounds');
-    });
+    expect(screen.getByText(/1 of 1 mission rewards have already been paid out today/i)).toBeInTheDocument();
   });
 
-  it('shows and runs claim all for all available rewards', async () => {
+  it('mentions the high flyer bonus when it has already been auto-awarded', () => {
     mockedUsePageProgressSync.mockReturnValue({
       isPageSyncLoading: false,
       isPageBackgroundRefreshing: false,
       isSignedIn: true,
     });
-    const claimMissionReward = vi.fn().mockResolvedValue(undefined);
-    const claimMissionSetBonus = vi.fn().mockResolvedValue(undefined);
 
     mockedUseSessionMissions.mockReturnValue({
       state: {
@@ -129,26 +118,17 @@ describe('RewardsPage', () => {
         { id: 'deep-focus', missionId: 'deep-focus', description: 'Deep Focus', target: 4, rewardSeeds: 20, progress: 4, completed: true, claimed: false, type: 'correct_without_hints' },
       ],
       allCompleted: true,
-      allClaimed: false,
-      bonusClaimed: false,
+      allClaimed: true,
+      bonusClaimed: true,
       missionSetBonusSeeds: 15,
-      claimMissionReward,
-      claimMissionSetBonus,
     });
 
     render(<RewardsPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Claim All (4)' }));
-
-    await waitFor(() => {
-      expect(claimMissionReward).toHaveBeenCalledWith('warmup-rounds');
-      expect(claimMissionReward).toHaveBeenCalledWith('real-deal');
-      expect(claimMissionReward).toHaveBeenCalledWith('deep-focus');
-      expect(claimMissionSetBonus).toHaveBeenCalled();
-    });
+    expect(screen.getByText(/including the high flyer bonus/i)).toBeInTheDocument();
   });
 
-  it('shows no claims waiting when nothing is pending', () => {
+  it('still shows the rewards page while background refresh is running', () => {
     mockedUsePageProgressSync.mockReturnValue({
       isPageSyncLoading: false,
       isPageBackgroundRefreshing: true,
@@ -172,14 +152,12 @@ describe('RewardsPage', () => {
       allClaimed: true,
       bonusClaimed: true,
       missionSetBonusSeeds: 15,
-      claimMissionReward: vi.fn(),
-      claimMissionSetBonus: vi.fn(),
     });
 
     render(<RewardsPage />);
 
-    expect(screen.getByText('Your bird-watching achievements and claimable bonuses.')).toBeInTheDocument();
+    expect(screen.getByText('Your bird-watching achievements.')).toBeInTheDocument();
     expect(screen.getByText('Polishing your trophy shelf...')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Nothing to claim' })).toBeInTheDocument();
+    expect(screen.getByText(/Mission rewards now land automatically in your seed total/i)).toBeInTheDocument();
   });
 });
