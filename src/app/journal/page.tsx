@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { Bird, BookOpen, Sparkles } from 'lucide-react';
 import BirdCard from '@/components/journal/BirdCard';
 import JournalControls, { type JournalFilter, type JournalSort } from '@/components/journal/JournalControls';
@@ -18,11 +18,34 @@ import {
 import { defaultBirdScore, normalizeBirdScore } from '@/lib/utils/player-progress';
 import { spendSeeds } from '@/lib/utils/seed-spend';
 
+function subscribeToHashChanges(onStoreChange: () => void) {
+  if (typeof window === 'undefined') {
+    return () => {};
+  }
+
+  window.addEventListener('hashchange', onStoreChange);
+  window.addEventListener('popstate', onStoreChange);
+
+  return () => {
+    window.removeEventListener('hashchange', onStoreChange);
+    window.removeEventListener('popstate', onStoreChange);
+  };
+}
+
+function getLinkedBirdKeySnapshot() {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const hash = window.location.hash.slice(1);
+  return hash ? decodeURIComponent(hash) : null;
+}
+
 export default function JournalPage() {
   const { isPageBackgroundRefreshing } = usePageProgressSync();
   const [filter, setFilter] = useState<JournalFilter>('all');
   const [sort, setSort] = useState<JournalSort>('recent');
-  const [linkedBirdKey, setLinkedBirdKey] = useState<string | null>(null);
+  const linkedBirdKey = useSyncExternalStore(subscribeToHashChanges, getLinkedBirdKeySnapshot, () => null);
   const {
     journal,
     uniqueBirdCount,
@@ -82,20 +105,11 @@ export default function JournalPage() {
   }, [currentRoundBirdKey, currentRoundRevealKey, filter, journal, sort]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (!linkedBirdKey) {
       return;
     }
 
-    const hash = window.location.hash.slice(1);
-    if (!hash) {
-      setLinkedBirdKey(null);
-      return;
-    }
-
-    const decodedHash = decodeURIComponent(hash);
-    setLinkedBirdKey(decodedHash);
-
-    const target = document.getElementById(decodedHash);
+    const target = document.getElementById(linkedBirdKey);
     if (!target) {
       return;
     }
@@ -103,7 +117,7 @@ export default function JournalPage() {
     window.requestAnimationFrame(() => {
       target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
-  }, [filteredJournal]);
+  }, [filteredJournal, linkedBirdKey]);
 
   const refreshBadge = isPageBackgroundRefreshing ? (
     <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted)]">

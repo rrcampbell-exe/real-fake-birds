@@ -56,6 +56,54 @@ function getAnswerFact(text: string | null): string | null {
   return `${firstSentence.slice(0, 177).trimEnd()}...`;
 }
 
+interface AnswerImageProps {
+  birdData: string;
+  imageUrl: string;
+  journalHref: string;
+  onLearnMore: () => void;
+}
+
+function AnswerImage({ birdData, imageUrl, journalHref, onLearnMore }: AnswerImageProps) {
+  const [imageStatus, setImageStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+
+  return (
+    <Link
+      href={journalHref}
+      onClick={onLearnMore}
+      className="block w-[calc(50%-0.5rem)] max-w-[10rem] md:row-start-1 md:w-28 md:max-w-none"
+      aria-label="Learn more about this bird"
+    >
+      <div
+        className="relative aspect-square overflow-hidden rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)]"
+      >
+        {imageStatus === 'loading' ? (
+          <div
+            aria-hidden="true"
+            data-testid="answer-image-shimmer"
+            className="absolute inset-0 bg-[linear-gradient(110deg,var(--color-surface-hover)_8%,color-mix(in_srgb,var(--color-surface)_65%,white_35%)_18%,var(--color-surface-hover)_33%)] bg-[length:200%_100%] animate-[shimmer_1.25s_linear_infinite]"
+          />
+        ) : null}
+        {imageStatus === 'error' ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-[var(--color-surface-hover)] px-3 text-center text-xs font-medium text-[var(--color-muted)]">
+            Image unavailable
+          </div>
+        ) : null}
+        <Image
+          src={imageUrl}
+          alt={birdData}
+          fill
+          sizes="(max-width: 768px) 50vw, 112px"
+          className={`object-cover object-center transition-opacity duration-200 ${imageStatus === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
+          loading="eager"
+          unoptimized
+          onLoad={() => setImageStatus('loaded')}
+          onError={() => setImageStatus('error')}
+        />
+      </div>
+    </Link>
+  );
+}
+
 interface AnswerProps {
   birdData: string;
   isReal: boolean;
@@ -104,7 +152,6 @@ export default function Answer({
   };
   const [fakeFieldNote] = useState(getRandomFakeFieldNote);
   const [isNextBirdVisible, setIsNextBirdVisible] = useState(false);
-  const [imageStatus, setImageStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>(hasImage ? 'loading' : 'idle');
   const sharePayload = isMilestone && earnedBadgeName
     ? buildMilestoneSharePayload({
         badgeName: earnedBadgeName,
@@ -165,10 +212,6 @@ export default function Answer({
     };
   }, []);
 
-  useEffect(() => {
-    setImageStatus(hasImage ? 'loading' : 'idle');
-  }, [hasImage, imageUrl]);
-
   return (
     <div className="relative flex w-full flex-col items-center gap-4 md:gap-5">
       <div className="flex w-full items-start justify-between gap-3">
@@ -193,40 +236,13 @@ export default function Answer({
             : 'grid items-start gap-4 grid-cols-[minmax(0,1fr)_auto]'}
         >
           {hasImage ? (
-            <Link
-              href={journalHref}
-              onClick={handleLearnMore}
-              className="block w-[calc(50%-0.5rem)] max-w-[10rem] md:row-start-1 md:w-28 md:max-w-none"
-              aria-label="Learn more about this bird"
-            >
-              <div
-                className="relative aspect-square overflow-hidden rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)]"
-              >
-                {imageStatus === 'loading' ? (
-                  <div
-                    aria-hidden="true"
-                    data-testid="answer-image-shimmer"
-                    className="absolute inset-0 bg-[linear-gradient(110deg,var(--color-surface-hover)_8%,color-mix(in_srgb,var(--color-surface)_65%,white_35%)_18%,var(--color-surface-hover)_33%)] bg-[length:200%_100%] animate-[shimmer_1.25s_linear_infinite]"
-                  />
-                ) : null}
-                {imageStatus === 'error' ? (
-                  <div className="absolute inset-0 flex items-center justify-center bg-[var(--color-surface-hover)] px-3 text-center text-xs font-medium text-[var(--color-muted)]">
-                    Image unavailable
-                  </div>
-                ) : null}
-                <Image
-                  src={imageUrl ?? ''}
-                  alt={birdData}
-                  fill
-                  sizes="(max-width: 768px) 50vw, 112px"
-                  className={`object-cover object-center transition-opacity duration-200 ${imageStatus === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
-                  loading="eager"
-                  unoptimized
-                  onLoad={() => setImageStatus('loaded')}
-                  onError={() => setImageStatus('error')}
-                />
-              </div>
-            </Link>
+            <AnswerImage
+              key={imageUrl}
+              birdData={birdData}
+              imageUrl={imageUrl ?? ''}
+              journalHref={journalHref}
+              onLearnMore={handleLearnMore}
+            />
           ) : (
             <div className="min-w-0 space-y-1">
               <h2 className="font-[family-name:var(--font-display)] text-xl font-bold leading-tight text-[var(--color-text)] md:text-2xl">
