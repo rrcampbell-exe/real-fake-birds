@@ -176,4 +176,30 @@ describe('GameSection', () => {
     expect(screen.getByText('SignUpPromptModal')).toBeInTheDocument();
     expect(tryAgain).not.toHaveBeenCalled();
   });
+
+  it('shows lightweight unlock toasts after a milestone round', () => {
+    mockedUseGameState.mockReturnValue(createGameState({
+      hasAnswered: true,
+      showQuestion: false,
+      isMilestone: true,
+      earnedBadgeName: 'Downy Feather',
+      newThemeUnlockName: 'Raven',
+    }));
+    mockedUseSignUpPrompt.mockReturnValue({
+      birdsSeen: 0,
+      birdsIdentified: 0,
+      seeds: 0,
+      activeThreshold: null,
+      shouldPrompt: false,
+      dismiss: vi.fn(),
+      onAccountCreated: vi.fn(),
+    });
+
+    render(<GameSection />);
+
+    expect(screen.getByText('Badge Unlocked')).toBeInTheDocument();
+    expect(screen.getByText('Downy Feather Badge')).toBeInTheDocument();
+    expect(screen.getByText('Theme Unlocked')).toBeInTheDocument();
+    expect(screen.getByText('Raven Theme')).toBeInTheDocument();
+  });
 });

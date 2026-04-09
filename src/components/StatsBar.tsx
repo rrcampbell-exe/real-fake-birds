@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import { Flame, LoaderCircle, Target, Trophy, Zap } from 'lucide-react';
 import SeedIcon from '@/components/icons/SeedIcon';
@@ -14,7 +15,7 @@ import { track } from '@/lib/analytics';
 import { getThemeUnlockByMilestoneValue } from '@/lib/constants/theme-unlocks';
 import { isNextMilestoneEval, isNextStreakEval } from '@/lib/utils/goals-evaluation';
 import { useStoredJson } from '@/hooks/useStoredValue';
-import { defaultBirdScore, getUnlockedThemeNames, mergeNonRoundRemoteScore, normalizeBirdScore } from '@/lib/utils/player-progress';
+import { defaultBirdScore, getUnlockedThemeNames, mergeNonRoundRemoteScore, normalizeBirdScore, writeBirdScore } from '@/lib/utils/player-progress';
 import { formatNumber } from '@/lib/utils/number-format';
 import {
   clearStreakInsurance,
@@ -26,10 +27,14 @@ import {
   STREAK_INSURANCE_STORAGE_KEY,
   writeStreakInsuranceState,
 } from '@/lib/utils/streak-insurance';
-import { writeBirdScore } from '@/lib/utils/player-progress';
+import type { GameRoundResult } from '@/types';
 
 interface StatsBarProps {
   refreshTrigger?: unknown;
+  roundAnimation?: {
+    id: number;
+    result: GameRoundResult;
+  } | null;
 }
 
 interface InsuranceErrorState {
@@ -37,16 +42,20 @@ interface InsuranceErrorState {
   message: string;
 }
 
-export default function StatsBar({ refreshTrigger }: StatsBarProps) {
+const STAT_ANIMATION_DELAY_MS = 780;
+const SEED_INDICATOR_DURATION_MS = 1400;
+
+export default function StatsBar({ refreshTrigger, roundAnimation }: StatsBarProps) {
   const pathname = usePathname();
   const interactionKey = `${pathname}:${String(refreshTrigger)}`;
-
   const supabaseReady = hasSupabaseEnv();
   const storedStats = useStoredJson<typeof defaultBirdScore | null>('birdScore', null);
   const insuranceState = useStoredJson(STREAK_INSURANCE_STORAGE_KEY, defaultStreakInsuranceState);
   const [insuranceErrorState, setInsuranceErrorState] = useState<InsuranceErrorState | null>(null);
   const [isPurchasingInsurance, setIsPurchasingInsurance] = useState(false);
   const [isSignedIn, setIsSignedIn] = useState(false);
+  const [floatingSeeds, setFloatingSeeds] = useState<{ id: number; amount: number } | null>(null);
+  const handledRoundAnimationIdRef = useRef<number | null>(null);
   const { birdsSeen, birdsIdentified, currentStreak, bestStreak, seeds } = normalizeBirdScore(storedStats);
   const accuracy = birdsSeen > 0 ? Math.floor((birdsIdentified / birdsSeen) * 100) : 0;
   const nextStreak = isNextStreakEval(streakValues, currentStreak);
@@ -64,19 +73,20 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
   const insuranceShortfall = Math.max(insuranceCost - seeds, 0);
   const insuranceExpired = isStreakInsuranceExpired(insuranceState, currentStreak);
   const effectiveInsuranceState = insuranceExpired ? defaultStreakInsuranceState : insuranceState;
-  const nextStreakLabel = nextStreak
-    ? `${nextStreak - currentStreak} to bonus`
-    : 'Top perch reached!';
+  const nextStreakLabel = nextStreak ? `${nextStreak - currentStreak} to bonus` : 'Top perch reached!';
   const unlockLabel = nextMilestone
     ? nextUnlock && !nextUnlock.comingSoon && !isNextThemeAlreadyUnlocked
       ? `${formatNumber(remainingMilestoneBirds)} to unlock ${nextUnlock.milestoneBadge} Badge and ${nextUnlock.themeName} Theme`
       : `${formatNumber(remainingMilestoneBirds)} to unlock ${milestones.find((milestone) => milestone.value === nextMilestone)?.badge} Badge`
     : 'All live themes unlocked';
-  const canShowInsurance = effectiveInsuranceState.active
-    || currentStreak >= STREAK_INSURANCE_MIN_STREAK;
-  const insuranceError = insuranceErrorState?.interactionKey === interactionKey
-    ? insuranceErrorState.message
-    : null;
+  const canShowInsurance = effectiveInsuranceState.active || currentStreak >= STREAK_INSURANCE_MIN_STREAK;
+  const insuranceError = insuranceErrorState?.interactionKey === interactionKey ? insuranceErrorState.message : null;
+
+  useEffect(() => {
+    return () => {
+      setFloatingSeeds(null);
+    };
+  }, []);
 
   useEffect(() => {
     if (!insuranceExpired) {
@@ -134,40 +144,82 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
     };
   }, [supabaseReady]);
 
-  if (!storedStats) return null;
+  useEffect(() => {
+    if (!roundAnimation || handledRoundAnimationIdRef.current === roundAnimation.id) {
+      return;
+    }
+
+    handledRoundAnimationIdRef.current = roundAnimation.id;
+
+    if (roundAnimation.result.seedsEarned > 0) {
+      const showSeedIndicatorId = window.setTimeout(() => {
+        setFloatingSeeds({
+          id: roundAnimation.id,
+          amount: roundAnimation.result.seedsEarned,
+        });
+      }, STAT_ANIMATION_DELAY_MS);
+      const clearSeedIndicatorId = window.setTimeout(() => {
+        setFloatingSeeds((current) => (current?.id === roundAnimation.id ? null : current));
+      }, STAT_ANIMATION_DELAY_MS + SEED_INDICATOR_DURATION_MS);
+
+      return () => {
+        window.clearTimeout(showSeedIndicatorId);
+        window.clearTimeout(clearSeedIndicatorId);
+      };
+    } else {
+      setFloatingSeeds(null);
+    }
+  }, [roundAnimation]);
+
+  if (!storedStats) {
+    return null;
+  }
 
   return (
     <div className="w-full max-w-md mx-auto px-4">
       <div className="rounded-xl bg-[var(--color-surface)] border border-[var(--color-surface-border)] p-3 backdrop-blur-sm text-xs">
-        <div className="grid grid-cols-4 gap-2">
-          <div className="flex items-center gap-1.5 min-w-0">
+        <div className="grid grid-cols-4 gap-3">
+          <div className="flex items-center gap-2 min-w-0">
             <div className="relative">
               <Flame
                 size={18}
                 className={currentStreak > 0 ? 'text-[var(--color-streak)]' : 'text-[var(--color-muted)]'}
                 fill={currentStreak > 0 ? 'currentColor' : 'none'}
               />
-              {currentStreak >= 5 && (
+              {currentStreak >= 5 ? (
                 <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[var(--color-streak)] animate-ping" />
-              )}
+              ) : null}
             </div>
             <div className="flex min-w-0 flex-col">
               <span className="font-bold text-sm leading-none">{formatNumber(currentStreak)}</span>
-              <span className="text-[var(--color-muted)] text-[0.6rem] leading-tight truncate">
-                {nextStreakLabel}
-              </span>
+              <span className="text-[var(--color-muted)] text-[0.6rem] leading-tight truncate">{nextStreakLabel}</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 min-w-0">
+          <div className="relative flex items-center gap-2 min-w-0">
             <SeedIcon size={18} color="var(--color-secondary)" />
             <div className="flex min-w-0 flex-col">
               <span className="font-bold text-sm leading-none">{formatNumber(seeds)}</span>
               <span className="text-[var(--color-muted)] text-[0.6rem] leading-tight">seeds</span>
             </div>
+
+            <AnimatePresence>
+              {floatingSeeds ? (
+                <motion.div
+                  key={floatingSeeds.id}
+                  initial={{ opacity: 0, y: 8, scale: 0.92 }}
+                  animate={{ opacity: 1, y: -24, scale: 1 }}
+                  exit={{ opacity: 0, y: -34, scale: 0.96 }}
+                  transition={{ duration: 1.15, ease: 'easeOut' }}
+                  className="pointer-events-none absolute -right-1 -top-1 flex h-8 min-w-8 items-center justify-center rounded-full border border-[var(--color-surface-border)] bg-[var(--color-secondary)] px-2 text-[0.68rem] font-bold text-[var(--color-on-secondary)] shadow-[var(--shadow-button)]"
+                >
+                  +{formatNumber(floatingSeeds.amount)}
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
           </div>
 
-          <div className="flex items-center gap-1.5 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
             <Target size={16} className="text-[var(--color-muted)]" />
             <div className="flex min-w-0 flex-col">
               <span className="font-bold text-sm leading-none">{accuracy}%</span>
@@ -175,7 +227,7 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
             <Zap size={16} className="text-[var(--color-secondary)]" fill="currentColor" />
             <div className="flex min-w-0 flex-col">
               <span className="font-bold text-sm leading-none">{formatNumber(bestStreak)}</span>
@@ -187,15 +239,13 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
         <div className="mt-3 flex items-start gap-2">
           <Trophy size={16} className="mt-0.5 shrink-0 text-[var(--color-secondary)]" />
           <div className="min-w-0 flex-1">
-            <div className="h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+            <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-border)]">
               <div
                 className="h-full rounded-full bg-[var(--color-secondary)] transition-all duration-500 ease-out"
                 style={{ width: `${Math.min(unlockProgress, 100)}%` }}
               />
             </div>
-            <p className="mt-2 text-[0.65rem] leading-tight text-[var(--color-muted)]">
-              {unlockLabel}
-            </p>
+            <p className="mt-2 text-[0.65rem] leading-tight text-[var(--color-muted)]">{unlockLabel}</p>
           </div>
         </div>
 
@@ -241,6 +291,7 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
                           }
                         })()
                       : purchaseStreakInsurance();
+
                     if (!result.ok) {
                       setInsuranceErrorState({
                         interactionKey,
@@ -266,9 +317,7 @@ export default function StatsBar({ refreshTrigger }: StatsBarProps) {
                 }`}
               >
                 <span className="inline-flex items-center gap-1.5">
-                  {isPurchasingInsurance ? (
-                    <LoaderCircle size={12} className="animate-spin" aria-hidden="true" />
-                  ) : null}
+                  {isPurchasingInsurance ? <LoaderCircle size={12} className="animate-spin" aria-hidden="true" /> : null}
                   {isPurchasingInsurance
                     ? 'Protecting...'
                     : effectiveInsuranceState.active

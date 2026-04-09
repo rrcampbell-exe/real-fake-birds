@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useState } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { useCallback, useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useGameState } from '@/hooks/useGameState';
 import { useSignUpPrompt } from '@/hooks/useSignUpPrompt';
 import WeeklyChallengeBanner from '@/components/WeeklyChallengeBanner';
@@ -11,14 +11,63 @@ import Answer from './Answer';
 import Error from './Error';
 import StatsBar from '@/components/StatsBar';
 import SignUpPromptModal from '@/components/auth/SignUpPromptModal';
+import type { GameRoundResult } from '@/types';
+
+interface UnlockToast {
+  id: number;
+  title: string;
+  detail: string;
+}
+
+const TOAST_LIFETIME_MS = 3600;
+
+function buildUnlockToasts(options: {
+  isMilestone: boolean;
+  earnedBadgeName: string | null;
+  newThemeUnlockName: string | null;
+}): UnlockToast[] {
+  const nextToasts: UnlockToast[] = [];
+
+  if (options.earnedBadgeName) {
+    nextToasts.push({
+      id: 1,
+      title: 'Badge Unlocked',
+      detail: `${options.earnedBadgeName} Badge`,
+    });
+  }
+
+  if (options.newThemeUnlockName) {
+    nextToasts.push({
+      id: 2,
+      title: 'Theme Unlocked',
+      detail: `${options.newThemeUnlockName} Theme`,
+    });
+  }
+
+  if (options.isMilestone && !options.earnedBadgeName && !options.newThemeUnlockName) {
+    nextToasts.push({
+      id: 3,
+      title: 'Milestone Reached',
+      detail: 'Your field guide just leveled up.',
+    });
+  }
+
+  return nextToasts;
+}
 
 export default function GameSection() {
+  const [roundAnimation, setRoundAnimation] = useState<{ id: number; result: GameRoundResult } | null>(null);
+  const [unlockToasts, setUnlockToasts] = useState<UnlockToast[]>([]);
   const {
     birdData,
     isReal,
     regionLabel,
     sciName,
     fact,
+    summary,
+    articleUrl,
+    imageUrl,
+    description,
     hasAnswered,
     isLoading,
     isError,
@@ -39,7 +88,14 @@ export default function GameSection() {
     handleAnswer,
     requestHint,
     tryAgain,
-  } = useGameState();
+  } = useGameState({
+    onRoundResolved: (result) => {
+      setRoundAnimation((current) => ({
+        id: (current?.id ?? 0) + 1,
+        result,
+      }));
+    },
+  });
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const signUpPrompt = useSignUpPrompt('classic');
 
@@ -66,6 +122,37 @@ export default function GameSection() {
     tryAgain();
   }, [signUpPrompt, tryAgain]);
 
+  useEffect(() => {
+    if (!hasAnswered) {
+      setUnlockToasts([]);
+      return;
+    }
+
+    const nextToasts = buildUnlockToasts({
+      isMilestone,
+      earnedBadgeName,
+      newThemeUnlockName,
+    }).map((toast, index) => ({
+      ...toast,
+      id: (roundAnimation?.id ?? 0) * 10 + toast.id,
+      detail: toast.detail,
+    }));
+
+    if (nextToasts.length === 0) {
+      return;
+    }
+
+    setUnlockToasts(nextToasts);
+
+    const timerId = window.setTimeout(() => {
+      setUnlockToasts([]);
+    }, TOAST_LIFETIME_MS);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [earnedBadgeName, hasAnswered, isMilestone, newThemeUnlockName, roundAnimation?.id]);
+
   return (
     <div className="box-border flex min-h-[calc(100dvh-7rem)] flex-1 flex-col items-center justify-center gap-6 py-6 md:min-h-0 md:py-4">
       {/* Title + slogan — visible only on mobile (desktop shows it in TopNav) */}
@@ -78,7 +165,31 @@ export default function GameSection() {
         </p>
       </div>
 
-      <StatsBar refreshTrigger={hasAnswered} />
+      <StatsBar refreshTrigger={hasAnswered} roundAnimation={roundAnimation} />
+
+      <div className="pointer-events-none fixed inset-x-0 top-20 z-40 flex justify-center px-4">
+        <div className="flex w-full max-w-sm flex-col gap-2">
+          <AnimatePresence>
+            {unlockToasts.map((toast) => (
+              <motion.div
+                key={toast.id}
+                initial={{ opacity: 0, y: -12, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                transition={{ duration: 0.24, ease: 'easeOut' }}
+                className="rounded-2xl border border-[var(--color-surface-border)] bg-[color-mix(in_srgb,var(--color-surface)_92%,white_8%)] px-4 py-3 shadow-[var(--shadow-card)] backdrop-blur-sm"
+                role="status"
+                aria-live="polite"
+              >
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-secondary)]">
+                  {toast.title}
+                </p>
+                <p className="mt-1 text-sm font-medium text-[var(--color-text)]">{toast.detail}</p>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      </div>
 
       <WeeklyChallengeBanner />
 
@@ -104,6 +215,10 @@ export default function GameSection() {
               regionLabel={regionLabel}
               sciName={sciName}
               fact={fact}
+              summary={summary}
+              articleUrl={articleUrl}
+              imageUrl={imageUrl}
+              description={description}
               hints={hints}
               isStreak={isStreak}
               isCorrect={isCorrect}

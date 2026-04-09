@@ -35,14 +35,22 @@ vi.mock('@/lib/auth/account-sync', () => ({
 import StatsBar from './StatsBar';
 import { hasSupabaseEnv } from '@/lib/supabase/env';
 import { purchaseStreakInsuranceDirect } from '@/lib/auth/account-sync';
+import type { GameRoundResult } from '@/types';
+import { notifyStoredValueChanged } from '@/hooks/useStoredValue';
 
 const mockedHasSupabaseEnv = vi.mocked(hasSupabaseEnv);
 const mockedPurchaseStreakInsuranceDirect = vi.mocked(purchaseStreakInsuranceDirect);
+
+function expectStatValue(label: string, value: string) {
+  const labelNode = screen.getByText(label);
+  expect(labelNode.previousElementSibling).toHaveTextContent(value);
+}
 
 describe('StatsBar', () => {
   beforeEach(() => {
     mockedHasSupabaseEnv.mockReturnValue(false);
     mockedPurchaseStreakInsuranceDirect.mockReset();
+    vi.useRealTimers();
   });
 
   it('renders nothing when no bird score exists', () => {
@@ -65,14 +73,31 @@ describe('StatsBar', () => {
     render(<StatsBar refreshTrigger={0} />);
 
     expect(screen.getByText('4')).toBeInTheDocument();
-    expect(screen.getByText('70%')).toBeInTheDocument();
-    expect(screen.getByText('9')).toBeInTheDocument();
-    expect(screen.getByText('12')).toBeInTheDocument();
+    expectStatValue('acc', '70%');
+    expectStatValue('best', '9');
+    expectStatValue('seeds', '12');
     expect(screen.getByText('1 to bonus')).toBeInTheDocument();
     expect(screen.getByText('3 to unlock Downy Feather Badge and Raven Theme')).toBeInTheDocument();
   });
 
-  it('refreshes when the trigger changes', () => {
+  it('renders a zero streak cleanly', () => {
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 10,
+        birdsIdentified: 7,
+        currentStreak: 0,
+        bestStreak: 9,
+        seeds: 12,
+      })
+    );
+
+    render(<StatsBar refreshTrigger={0} />);
+
+    expectStatValue('2 to bonus', '0');
+  });
+
+  it('refreshes when the trigger changes', async () => {
     localStorage.setItem(
       'birdScore',
       JSON.stringify({
@@ -85,7 +110,7 @@ describe('StatsBar', () => {
     );
 
     const view = render(<StatsBar refreshTrigger={0} />);
-    expect(screen.getByText('50%')).toBeInTheDocument();
+    expectStatValue('acc', '50%');
 
     localStorage.setItem(
       'birdScore',
@@ -97,11 +122,70 @@ describe('StatsBar', () => {
         seeds: 9,
       })
     );
+    notifyStoredValueChanged('birdScore');
 
     view.rerender(<StatsBar refreshTrigger={1} />);
 
-    expect(screen.getByText('100%')).toBeInTheDocument();
-    expect(screen.getAllByText('5')[0]).toBeInTheDocument();
+    await waitFor(() => {
+      expectStatValue('acc', '100%');
+    });
+    expectStatValue('seeds', '9');
+  });
+
+  it('delays the seed popup after a resolved round', () => {
+    vi.useFakeTimers();
+
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 10,
+        birdsIdentified: 7,
+        currentStreak: 4,
+        bestStreak: 9,
+        seeds: 12,
+      })
+    );
+
+    const view = render(<StatsBar refreshTrigger={0} />);
+
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 11,
+        birdsIdentified: 8,
+        currentStreak: 5,
+        bestStreak: 10,
+        seeds: 19,
+      })
+    );
+    notifyStoredValueChanged('birdScore');
+
+    const roundResult: GameRoundResult = {
+      isCorrect: true,
+      isReal: true,
+      chosenResponse: 'real',
+      seedsEarned: 7,
+      currentStreak: 5,
+      bestStreak: 10,
+      birdsSeen: 11,
+      birdsIdentified: 8,
+      usedHintTypes: [],
+      streakProtected: false,
+      earnedBadgeName: null,
+      unlockedThemeName: null,
+    };
+
+    view.rerender(<StatsBar refreshTrigger={1} roundAnimation={{ id: 1, result: roundResult }} />);
+
+    expect(screen.queryByText('+7')).not.toBeInTheDocument();
+    expectStatValue('seeds', '19');
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(screen.getByText('+7')).toBeInTheDocument();
+    expectStatValue('seeds', '19');
   });
 
   it('does not mention a theme when that theme is already unlocked', () => {
