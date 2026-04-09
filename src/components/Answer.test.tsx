@@ -1,7 +1,9 @@
+import type React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Answer from './Answer';
 import type { HintState } from '@/types';
+import { CURRENT_ROUND_JOURNAL_REVEAL_KEY } from '@/lib/utils/bird-journal';
 
 const { confettiMock } = vi.hoisted(() => ({
   confettiMock: vi.fn(),
@@ -20,13 +22,34 @@ const emptyHints: HintState = {
   image: null,
 };
 
+const defaultProps: React.ComponentProps<typeof Answer> = {
+  birdData: 'Blue Robin',
+  isReal: true,
+  regionLabel: 'Algeria',
+  sciName: 'Cyanocitta cristata',
+  fact: 'Blue Robin is known for its vivid plumage.',
+  summary: 'Blue Robin is known for its vivid plumage. Another field-guide sentence.',
+  articleUrl: 'https://en.wikipedia.org/wiki/Blue_Robin',
+  imageUrl: 'https://upload.wikimedia.org/example.jpg',
+  description: 'bird species',
+  hints: emptyHints,
+  isStreak: false,
+  isCorrect: true,
+  isMilestone: false,
+  seedsEarned: 0,
+  newThemeUnlockName: null,
+  earnedBadgeName: null,
+  isNewBirdEncounter: false,
+  onAction: vi.fn(),
+};
+
 describe('Answer', () => {
   beforeEach(() => {
     confettiMock.mockClear();
     localStorage.clear();
   });
 
-  it('renders answer details and triggers the next-bird action', () => {
+  it('renders answer details, cached image, and triggers the next-bird action', () => {
     localStorage.setItem(
       'birdScore',
       JSON.stringify({
@@ -39,52 +62,38 @@ describe('Answer', () => {
     );
     const onAction = vi.fn();
 
-    render(
-      <Answer
-        birdData="Blue Robin"
-        isReal
-        regionLabel="Algeria"
-        sciName="Cyanocitta cristata"
-        fact="Blue Robin is known for its vivid plumage."
-        hints={emptyHints}
-        isStreak={false}
-        isCorrect
-        isMilestone={false}
-        seedsEarned={0}
-        newThemeUnlockName={null}
-        earnedBadgeName={null}
-        onAction={onAction}
-      />
-    );
+    render(<Answer {...defaultProps} onAction={onAction} />);
 
     expect(screen.getByText('Blue Robin')).toBeInTheDocument();
     expect(screen.getByText('Real')).toBeInTheDocument();
-    expect(screen.getByText('Spotted in Algeria')).toBeInTheDocument();
     expect(screen.getByText('Cyanocitta cristata')).toBeInTheDocument();
-    fireEvent.click(screen.getAllByRole('button', { name: 'Next Bird' })[0]);
+    expect(screen.getByText('Recently seen in Algeria')).toBeInTheDocument();
+    expect(screen.getByText('Field Notes')).toBeInTheDocument();
+    expect(screen.getByText('Blue Robin is known for its vivid plumage.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Learn More' })).toHaveAttribute('href', '/journal#real%3Ablue-robin');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next Bird' }));
     expect(onAction).toHaveBeenCalled();
   });
 
-  it('keeps the next-bird action in the top row above the answer content on all screen sizes', () => {
-    const onAction = vi.fn();
+  it('shows a shimmer over the real-bird image until it loads', () => {
+    render(<Answer {...defaultProps} />);
 
-    render(
-      <Answer
-        birdData="Blue Robin"
-        isReal
-        regionLabel="Algeria"
-        sciName="Cyanocitta cristata"
-        fact="Blue Robin is known for its vivid plumage."
-        hints={emptyHints}
-        isStreak={false}
-        isCorrect
-        isMilestone={false}
-        seedsEarned={0}
-        newThemeUnlockName={null}
-        earnedBadgeName={null}
-        onAction={onAction}
-      />
-    );
+    expect(screen.getByTestId('answer-image-shimmer')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Blue Robin' })).toBeInTheDocument();
+  });
+
+  it('shows an image-unavailable fallback when the real-bird image fails', () => {
+    render(<Answer {...defaultProps} />);
+
+    fireEvent.error(screen.getByRole('img', { name: 'Blue Robin' }));
+
+    expect(screen.getByText('Image unavailable')).toBeInTheDocument();
+    expect(screen.queryByTestId('answer-image-shimmer')).not.toBeInTheDocument();
+  });
+
+  it('keeps the next-bird action in the top row above the field notes', () => {
+    render(<Answer {...defaultProps} />);
 
     const nextButton = screen.getByRole('button', { name: 'Next Bird' });
     const shareButton = screen.getByRole('button', { name: 'Share' });
@@ -92,10 +101,6 @@ describe('Answer', () => {
 
     expect(shareButton.compareDocumentPosition(nextButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(nextButton.compareDocumentPosition(notesHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-
-    fireEvent.click(nextButton);
-
-    expect(onAction).toHaveBeenCalledTimes(1);
   });
 
   it('fires confetti when a major streak checkpoint is achieved', () => {
@@ -112,19 +117,17 @@ describe('Answer', () => {
 
     render(
       <Answer
-        birdData="Blue Robin"
+        {...defaultProps}
         isReal={false}
         regionLabel={null}
         sciName={null}
         fact={null}
-        hints={emptyHints}
+        summary={null}
+        articleUrl={null}
+        imageUrl={null}
+        description={null}
         isStreak
-        isCorrect
-        isMilestone={false}
         seedsEarned={2}
-        newThemeUnlockName={null}
-        earnedBadgeName={null}
-        onAction={vi.fn()}
       />
     );
 
@@ -145,90 +148,41 @@ describe('Answer', () => {
 
     render(
       <Answer
-        birdData="Blue Robin"
+        {...defaultProps}
         isReal={false}
         regionLabel={null}
         sciName={null}
         fact={null}
-        hints={emptyHints}
+        summary={null}
+        articleUrl={null}
+        imageUrl={null}
+        description={null}
         isStreak
-        isCorrect
-        isMilestone={false}
         seedsEarned={6}
-        newThemeUnlockName={null}
-        earnedBadgeName={null}
-        onAction={vi.fn()}
       />
     );
 
     expect(confettiMock).toHaveBeenCalled();
   });
 
-  it('shows seed rewards and theme unlock celebrations', () => {
+  it('keeps milestone celebrations off the answer card surface', () => {
     render(
       <Answer
-        birdData="Blue Robin"
-        isReal
-        regionLabel="Algeria"
-        sciName="Cyanocitta cristata"
-        fact="A bright bird from the north."
-        hints={emptyHints}
-        isStreak={false}
-        isCorrect
+        {...defaultProps}
         isMilestone
         seedsEarned={7}
         newThemeUnlockName="Raven"
         earnedBadgeName="Downy Feather"
-        onAction={vi.fn()}
       />
     );
 
-    expect(screen.getByText('Earned the Downy Feather Badge!')).toBeInTheDocument();
-    expect(screen.getByText('+7 seeds')).toBeInTheDocument();
-    expect(screen.getByText('Unlocked Raven Theme!')).toBeInTheDocument();
-  });
-
-  it('uses the singular seed label when exactly one seed is earned', () => {
-    render(
-      <Answer
-        birdData="Blue Robin"
-        isReal
-        regionLabel="Algeria"
-        sciName="Cyanocitta cristata"
-        fact="A bright bird from the north."
-        hints={emptyHints}
-        isStreak={false}
-        isCorrect
-        isMilestone={false}
-        seedsEarned={1}
-        newThemeUnlockName={null}
-        earnedBadgeName={null}
-        onAction={vi.fn()}
-      />
-    );
-
-    expect(screen.getByText('+1 seed')).toBeInTheDocument();
-    expect(screen.queryByText('+1 seeds')).not.toBeInTheDocument();
+    expect(screen.queryByText('Earned the Downy Feather Badge!')).not.toBeInTheDocument();
+    expect(screen.queryByText('Unlocked Raven Theme!')).not.toBeInTheDocument();
+    expect(screen.queryByText('+7 seeds')).not.toBeInTheDocument();
   });
 
   it('does not fire confetti for a plain correct answer with only the base seed reward', () => {
-    render(
-      <Answer
-        birdData="Blue Robin"
-        isReal
-        regionLabel="Algeria"
-        sciName="Cyanocitta cristata"
-        fact="A bright bird from the north."
-        hints={emptyHints}
-        isStreak={false}
-        isCorrect
-        isMilestone={false}
-        seedsEarned={1}
-        newThemeUnlockName={null}
-        earnedBadgeName={null}
-        onAction={vi.fn()}
-      />
-    );
+    render(<Answer {...defaultProps} seedsEarned={1} />);
 
     expect(confettiMock).not.toHaveBeenCalled();
   });
@@ -238,24 +192,22 @@ describe('Answer', () => {
 
     render(
       <Answer
+        {...defaultProps}
         birdData="Campbell's Striped Algerian Blue-bellied Robin"
         isReal={false}
         regionLabel={null}
         sciName={null}
         fact={null}
-        hints={emptyHints}
-        isStreak={false}
-        isCorrect
-        isMilestone={false}
-        seedsEarned={0}
-        newThemeUnlockName={null}
-        earnedBadgeName={null}
-        onAction={vi.fn()}
+        summary={null}
+        articleUrl={null}
+        imageUrl={null}
+        description={null}
       />
     );
 
     expect(screen.getByText('Fake Field Notes')).toBeInTheDocument();
     expect(screen.getByText('This bird was made up. We still love it, though!')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Learn More' })).not.toBeInTheDocument();
     expect(screen.queryByText(/Surname:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Color:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Type:/)).not.toBeInTheDocument();
@@ -266,19 +218,16 @@ describe('Answer', () => {
 
     render(
       <Answer
+        {...defaultProps}
         birdData="Shy Willow Sparrow"
         isReal={false}
         regionLabel={null}
         sciName={null}
         fact={null}
-        hints={emptyHints}
-        isStreak={false}
-        isCorrect
-        isMilestone={false}
-        seedsEarned={0}
-        newThemeUnlockName={null}
-        earnedBadgeName={null}
-        onAction={vi.fn()}
+        summary={null}
+        articleUrl={null}
+        imageUrl={null}
+        description={null}
       />
     );
 
@@ -288,22 +237,12 @@ describe('Answer', () => {
   it('prefers a purchased fact hint over the background fact', () => {
     render(
       <Answer
-        birdData="Blue Robin"
-        isReal
-        regionLabel="Algeria"
-        sciName="Cyanocitta cristata"
+        {...defaultProps}
         fact="Background fact."
         hints={{
           fact: { type: 'fact', content: 'Purchased fact hint.' },
           image: null,
         }}
-        isStreak={false}
-        isCorrect
-        isMilestone={false}
-        seedsEarned={0}
-        newThemeUnlockName={null}
-        earnedBadgeName={null}
-        onAction={vi.fn()}
       />
     );
 
@@ -311,49 +250,38 @@ describe('Answer', () => {
     expect(screen.queryByText('Background fact.')).not.toBeInTheDocument();
   });
 
+  it('does not render the old correctness icon circle', () => {
+    render(<Answer {...defaultProps} />);
+
+    expect(screen.queryByLabelText('Correct')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Incorrect')).not.toBeInTheDocument();
+  });
+
   it('supports a custom action label', () => {
-    render(
-      <Answer
-        birdData="Blue Robin"
-        isReal
-        regionLabel="Algeria"
-        sciName="Cyanocitta cristata"
-        fact="Background fact."
-        hints={emptyHints}
-        isStreak={false}
-        isCorrect
-        isMilestone={false}
-        seedsEarned={0}
-        newThemeUnlockName={null}
-        earnedBadgeName={null}
-        actionLabel="View Summary"
-        onAction={vi.fn()}
-      />
-    );
+    render(<Answer {...defaultProps} actionLabel="View Summary" />);
 
     expect(screen.getByRole('button', { name: 'View Summary' })).toBeInTheDocument();
   });
 
-  it('shows a journal link when the bird is newly discovered', () => {
-    render(
-      <Answer
-        birdData="Blue Robin"
-        isReal
-        regionLabel="Algeria"
-        sciName="Cyanocitta cristata"
-        fact="Background fact."
-        hints={emptyHints}
-        isStreak={false}
-        isCorrect
-        isMilestone={false}
-        seedsEarned={0}
-        newThemeUnlockName={null}
-        earnedBadgeName={null}
-        isNewBirdEncounter
-        onAction={vi.fn()}
-      />
-    );
+  it('shows a learn-more journal link for the specific bird', () => {
+    render(<Answer {...defaultProps} isNewBirdEncounter />);
 
-    expect(screen.getByRole('link', { name: 'A new bird for your field journal!' })).toHaveAttribute('href', '/journal');
+    expect(screen.getByRole('link', { name: 'Learn More' })).toHaveAttribute('href', '/journal#real%3Ablue-robin');
+  });
+
+  it('marks the current bird as revealed before opening the journal link', () => {
+    render(<Answer {...defaultProps} isNewBirdEncounter />);
+
+    fireEvent.click(screen.getByRole('link', { name: 'Learn More' }));
+
+    expect(localStorage.getItem(CURRENT_ROUND_JOURNAL_REVEAL_KEY)).toBe(JSON.stringify('real:blue-robin'));
+  });
+
+  it('marks the current bird as revealed when the image link is clicked', () => {
+    render(<Answer {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole('link', { name: 'Learn more about this bird' }));
+
+    expect(localStorage.getItem(CURRENT_ROUND_JOURNAL_REVEAL_KEY)).toBe(JSON.stringify('real:blue-robin'));
   });
 });

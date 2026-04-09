@@ -78,6 +78,10 @@ export function useGameState(options?: UseGameStateOptions) {
   const [regionLabel, setRegionLabel] = useState<string | null>(null);
   const [sciName, setSciName] = useState<string | null>(null);
   const [fact, setFact] = useState<string | null>(null);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [articleUrl, setArticleUrl] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [description, setDescription] = useState<string | null>(null);
   const [hasAnswered, setHasAnswered] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
@@ -129,6 +133,10 @@ export function useGameState(options?: UseGameStateOptions) {
     setRegionLabel(null);
     setSciName(null);
     setFact(null);
+    setSummary(null);
+    setArticleUrl(null);
+    setImageUrl(null);
+    setDescription(null);
     setHints(emptyHintState);
     setHintError(null);
     setHintErrorType(null);
@@ -207,6 +215,10 @@ export function useGameState(options?: UseGameStateOptions) {
       setSciName,
       setRegionLabel,
       setFact,
+      setSummary,
+      setArticleUrl,
+      setImageUrl,
+      setDescription,
       setIsError,
       mode,
       controller.signal
@@ -295,8 +307,6 @@ export function useGameState(options?: UseGameStateOptions) {
 
   useEffect(() => {
     if (hasAnswered) {
-      writeCurrentRoundJournalBirdKey(null);
-      writeCurrentRoundJournalRevealKey(null);
       return;
     }
 
@@ -343,6 +353,10 @@ export function useGameState(options?: UseGameStateOptions) {
           regionLabel: regionLabel ?? undefined,
           sciName: sciName ?? undefined,
           fact: fact ?? undefined,
+          summary: summary ?? undefined,
+          articleUrl: articleUrl ?? undefined,
+          imageUrl: imageUrl ?? undefined,
+          description: description ?? undefined,
         },
       });
       setIsNewBirdEncounter(journalEntry.seenCount === 1);
@@ -372,7 +386,7 @@ export function useGameState(options?: UseGameStateOptions) {
       localStorage.removeItem(hintsKey);
       setHasAnswered(true);
     },
-    [birdData, birdDataKey, fact, hints, hintsKey, isReal, isSignedIn, mode, options, regionLabel, scheduleProgressFlush, sciName]
+    [articleUrl, birdData, birdDataKey, description, fact, hints, hintsKey, imageUrl, isReal, isSignedIn, mode, options, regionLabel, scheduleProgressFlush, sciName, summary]
   );
 
   const requestHint = useCallback(
@@ -505,6 +519,10 @@ export function useGameState(options?: UseGameStateOptions) {
     regionLabel,
     sciName,
     fact,
+    summary,
+    articleUrl,
+    imageUrl,
+    description,
     hasAnswered,
     isLoading,
     isError,

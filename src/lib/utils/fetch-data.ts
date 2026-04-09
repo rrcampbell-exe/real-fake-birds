@@ -45,6 +45,10 @@ const fetchData = async (
   setSciName: (val: string | null) => void,
   setRegionLabel: (val: string | null) => void,
   setFact: (val: string | null) => void,
+  setSummary: (val: string | null) => void,
+  setArticleUrl: (val: string | null) => void,
+  setImageUrl: (val: string | null) => void,
+  setDescription: (val: string | null) => void,
   setIsError: (val: boolean) => void,
   mode: GameMode = 'classic',
   signal?: AbortSignal
@@ -52,11 +56,15 @@ const fetchData = async (
   const storageKey = getBirdDataStorageKey(mode);
   const cached = localStorage.getItem(storageKey);
   if (cached) {
-    const { birdName, isReal, sciName, regionLabel, fact } = JSON.parse(cached) as BirdResponse;
+    const { birdName, isReal, sciName, regionLabel, fact, summary, articleUrl, imageUrl, description } = JSON.parse(cached) as BirdResponse;
     setIsReal(isReal);
     setSciName(sciName ?? null);
     setRegionLabel(regionLabel ?? null);
     setFact(fact ?? null);
+    setSummary(summary ?? null);
+    setArticleUrl(articleUrl ?? null);
+    setImageUrl(imageUrl ?? null);
+    setDescription(description ?? null);
     const delayCompleted = await waitForRevealDelay(BIRD_REVEAL_DELAY_MS, signal);
     if (!delayCompleted || signal?.aborted) {
       return;
@@ -82,6 +90,10 @@ const fetchData = async (
       regionLabel: data.regionLabel,
       sciName: data.sciName,
       fact: data.fact,
+      summary: data.summary,
+      articleUrl: data.articleUrl,
+      imageUrl: data.imageUrl,
+      description: data.description,
     };
     localStorage.setItem(storageKey, JSON.stringify(birdData));
 
@@ -89,6 +101,10 @@ const fetchData = async (
     setSciName(data.sciName ?? null);
     setRegionLabel(data.regionLabel ?? null);
     setFact(data.fact ?? null);
+    setSummary(data.summary ?? null);
+    setArticleUrl(data.articleUrl ?? null);
+    setImageUrl(data.imageUrl ?? null);
+    setDescription(data.description ?? null);
     const delayCompleted = await waitForRevealDelay(BIRD_REVEAL_DELAY_MS, signal);
     if (!delayCompleted || signal?.aborted) {
       return;
@@ -103,6 +119,10 @@ const fetchData = async (
     setSciName(null);
     setRegionLabel(null);
     setFact(null);
+    setSummary(null);
+    setArticleUrl(null);
+    setImageUrl(null);
+    setDescription(null);
     setIsError(true);
     setIsLoading(false);
   }

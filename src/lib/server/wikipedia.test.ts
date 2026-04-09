@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchWikipediaFact, fetchWikipediaImage } from './wikipedia';
+import { fetchWikipediaBirdSummary, fetchWikipediaFact, fetchWikipediaImage } from './wikipedia';
 
 describe('wikipedia', () => {
   afterEach(() => {
@@ -63,13 +63,41 @@ describe('wikipedia', () => {
     vi.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => ({
+        thumbnail: { source: 'https://images.example.com/bird-thumb.jpg' },
         originalimage: { source: 'https://images.example.com/bird.jpg' },
       }),
     } as Response);
 
     await expect(fetchWikipediaImage('Blue Jay')).resolves.toBe(
-      'https://images.example.com/bird.jpg'
+      'https://images.example.com/bird-thumb.jpg'
     );
+  });
+
+  it('returns consolidated summary data from the summary endpoint', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        title: 'Blue Jay',
+        description: 'bird species',
+        extract: 'A bright blue corvid. It is common in eastern North America. A third sentence.',
+        thumbnail: { source: 'https://images.example.com/blue-jay-thumb.jpg' },
+        originalimage: { source: 'https://images.example.com/blue-jay.jpg' },
+        content_urls: {
+          desktop: {
+            page: 'https://en.wikipedia.org/wiki/Blue_Jay',
+          },
+        },
+      }),
+    } as Response);
+
+    await expect(fetchWikipediaBirdSummary('Blue Jay')).resolves.toEqual({
+      title: 'Blue Jay',
+      description: 'bird species',
+      fact: 'A bright blue corvid. It is common in eastern North America.',
+      summary: 'A bright blue corvid. It is common in eastern North America. A third sentence.',
+      imageUrl: 'https://images.example.com/blue-jay-thumb.jpg',
+      articleUrl: 'https://en.wikipedia.org/wiki/Blue_Jay',
+    });
   });
 
   it('returns null when no summary can be found', async () => {

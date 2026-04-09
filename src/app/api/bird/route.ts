@@ -4,7 +4,7 @@ import { locations } from '@/lib/server/constants/locations';
 import { nameGenerator } from '@/lib/server/name-generator';
 import { generateFakeFact, generateFakeImage, generateRealBirdFact } from '@/lib/server/openai';
 import { percentOfTime } from '@/lib/server/utils/percent-of-time';
-import { fetchWikipediaFact, fetchWikipediaImage } from '@/lib/server/wikipedia';
+import { fetchWikipediaBirdSummary, fetchWikipediaFact, fetchWikipediaImage } from '@/lib/server/wikipedia';
 import { consumeRateLimit, getRateLimitKey } from '@/lib/server/rate-limiter';
 
 const EBIRD_TIMEOUT_MS = 8000;
@@ -136,7 +136,13 @@ async function fetchRealBird(): Promise<BirdApiResult> {
     if (data.length) {
       const random = Math.floor(Math.random() * data.length);
       const selectedBird = data[random];
-      const fact = await fetchWikipediaFact(selectedBird.comName ?? 'Unknown Bird', selectedBird.sciName);
+      const wikipediaSummary = await fetchWikipediaBirdSummary(
+        selectedBird.comName ?? 'Unknown Bird',
+        selectedBird.sciName
+      );
+      const fact = wikipediaSummary?.fact
+        ?? await fetchWikipediaFact(selectedBird.comName ?? 'Unknown Bird', selectedBird.sciName);
+
       return {
         birdName: selectedBird.comName ?? 'Unknown Bird',
         isReal: true,
@@ -144,6 +150,10 @@ async function fetchRealBird(): Promise<BirdApiResult> {
         sciName: selectedBird.sciName,
         url,
         fact: fact ?? undefined,
+        summary: wikipediaSummary?.summary ?? fact ?? undefined,
+        articleUrl: wikipediaSummary?.articleUrl ?? undefined,
+        imageUrl: wikipediaSummary?.imageUrl ?? undefined,
+        description: wikipediaSummary?.description ?? undefined,
       };
     }
 

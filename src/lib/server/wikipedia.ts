@@ -5,9 +5,25 @@ interface WikipediaSummaryImage {
 }
 
 interface WikipediaSummaryResponse {
+  title?: string;
+  description?: string;
   extract?: string;
   originalimage?: WikipediaSummaryImage;
   thumbnail?: WikipediaSummaryImage;
+  content_urls?: {
+    desktop?: {
+      page?: string;
+    };
+  };
+}
+
+export interface WikipediaBirdSummary {
+  title: string | null;
+  description: string | null;
+  fact: string | null;
+  summary: string | null;
+  imageUrl: string | null;
+  articleUrl: string | null;
 }
 
 interface WikipediaSearchResponse {
@@ -26,6 +42,32 @@ function hasFact(summary: WikipediaSummaryResponse | null): boolean {
 
 function hasImage(summary: WikipediaSummaryResponse | null): boolean {
   return Boolean(summary?.originalimage?.source ?? summary?.thumbnail?.source);
+}
+
+function getPreferredWikipediaImageUrl(summary: WikipediaSummaryResponse | null): string | null {
+  return summary?.thumbnail?.source?.trim() || summary?.originalimage?.source?.trim() || null;
+}
+
+function hasSummaryData(summary: WikipediaSummaryResponse | null): boolean {
+  return Boolean(
+    summary?.extract?.trim()
+      || summary?.originalimage?.source
+      || summary?.thumbnail?.source
+      || summary?.content_urls?.desktop?.page?.trim()
+  );
+}
+
+function formatWikipediaSummary(summary: WikipediaSummaryResponse | null): WikipediaBirdSummary {
+  const extract = summary?.extract?.trim() || null;
+
+  return {
+    title: summary?.title?.trim() || null,
+    description: summary?.description?.trim() || null,
+    fact: extract ? limitFactLength(extract, 2) : null,
+    summary: extract,
+    imageUrl: getPreferredWikipediaImageUrl(summary),
+    articleUrl: summary?.content_urls?.desktop?.page?.trim() || null,
+  };
 }
 
 async function fetchWikipediaJson<T>(url: string): Promise<T | null> {
@@ -112,8 +154,7 @@ async function fetchBestWikipediaSummary(
 
 export async function fetchWikipediaFact(birdName: string, sciName?: string): Promise<string | null> {
   const summary = await fetchBestWikipediaSummary([birdName, sciName ?? ''], hasFact);
-  const extract = summary?.extract?.trim();
-  return extract ? limitFactLength(extract, 2) : null;
+  return formatWikipediaSummary(summary).fact;
 }
 
 export async function fetchWikipediaImage(
@@ -121,6 +162,18 @@ export async function fetchWikipediaImage(
   sciName?: string
 ): Promise<string | null> {
   const summary = await fetchBestWikipediaSummary([birdName, sciName ?? ''], hasImage);
-  const imageUrl = summary?.originalimage?.source ?? summary?.thumbnail?.source;
-  return imageUrl?.trim() ? imageUrl : null;
+  return formatWikipediaSummary(summary).imageUrl;
+}
+
+export async function fetchWikipediaBirdSummary(
+  birdName: string,
+  sciName?: string
+): Promise<WikipediaBirdSummary | null> {
+  const summary = await fetchBestWikipediaSummary([birdName, sciName ?? ''], hasSummaryData);
+
+  if (!summary) {
+    return null;
+  }
+
+  return formatWikipediaSummary(summary);
 }

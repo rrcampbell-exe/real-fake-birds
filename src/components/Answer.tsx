@@ -3,17 +3,16 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import { ArrowRight, Check, X } from 'lucide-react';
+import Image from 'next/image';
+import { ArrowRight, GraduationCap } from 'lucide-react';
 import Link from 'next/link';
-import SeedIcon from '@/components/icons/SeedIcon';
-import { correctnessText } from '@/lib/utils/correctness-text';
 import { useSound } from '@/hooks/useSound';
 import { useStoredJson } from '@/hooks/useStoredValue';
 import ShareButton from '@/components/ShareButton';
 import { isMajorStreakCheckpoint } from '@/lib/constants/streaks';
+import { deriveBirdKey, writeCurrentRoundJournalRevealKey } from '@/lib/utils/bird-journal';
 import { defaultBirdScore, normalizeBirdScore } from '@/lib/utils/player-progress';
 import { buildMilestoneSharePayload, buildRoundSharePayload } from '@/lib/utils/share-data';
-import { formatNumber } from '@/lib/utils/number-format';
 import type { HintState } from '@/types';
 
 const FAKE_FIELD_NOTES = [
@@ -35,12 +34,38 @@ function getRandomFakeFieldNote(): string {
   return FAKE_FIELD_NOTES[Math.floor(Math.random() * FAKE_FIELD_NOTES.length)] ?? FAKE_FIELD_NOTES[0];
 }
 
+function getAnswerFact(text: string | null): string | null {
+  if (!text) {
+    return null;
+  }
+
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const firstSentenceBoundary = normalized.match(/(?<=[.!?])\s+/)?.index;
+  const firstSentence = firstSentenceBoundary === undefined
+    ? normalized
+    : normalized.slice(0, firstSentenceBoundary).trim();
+
+  if (firstSentence.length <= 180) {
+    return firstSentence;
+  }
+
+  return `${firstSentence.slice(0, 177).trimEnd()}...`;
+}
+
 interface AnswerProps {
   birdData: string;
   isReal: boolean;
   regionLabel: string | null;
   sciName: string | null;
   fact: string | null;
+  summary: string | null;
+  articleUrl: string | null;
+  imageUrl: string | null;
+  description: string | null;
   hints: HintState;
   isStreak: boolean;
   isCorrect: boolean;
@@ -59,23 +84,27 @@ export default function Answer({
   regionLabel,
   sciName,
   fact,
+  imageUrl,
   hints,
   isStreak,
   isCorrect,
   isMilestone,
-  seedsEarned,
-  newThemeUnlockName,
   earnedBadgeName,
-  isNewBirdEncounter = false,
   actionLabel = 'Next Bird',
   onAction,
 }: AnswerProps) {
   const { play } = useSound();
   const score = normalizeBirdScore(useStoredJson<typeof defaultBirdScore | null>('birdScore', defaultBirdScore));
   const isMajorStreak = isMajorStreakCheckpoint(score.currentStreak);
-  const displayedFact = hints.fact?.content ?? fact;
+  const displayedFact = getAnswerFact(hints.fact?.content ?? fact);
+  const journalHref = `/journal#${encodeURIComponent(deriveBirdKey(birdData, isReal))}`;
+  const hasImage = isReal && Boolean(imageUrl);
+  const handleLearnMore = () => {
+    writeCurrentRoundJournalRevealKey(deriveBirdKey(birdData, isReal));
+  };
   const [fakeFieldNote] = useState(getRandomFakeFieldNote);
   const [isNextBirdVisible, setIsNextBirdVisible] = useState(false);
+  const [imageStatus, setImageStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>(hasImage ? 'loading' : 'idle');
   const sharePayload = isMilestone && earnedBadgeName
     ? buildMilestoneSharePayload({
         badgeName: earnedBadgeName,
@@ -111,10 +140,10 @@ export default function Answer({
   }, [isMajorStreak, isStreak, isMilestone, play]);
 
   useEffect(() => {
-    if (isMilestone || newThemeUnlockName || isStreak) {
-      const duration = isMilestone || newThemeUnlockName || isMajorStreak ? 2500 : 1200;
-      const particleCount = isMilestone || newThemeUnlockName || isMajorStreak ? 2 : 1;
-      const spread = isMilestone || newThemeUnlockName || isMajorStreak ? 55 : 40;
+    if (isMilestone || earnedBadgeName || isStreak) {
+      const duration = isMilestone || earnedBadgeName || isMajorStreak ? 2500 : 1200;
+      const particleCount = isMilestone || earnedBadgeName || isMajorStreak ? 2 : 1;
+      const spread = isMilestone || earnedBadgeName || isMajorStreak ? 55 : 40;
       const end = Date.now() + duration;
 
       const frame = () => {
@@ -124,7 +153,7 @@ export default function Answer({
       };
       frame();
     }
-  }, [isMajorStreak, isStreak, isMilestone, newThemeUnlockName]);
+  }, [earnedBadgeName, isMajorStreak, isStreak, isMilestone]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -135,6 +164,10 @@ export default function Answer({
       window.clearTimeout(timer);
     };
   }, []);
+
+  useEffect(() => {
+    setImageStatus(hasImage ? 'loading' : 'idle');
+  }, [hasImage, imageUrl]);
 
   return (
     <div className="relative flex w-full flex-col items-center gap-4 md:gap-5">
@@ -153,127 +186,133 @@ export default function Answer({
         </button>
       </div>
 
-      {/* Correctness indicator */}
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: 'spring', stiffness: 400, damping: 15, delay: 0.1 }}
-        className={`w-14 h-14 rounded-full flex items-center justify-center ${
-          isCorrect
-            ? 'bg-[color-mix(in_srgb,var(--color-success)_18%,transparent)] text-[var(--color-success)]'
-            : 'bg-[color-mix(in_srgb,var(--color-error)_18%,transparent)] text-[var(--color-error)]'
-        }`}
-      >
-        {isCorrect ? <Check size={28} strokeWidth={3} /> : <X size={28} strokeWidth={3} />}
-      </motion.div>
-
-      {/* Feedback text */}
-      <p className="whitespace-pre-line text-sm font-medium text-[var(--color-muted)] text-center">
-        {correctnessText(isCorrect, isStreak, isMilestone)}
-      </p>
-
-      {(isMilestone || seedsEarned > 0 || newThemeUnlockName) && (
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          {isMilestone && (
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1 text-xs font-semibold"
-            >
-              <span>
-                {earnedBadgeName
-                  ? `Earned the ${earnedBadgeName} Badge!`
-                  : 'Badge Unlocked!'}
-              </span>
-            </motion.div>
-          )}
-
-          {seedsEarned > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1 text-xs font-semibold"
-            >
-              <SeedIcon size={16} color="var(--color-secondary)" />
-              <span>+{formatNumber(seedsEarned)} {seedsEarned === 1 ? 'seed' : 'seeds'}</span>
-            </motion.div>
-          )}
-
-          {newThemeUnlockName && (
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1 text-xs font-semibold"
-            >
-              <span>Unlocked {newThemeUnlockName} Theme!</span>
-            </motion.div>
-          )}
-        </div>
-      )}
-
-      {/* Bird name + real/fake badge */}
-      <div className="-mt-1 w-full text-center md:mt-0">
-        <h2 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl font-bold leading-tight mb-2">
-          {birdData}
-        </h2>
-        <motion.span
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className={`inline-block px-4 py-1 rounded-full text-sm font-bold tracking-wide uppercase ${
-            isReal
-              ? 'bg-[color-mix(in_srgb,var(--color-success)_18%,transparent)] text-[var(--color-success)]'
-              : 'bg-[color-mix(in_srgb,var(--color-error)_18%,transparent)] text-[var(--color-error)]'
-          }`}
+      <div className="w-full space-y-4">
+        <div
+          className={hasImage
+            ? 'flex flex-wrap items-stretch justify-between gap-4 md:grid md:grid-cols-[7rem_minmax(0,1fr)_auto] md:items-start'
+            : 'grid items-start gap-4 grid-cols-[minmax(0,1fr)_auto]'}
         >
-          {isReal ? 'Real' : 'Fake'}
-        </motion.span>
-
-        {isNewBirdEncounter ? (
-          <div className="mt-3 flex justify-center">
+          {hasImage ? (
             <Link
-              href="/journal"
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1 text-xs font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-surface-hover)]"
+              href={journalHref}
+              onClick={handleLearnMore}
+              className="block w-[calc(50%-0.5rem)] max-w-[10rem] md:row-start-1 md:w-28 md:max-w-none"
+              aria-label="Learn more about this bird"
             >
-              A new bird for your field journal!
+              <div
+                className="relative aspect-square overflow-hidden rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)]"
+              >
+                {imageStatus === 'loading' ? (
+                  <div
+                    aria-hidden="true"
+                    data-testid="answer-image-shimmer"
+                    className="absolute inset-0 bg-[linear-gradient(110deg,var(--color-surface-hover)_8%,color-mix(in_srgb,var(--color-surface)_65%,white_35%)_18%,var(--color-surface-hover)_33%)] bg-[length:200%_100%] animate-[shimmer_1.25s_linear_infinite]"
+                  />
+                ) : null}
+                {imageStatus === 'error' ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-[var(--color-surface-hover)] px-3 text-center text-xs font-medium text-[var(--color-muted)]">
+                    Image unavailable
+                  </div>
+                ) : null}
+                <Image
+                  src={imageUrl ?? ''}
+                  alt={birdData}
+                  fill
+                  sizes="(max-width: 768px) 50vw, 112px"
+                  className={`object-cover object-center transition-opacity duration-200 ${imageStatus === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
+                  loading="eager"
+                  unoptimized
+                  onLoad={() => setImageStatus('loaded')}
+                  onError={() => setImageStatus('error')}
+                />
+              </div>
             </Link>
-          </div>
-        ) : null}
+          ) : (
+            <div className="min-w-0 space-y-1">
+              <h2 className="font-[family-name:var(--font-display)] text-xl font-bold leading-tight text-[var(--color-text)] md:text-2xl">
+                {birdData}
+              </h2>
+              {sciName ? (
+                <p className="text-sm italic text-[var(--color-muted)]">{sciName}</p>
+              ) : null}
+            </div>
+          )}
 
-        <div className="mt-4 w-full space-y-3 text-left">
-          {isReal ? (
-            <div className="w-full rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4">
+          <div className="flex shrink-0 self-stretch flex-col items-end gap-2 text-right md:col-start-3 md:row-start-1 md:self-auto">
+            <motion.span
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className={`inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] ${
+                isCorrect
+                  ? 'bg-[color-mix(in_srgb,var(--color-success)_18%,transparent)] text-[var(--color-success)]'
+                  : 'bg-[color-mix(in_srgb,var(--color-error)_18%,transparent)] text-[var(--color-error)]'
+              }`}
+            >
+              {isCorrect ? 'Correct' : 'Incorrect'}
+            </motion.span>
+
+            <motion.span
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.18 }}
+              className={`inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] ${
+                isReal
+                  ? 'bg-[color-mix(in_srgb,var(--color-success)_18%,transparent)] text-[var(--color-success)]'
+                  : 'bg-[color-mix(in_srgb,var(--color-error)_18%,transparent)] text-[var(--color-error)]'
+              }`}
+            >
+              {isReal ? 'Real' : 'Fake'}
+            </motion.span>
+
+            {/* Learn More for real birds, just under labels */}
+            {isReal && (
+              <Link
+                href={journalHref}
+                onClick={handleLearnMore}
+                className="mt-auto inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-surface-hover)]"
+              >
+                Learn More
+                <GraduationCap size={16} />
+              </Link>
+            )}
+          </div>
+
+          {hasImage ? (
+            <div className="w-full min-w-0 space-y-1 md:col-span-2 md:col-start-1 md:row-start-2">
+              <h2 className="font-[family-name:var(--font-display)] text-xl font-bold leading-tight text-[var(--color-text)] md:text-2xl">
+                {birdData}
+              </h2>
+              {sciName ? (
+                <p className="text-sm italic text-[var(--color-muted)]">{sciName}</p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        {isReal ? (
+          <div className="space-y-3 rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-4">
+            <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
                 Field Notes
               </p>
               {regionLabel ? (
-                <p className="mt-2 text-sm text-[var(--color-text)]">
-                  Spotted in {regionLabel}
-                </p>
-              ) : null}
-              {sciName ? (
-                <p className="mt-1 text-sm italic text-[var(--color-muted)]">
-                  {sciName}
-                </p>
-              ) : null}
-              {displayedFact ? (
-                <p className="mt-3 text-sm leading-6 text-[var(--color-text)]">
-                  {displayedFact}
-                </p>
+                <p className="text-sm text-[var(--color-muted)]">Recently seen in {regionLabel}</p>
               ) : null}
             </div>
-          ) : (
-            <div className="w-full rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
-                Fake Field Notes
-              </p>
-              <p className="mt-2 text-sm text-[var(--color-text)]">
-                {fakeFieldNote}
-              </p>
-            </div>
-          )}
-        </div>
+
+            {displayedFact ? (
+              <p className="text-sm leading-6 text-[var(--color-text)]">{displayedFact}</p>
+            ) : null}
+          </div>
+        ) : (
+          <div className="space-y-3 rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
+              Fake Field Notes
+            </p>
+            <p className="text-sm leading-6 text-[var(--color-text)]">{fakeFieldNote}</p>
+          </div>
+        )}
       </div>
     </div>
   );
