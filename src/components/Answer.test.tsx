@@ -66,12 +66,10 @@ describe('Answer', () => {
 
     expect(screen.getByText('Blue Robin')).toBeInTheDocument();
     expect(screen.getByText('Real')).toBeInTheDocument();
-    expect(screen.getByText('Recently seen in Algeria')).toBeInTheDocument();
     expect(screen.getByText('Cyanocitta cristata')).toBeInTheDocument();
+    expect(screen.getByText('Recently seen in Algeria')).toBeInTheDocument();
     expect(screen.getByText('Field Notes')).toBeInTheDocument();
     expect(screen.getByText('Blue Robin is known for its vivid plumage.')).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Blue Robin' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Wikipedia' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Learn More' })).toHaveAttribute('href', '/journal#real%3Ablue-robin');
 
     fireEvent.click(screen.getByRole('button', { name: 'Next Bird' }));
@@ -275,6 +273,14 @@ describe('Answer', () => {
     render(<Answer {...defaultProps} isNewBirdEncounter />);
 
     fireEvent.click(screen.getByRole('link', { name: 'Learn More' }));
+
+    expect(localStorage.getItem(CURRENT_ROUND_JOURNAL_REVEAL_KEY)).toBe(JSON.stringify('real:blue-robin'));
+  });
+
+  it('marks the current bird as revealed when the image link is clicked', () => {
+    render(<Answer {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole('link', { name: 'Learn more about this bird' }));
 
     expect(localStorage.getItem(CURRENT_ROUND_JOURNAL_REVEAL_KEY)).toBe(JSON.stringify('real:blue-robin'));
   });

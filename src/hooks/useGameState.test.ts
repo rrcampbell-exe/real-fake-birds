@@ -1,9 +1,10 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { deriveBirdKeyMock, recordBirdEncounterMock, writeCurrentRoundJournalRevealKeyMock } = vi.hoisted(() => ({
+const { deriveBirdKeyMock, recordBirdEncounterMock, writeCurrentRoundJournalBirdKeyMock, writeCurrentRoundJournalRevealKeyMock } = vi.hoisted(() => ({
   deriveBirdKeyMock: vi.fn(),
   recordBirdEncounterMock: vi.fn(),
+  writeCurrentRoundJournalBirdKeyMock: vi.fn(),
   writeCurrentRoundJournalRevealKeyMock: vi.fn(),
 }));
 
@@ -17,7 +18,7 @@ vi.mock('@/lib/utils/bird-journal', () => ({
   deriveBirdKey: deriveBirdKeyMock,
   normalizeBirdJournalStore: (value: unknown) => value,
   recordBirdEncounter: recordBirdEncounterMock,
-  writeCurrentRoundJournalBirdKey: vi.fn(),
+  writeCurrentRoundJournalBirdKey: writeCurrentRoundJournalBirdKeyMock,
   writeCurrentRoundJournalRevealKey: writeCurrentRoundJournalRevealKeyMock,
 }));
 
@@ -59,6 +60,7 @@ describe('useGameState', () => {
     deriveBirdKeyMock.mockReset();
     deriveBirdKeyMock.mockReturnValue('real:blue-jay');
     recordBirdEncounterMock.mockReset();
+    writeCurrentRoundJournalBirdKeyMock.mockReset();
     writeCurrentRoundJournalRevealKeyMock.mockReset();
     recordBirdEncounterMock.mockReturnValue({
       birdKey: 'real:blue-jay',
@@ -168,6 +170,8 @@ describe('useGameState', () => {
     });
     expect(result.current.hasAnswered).toBe(true);
     expect(result.current.isNewBirdEncounter).toBe(true);
+    expect(writeCurrentRoundJournalBirdKeyMock).not.toHaveBeenCalledWith(null);
+    expect(writeCurrentRoundJournalRevealKeyMock).not.toHaveBeenCalledWith(null);
   });
 
   it('offers skip for unseen birds without recording progress before fetching a replacement', () => {
@@ -333,6 +337,8 @@ describe('useGameState', () => {
     expect(localStorage.getItem('birdData')).toBeNull();
     expect(localStorage.getItem('birdData:classic')).toBeNull();
     expect(localStorage.getItem('currentHints:classic')).toBeNull();
+    expect(writeCurrentRoundJournalBirdKeyMock).toHaveBeenCalledWith(null);
+    expect(writeCurrentRoundJournalRevealKeyMock).toHaveBeenCalledWith(null);
     expect(fetchData).toHaveBeenCalledTimes(2);
   });
 });

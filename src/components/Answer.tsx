@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import Image from 'next/image';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, GraduationCap } from 'lucide-react';
 import Link from 'next/link';
 import { useSound } from '@/hooks/useSound';
 import { useStoredJson } from '@/hooks/useStoredValue';
@@ -99,6 +99,9 @@ export default function Answer({
   const displayedFact = getAnswerFact(hints.fact?.content ?? fact);
   const journalHref = `/journal#${encodeURIComponent(deriveBirdKey(birdData, isReal))}`;
   const hasImage = isReal && Boolean(imageUrl);
+  const handleLearnMore = () => {
+    writeCurrentRoundJournalRevealKey(deriveBirdKey(birdData, isReal));
+  };
   const [fakeFieldNote] = useState(getRandomFakeFieldNote);
   const [isNextBirdVisible, setIsNextBirdVisible] = useState(false);
   const [imageStatus, setImageStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>(hasImage ? 'loading' : 'idle');
@@ -184,10 +187,21 @@ export default function Answer({
       </div>
 
       <div className="w-full space-y-4">
-        <div className={`grid items-start gap-4 ${hasImage ? 'grid-cols-[6.2rem_minmax(0,1fr)_auto] md:grid-cols-[7rem_minmax(0,1fr)_auto]' : 'grid-cols-[minmax(0,1fr)_auto]'}`}>
+        <div
+          className={hasImage
+            ? 'flex flex-wrap items-stretch justify-between gap-4 md:grid md:grid-cols-[7rem_minmax(0,1fr)_auto] md:items-start'
+            : 'grid items-start gap-4 grid-cols-[minmax(0,1fr)_auto]'}
+        >
           {hasImage ? (
-            <div className="space-y-3">
-              <div className="relative aspect-square overflow-hidden rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)]">
+            <Link
+              href={journalHref}
+              onClick={handleLearnMore}
+              className="block w-[calc(50%-0.5rem)] max-w-[10rem] md:row-start-1 md:w-28 md:max-w-none"
+              aria-label="Learn more about this bird"
+            >
+              <div
+                className="relative aspect-square overflow-hidden rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)]"
+              >
                 {imageStatus === 'loading' ? (
                   <div
                     aria-hidden="true"
@@ -204,7 +218,7 @@ export default function Answer({
                   src={imageUrl ?? ''}
                   alt={birdData}
                   fill
-                  sizes="(max-width: 768px) 100px, 112px"
+                  sizes="(max-width: 768px) 50vw, 112px"
                   className={`object-cover object-center transition-opacity duration-200 ${imageStatus === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
                   loading="eager"
                   unoptimized
@@ -212,7 +226,7 @@ export default function Answer({
                   onError={() => setImageStatus('error')}
                 />
               </div>
-            </div>
+            </Link>
           ) : (
             <div className="min-w-0 space-y-1">
               <h2 className="font-[family-name:var(--font-display)] text-xl font-bold leading-tight text-[var(--color-text)] md:text-2xl">
@@ -224,9 +238,7 @@ export default function Answer({
             </div>
           )}
 
-          {hasImage ? <div className="min-w-0" /> : null}
-
-          <div className="flex shrink-0 flex-col items-end gap-2 text-right">
+          <div className="flex shrink-0 self-stretch flex-col items-end gap-2 text-right md:col-start-3 md:row-start-1 md:self-auto">
             <motion.span
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -252,10 +264,22 @@ export default function Answer({
             >
               {isReal ? 'Real' : 'Fake'}
             </motion.span>
+
+            {/* Learn More for real birds, just under labels */}
+            {isReal && (
+              <Link
+                href={journalHref}
+                onClick={handleLearnMore}
+                className="mt-auto inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-surface-hover)]"
+              >
+                Learn More
+                <GraduationCap size={16} />
+              </Link>
+            )}
           </div>
 
           {hasImage ? (
-            <div className="col-span-full min-w-0 space-y-1">
+            <div className="w-full min-w-0 space-y-1 md:col-span-2 md:col-start-1 md:row-start-2">
               <h2 className="font-[family-name:var(--font-display)] text-xl font-bold leading-tight text-[var(--color-text)] md:text-2xl">
                 {birdData}
               </h2>
@@ -280,18 +304,6 @@ export default function Answer({
             {displayedFact ? (
               <p className="text-sm leading-6 text-[var(--color-text)]">{displayedFact}</p>
             ) : null}
-
-            <div>
-              <Link
-                href={journalHref}
-                onClick={() => {
-                  writeCurrentRoundJournalRevealKey(deriveBirdKey(birdData, isReal));
-                }}
-                className="inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-surface-hover)]"
-              >
-                Learn More
-              </Link>
-            </div>
           </div>
         ) : (
           <div className="space-y-3 rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-4">

@@ -307,8 +307,6 @@ export function useGameState(options?: UseGameStateOptions) {
 
   useEffect(() => {
     if (hasAnswered) {
-      writeCurrentRoundJournalBirdKey(null);
-      writeCurrentRoundJournalRevealKey(null);
       return;
     }
 
