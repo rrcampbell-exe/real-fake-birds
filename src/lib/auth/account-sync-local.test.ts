@@ -1,213 +1,295 @@
-import { describe, expect, it, vi } from 'vitest';
-import { applyPulledAccountProgress, readAccountSyncMeta } from './account-sync-local';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const {
+  notifyStoredValueChangedMock,
+  getTodayChallengeDateMock,
+  readDailyChallengeHistoryMock,
+  resetDailyChallengeStateMock,
+  writeDailyChallengeHistoryMock,
+  writeDailyChallengeStateMock,
+  getTodayMissionDateMock,
+  readDailyMissionHistoryMock,
+  writeDailyMissionHistoryMock,
+  mergeBirdJournalStoresMock,
+  readBirdJournalMock,
+  writeBirdJournalMock,
+  mergeNonRoundRemoteScoreMock,
+  setUnlockedThemeNamesMock,
+  getUnlockedThemeNamesMock,
+  writeBirdScoreMock,
+  getMissionDefinitionsForStateMock,
+  readSessionMissionsMock,
+  resetSessionMissionsMock,
+  writeSessionMissionsMock,
+} = vi.hoisted(() => ({
+  notifyStoredValueChangedMock: vi.fn(),
+  getTodayChallengeDateMock: vi.fn(),
+  readDailyChallengeHistoryMock: vi.fn(),
+  resetDailyChallengeStateMock: vi.fn(),
+  writeDailyChallengeHistoryMock: vi.fn(),
+  writeDailyChallengeStateMock: vi.fn(),
+  getTodayMissionDateMock: vi.fn(),
+  readDailyMissionHistoryMock: vi.fn(),
+  writeDailyMissionHistoryMock: vi.fn(),
+  mergeBirdJournalStoresMock: vi.fn(),
+  readBirdJournalMock: vi.fn(),
+  writeBirdJournalMock: vi.fn(),
+  mergeNonRoundRemoteScoreMock: vi.fn(),
+  setUnlockedThemeNamesMock: vi.fn(),
+  getUnlockedThemeNamesMock: vi.fn(),
+  writeBirdScoreMock: vi.fn(),
+  getMissionDefinitionsForStateMock: vi.fn(),
+  readSessionMissionsMock: vi.fn(),
+  resetSessionMissionsMock: vi.fn(),
+  writeSessionMissionsMock: vi.fn(),
+}));
+
+vi.mock('@/hooks/useStoredValue', () => ({
+  notifyStoredValueChanged: notifyStoredValueChangedMock,
+}));
+
+vi.mock('@/lib/utils/daily-challenge', () => ({
+  getTodayChallengeDate: getTodayChallengeDateMock,
+  readDailyChallengeHistory: readDailyChallengeHistoryMock,
+  resetDailyChallengeState: resetDailyChallengeStateMock,
+  writeDailyChallengeHistory: writeDailyChallengeHistoryMock,
+  writeDailyChallengeState: writeDailyChallengeStateMock,
+}));
+
+vi.mock('@/lib/utils/daily-mission-date', () => ({
+  getTodayMissionDate: getTodayMissionDateMock,
+}));
+
+vi.mock('@/lib/utils/daily-mission-history', () => ({
+  DAILY_MISSION_HISTORY_STORAGE_KEY: 'dailyMissionHistory',
+  readDailyMissionHistory: readDailyMissionHistoryMock,
+  writeDailyMissionHistory: writeDailyMissionHistoryMock,
+}));
+
+vi.mock('@/lib/utils/bird-journal', () => ({
+  BIRD_JOURNAL_STORAGE_KEY: 'birdJournal',
+  mergeBirdJournalStores: mergeBirdJournalStoresMock,
+  readBirdJournal: readBirdJournalMock,
+  writeBirdJournal: writeBirdJournalMock,
+}));
+
+vi.mock('@/lib/utils/player-progress', () => ({
+  BIRD_SCORE_STORAGE_KEY: 'birdScore',
+  UNLOCKED_THEMES_STORAGE_KEY: 'unlockedThemes',
+  mergeNonRoundRemoteScore: mergeNonRoundRemoteScoreMock,
+  setUnlockedThemeNames: setUnlockedThemeNamesMock,
+  getUnlockedThemeNames: getUnlockedThemeNamesMock,
+  writeBirdScore: writeBirdScoreMock,
+}));
+
+vi.mock('@/lib/utils/missions', () => ({
+  getMissionDefinitionsForState: getMissionDefinitionsForStateMock,
+  readSessionMissions: readSessionMissionsMock,
+  resetSessionMissions: resetSessionMissionsMock,
+  writeSessionMissions: writeSessionMissionsMock,
+}));
+
+import {
+  ACCOUNT_SYNC_META_STORAGE_KEY,
+  applyPulledAccountProgress,
+  readAccountSyncMeta,
+  writeAccountSyncMeta,
+} from './account-sync-local';
 
 describe('account-sync-local', () => {
-  it('applies pulled server progress into local storage and records sync meta', () => {
-    vi.setSystemTime(new Date(2026, 3, 4, 15, 0, 0));
+  beforeEach(() => {
+    localStorage.clear();
+    notifyStoredValueChangedMock.mockReset();
+    getTodayChallengeDateMock.mockReset();
+    getTodayChallengeDateMock.mockReturnValue('2026-04-07');
+    readDailyChallengeHistoryMock.mockReset();
+    readDailyChallengeHistoryMock.mockReturnValue([{ date: '2026-04-05', correctAnswers: 2, roundsPlayed: 5, completed: true }]);
+    resetDailyChallengeStateMock.mockReset();
+    writeDailyChallengeHistoryMock.mockReset();
+    writeDailyChallengeStateMock.mockReset();
+    getTodayMissionDateMock.mockReset();
+    getTodayMissionDateMock.mockReturnValue('2026-04-07');
+    readDailyMissionHistoryMock.mockReset();
+    readDailyMissionHistoryMock.mockReturnValue([{ date: '2026-04-05' }]);
+    writeDailyMissionHistoryMock.mockReset();
+    mergeBirdJournalStoresMock.mockReset();
+    mergeBirdJournalStoresMock.mockReturnValue({ merged: true });
+    readBirdJournalMock.mockReset();
+    readBirdJournalMock.mockReturnValue({ local: true });
+    writeBirdJournalMock.mockReset();
+    mergeNonRoundRemoteScoreMock.mockReset();
+    mergeNonRoundRemoteScoreMock.mockImplementation((score) => ({ ...score, merged: true }));
+    setUnlockedThemeNamesMock.mockReset();
+    getUnlockedThemeNamesMock.mockReset();
+    getUnlockedThemeNamesMock.mockReturnValue(['Finch']);
+    writeBirdScoreMock.mockReset();
+    getMissionDefinitionsForStateMock.mockReset();
+    getMissionDefinitionsForStateMock.mockReturnValue([
+      { id: 'm1', target: 2 },
+      { id: 'm2', target: 3 },
+    ]);
+    readSessionMissionsMock.mockReset();
+    readSessionMissionsMock.mockReturnValue({
+      date: '2026-04-07',
+      missions: [
+        { missionId: 'm1', progress: 0, completed: false, claimed: false },
+        { missionId: 'm2', progress: 1, completed: false, claimed: false },
+      ],
+      bonusClaimed: false,
+    });
+    resetSessionMissionsMock.mockReset();
+    writeSessionMissionsMock.mockReset();
+  });
 
-    applyPulledAccountProgress({
-      score: {
-        birdsSeen: 15,
-        birdsIdentified: 11,
-        currentStreak: 3,
-        justAchievedStreak: false,
-        bestStreak: 7,
-        currentDailyStreak: 2,
-        bestDailyStreak: 4,
-        seeds: 28,
-      },
-      unlockedThemes: ['Finch', 'Raven'],
-      dailyChallengeHistory: [
-        { date: '2026-04-04', correctAnswers: 5, roundsPlayed: 5, completed: true },
-        { date: '2026-04-03', correctAnswers: 5, roundsPlayed: 5, completed: true },
-        { date: '2026-04-02', correctAnswers: 5, roundsPlayed: 5, completed: true },
-        { date: '2026-04-01', correctAnswers: 5, roundsPlayed: 5, completed: true },
-      ],
-      dailyMissionHistory: [
-        { date: '2026-04-04' },
-        { date: '2026-04-03' },
-      ],
-      milestones: [10],
-      journalEntries: [],
-      lastLocalSyncAt: '2026-04-04T14:45:00.000Z',
-      todayDailyChallenge: null,
-      todayMissionClaims: null,
+  it('reads account sync meta with defaults, parsed values, and invalid JSON fallback', () => {
+    expect(readAccountSyncMeta()).toEqual({
+      lastServerSyncAt: null,
+      lastPulledAt: null,
+      lastPushedAt: null,
     });
 
-    expect(JSON.parse(localStorage.getItem('birdScore') ?? '{}')).toMatchObject({
-      birdsIdentified: 11,
-      bestDailyStreak: 4,
-      seeds: 28,
+    localStorage.setItem(ACCOUNT_SYNC_META_STORAGE_KEY, JSON.stringify({
+      lastServerSyncAt: '2026-04-07T10:00:00.000Z',
+      lastPulledAt: '2026-04-07T11:00:00.000Z',
+      lastPushedAt: '2026-04-07T12:00:00.000Z',
+    }));
+    expect(readAccountSyncMeta()).toEqual({
+      lastServerSyncAt: '2026-04-07T10:00:00.000Z',
+      lastPulledAt: '2026-04-07T11:00:00.000Z',
+      lastPushedAt: '2026-04-07T12:00:00.000Z',
     });
-    expect(JSON.parse(localStorage.getItem('unlockedThemes') ?? '[]')).toEqual(['Raven']);
-    expect(JSON.parse(localStorage.getItem('dailyChallengeHistory') ?? '[]')).toHaveLength(4);
-    expect(readAccountSyncMeta()).toMatchObject({
-      lastServerSyncAt: '2026-04-04T14:45:00.000Z',
-      lastPulledAt: new Date(2026, 3, 4, 15, 0, 0).toISOString(),
+
+    localStorage.setItem(ACCOUNT_SYNC_META_STORAGE_KEY, '{bad json');
+    expect(readAccountSyncMeta()).toEqual({
+      lastServerSyncAt: null,
+      lastPulledAt: null,
+      lastPushedAt: null,
     });
   });
 
-  it('restores today\'s daily challenge and claimed mission rewards after sign-in', () => {
-    vi.setSystemTime(new Date(2026, 3, 4, 15, 0, 0));
+  it('writes merged sync meta and notifies listeners', () => {
+    localStorage.setItem(ACCOUNT_SYNC_META_STORAGE_KEY, JSON.stringify({
+      lastServerSyncAt: '2026-04-07T10:00:00.000Z',
+      lastPulledAt: null,
+      lastPushedAt: null,
+    }));
 
+    expect(writeAccountSyncMeta({ lastPushedAt: '2026-04-07T12:00:00.000Z' })).toEqual({
+      lastServerSyncAt: '2026-04-07T10:00:00.000Z',
+      lastPulledAt: null,
+      lastPushedAt: '2026-04-07T12:00:00.000Z',
+    });
+    expect(notifyStoredValueChangedMock).toHaveBeenCalledWith(ACCOUNT_SYNC_META_STORAGE_KEY);
+  });
+
+  it('applies pulled progress when today challenge and mission claims match the current day', () => {
     applyPulledAccountProgress({
-      score: {
-        birdsSeen: 15,
-        birdsIdentified: 11,
-        currentStreak: 3,
-        justAchievedStreak: false,
-        bestStreak: 7,
-        currentDailyStreak: 2,
-        bestDailyStreak: 4,
-        seeds: 28,
-      },
-      unlockedThemes: ['Finch', 'Raven'],
-      dailyChallengeHistory: [
-        { date: '2026-04-04', correctAnswers: 5, roundsPlayed: 5, completed: true },
-      ],
-      dailyMissionHistory: [{ date: '2026-04-04' }],
+      score: { seeds: 20 },
+      unlockedThemes: ['Robin'],
+      dailyChallengeHistory: [{ date: '2026-04-06', correctAnswers: 4, roundsPlayed: 5, completed: true }],
+      dailyMissionHistory: [{ date: '2026-04-06' }],
       milestones: [10],
-      journalEntries: [],
-      lastLocalSyncAt: '2026-04-04T14:45:00.000Z',
+      journalEntries: [{ birdKey: 'bird-a' }],
+      lastLocalSyncAt: '2026-04-07T10:00:00.000Z',
       todayDailyChallenge: {
-        date: '2026-04-04',
+        date: '2026-04-07',
         roundsPlayed: 5,
         correctAnswers: 5,
-        bonusSeedsAwarded: 75,
+        bonusSeedsAwarded: 25,
         claimed: true,
       },
       todayMissionClaims: {
-        date: '2026-04-04',
-        claimedMissionIds: ['no-peeking'],
+        date: '2026-04-07',
+        claimedMissionIds: ['m1'],
         bonusClaimed: false,
       },
-    });
+    } as never);
 
-    expect(JSON.parse(localStorage.getItem('dailyChallenge') ?? '{}')).toMatchObject({
-      date: '2026-04-04',
-      completed: true,
+    expect(writeBirdScoreMock).toHaveBeenCalledWith({ seeds: 20, merged: true });
+    expect(setUnlockedThemeNamesMock).toHaveBeenCalledWith(['Finch', 'Robin']);
+    expect(writeDailyChallengeHistoryMock).toHaveBeenCalled();
+    expect(writeDailyMissionHistoryMock).toHaveBeenCalled();
+    expect(mergeBirdJournalStoresMock).toHaveBeenCalledWith({ local: true }, { 'bird-a': { birdKey: 'bird-a' } });
+    expect(writeBirdJournalMock).toHaveBeenCalledWith({ merged: true });
+    expect(writeDailyChallengeStateMock).toHaveBeenCalledWith({
+      date: '2026-04-07',
       roundsPlayed: 5,
       correctAnswers: 5,
+      completed: true,
       completionBonusAwarded: true,
       perfectBonusAwarded: true,
-      bonusSeedsAwarded: 75,
+      bonusSeedsAwarded: 25,
+      roundResults: [],
     });
-
-    expect(JSON.parse(localStorage.getItem('sessionMissions') ?? '{}')).toMatchObject({
-      date: '2026-04-04',
+    expect(writeSessionMissionsMock).toHaveBeenCalledWith({
+      date: '2026-04-07',
+      missions: [
+        { missionId: 'm1', progress: 2, completed: true, claimed: true },
+        { missionId: 'm2', progress: 1, completed: false, claimed: false },
+      ],
       bonusClaimed: false,
     });
-
-    expect(JSON.parse(localStorage.getItem('sessionMissions') ?? '{}').missions).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          missionId: 'no-peeking',
-          completed: true,
-          claimed: true,
-        }),
-        expect.objectContaining({
-          completed: true,
-        }),
-      ])
-    );
+    expect(notifyStoredValueChangedMock).toHaveBeenCalledWith('birdScore');
+    expect(notifyStoredValueChangedMock).toHaveBeenCalledWith('birdJournal');
+    expect(notifyStoredValueChangedMock).toHaveBeenCalledWith('unlockedThemes');
+    expect(notifyStoredValueChangedMock).toHaveBeenCalledWith('dailyChallengeHistory');
+    expect(notifyStoredValueChangedMock).toHaveBeenCalledWith('dailyMissionHistory');
+    const meta = JSON.parse(localStorage.getItem(ACCOUNT_SYNC_META_STORAGE_KEY) ?? '{}');
+    expect(meta.lastServerSyncAt).toBe('2026-04-07T10:00:00.000Z');
+    expect(typeof meta.lastPulledAt).toBe('string');
   });
 
-  it('merges pulled progress with newer local stats instead of overwriting them', () => {
-    vi.setSystemTime(new Date(2026, 3, 4, 15, 0, 0));
-
-    localStorage.setItem(
-      'birdScore',
-      JSON.stringify({
-        birdsSeen: 21,
-        birdsIdentified: 16,
-        currentStreak: 5,
-        justAchievedStreak: false,
-        bestStreak: 8,
-        currentDailyStreak: 1,
-        bestDailyStreak: 1,
-        seeds: 12,
-      })
-    );
-    localStorage.setItem(
-      'dailyMissionHistory',
-      JSON.stringify([{ date: '2026-04-05' }])
-    );
-    localStorage.setItem(
-      'dailyChallengeHistory',
-      JSON.stringify([
-        { date: '2026-04-05', correctAnswers: 5, roundsPlayed: 5, completed: true },
-      ])
-    );
-    localStorage.setItem(
-      'birdJournal',
-      JSON.stringify({
-        'real:owl': {
-          birdKey: 'real:owl',
-          birdName: 'Owl',
-          isReal: true,
-          seenCount: 4,
-          correctCount: 3,
-          incorrectCount: 1,
-          lastSeenAt: '2026-04-05T01:00:00.000Z',
-          metadata: {},
-        },
-      })
-    );
+  it('resets today state when the pulled progress does not match today and marks all missions when the bonus was claimed', () => {
+    readDailyMissionHistoryMock.mockReturnValue([{ date: '2026-04-07' }]);
 
     applyPulledAccountProgress({
-      score: {
-        birdsSeen: 15,
-        birdsIdentified: 11,
-        currentStreak: 2,
-        justAchievedStreak: false,
-        bestStreak: 7,
-        currentDailyStreak: 0,
-        bestDailyStreak: 0,
-        seeds: 28,
+      score: { seeds: 20 },
+      unlockedThemes: ['Robin'],
+      dailyChallengeHistory: [],
+      dailyMissionHistory: [{ date: '2026-04-07' }],
+      milestones: [],
+      journalEntries: [],
+      lastLocalSyncAt: null,
+      todayDailyChallenge: {
+        date: '2026-04-06',
+        roundsPlayed: 5,
+        correctAnswers: 4,
+        bonusSeedsAwarded: 25,
+        claimed: false,
       },
-      unlockedThemes: ['Finch', 'Raven'],
-      dailyChallengeHistory: [
-        { date: '2026-04-04', correctAnswers: 4, roundsPlayed: 5, completed: true },
+      todayMissionClaims: {
+        date: '2026-04-07',
+        claimedMissionIds: [],
+        bonusClaimed: true,
+      },
+    } as never);
+
+    expect(resetDailyChallengeStateMock).toHaveBeenCalledWith('2026-04-07');
+    expect(writeSessionMissionsMock).toHaveBeenCalledWith({
+      date: '2026-04-07',
+      missions: [
+        { missionId: 'm1', progress: 2, completed: true, claimed: true },
+        { missionId: 'm2', progress: 3, completed: true, claimed: true },
       ],
-      dailyMissionHistory: [{ date: '2026-04-04' }],
-      milestones: [10],
-      journalEntries: [
-        {
-          birdKey: 'real:owl',
-          birdName: 'Owl',
-          isReal: true,
-          seenCount: 2,
-          correctCount: 2,
-          incorrectCount: 0,
-          lastSeenAt: '2026-04-04T01:00:00.000Z',
-          metadata: {},
-        },
-      ],
-      lastLocalSyncAt: '2026-04-04T14:45:00.000Z',
+      bonusClaimed: true,
+    });
+    expect(resetSessionMissionsMock).not.toHaveBeenCalled();
+  });
+
+  it('resets session missions when there is no matching mission-claim payload for today', () => {
+    applyPulledAccountProgress({
+      score: { seeds: 20 },
+      unlockedThemes: [],
+      dailyChallengeHistory: [],
+      dailyMissionHistory: [],
+      milestones: [],
+      journalEntries: [],
+      lastLocalSyncAt: null,
       todayDailyChallenge: null,
       todayMissionClaims: null,
-    });
+    } as never);
 
-    expect(JSON.parse(localStorage.getItem('birdScore') ?? '{}')).toMatchObject({
-      birdsSeen: 21,
-      birdsIdentified: 16,
-      bestStreak: 8,
-      seeds: 28,
-    });
-    expect(JSON.parse(localStorage.getItem('dailyMissionHistory') ?? '[]')).toEqual([
-      { date: '2026-04-05' },
-      { date: '2026-04-04' },
-    ]);
-    expect(JSON.parse(localStorage.getItem('dailyChallengeHistory') ?? '[]')).toEqual([
-      { date: '2026-04-05', correctAnswers: 5, roundsPlayed: 5, completed: true },
-      { date: '2026-04-04', correctAnswers: 4, roundsPlayed: 5, completed: true },
-    ]);
-    expect(JSON.parse(localStorage.getItem('birdJournal') ?? '{}')).toMatchObject({
-      'real:owl': expect.objectContaining({
-        seenCount: 4,
-        correctCount: 3,
-        incorrectCount: 1,
-      }),
-    });
+    expect(resetDailyChallengeStateMock).toHaveBeenCalledWith('2026-04-07');
+    expect(resetSessionMissionsMock).toHaveBeenCalledWith('2026-04-07');
   });
 });

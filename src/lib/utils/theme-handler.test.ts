@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { cardinal, flamingo, finch, oriole } from '@/lib/themes';
-import { getTheme, getUnlockedThemes, resolveTheme, setTheme } from './theme-handler';
+import { findThemeByName, getTheme, getUnlockedThemes, resolveTheme, setTheme } from './theme-handler';
 
 describe('theme-handler', () => {
   it('stores the selected theme', () => {
@@ -122,3 +122,23 @@ describe('theme-handler', () => {
     ]);
   });
 });
+  it('resolveTheme returns finch when themeLike is null', () => {
+    expect(resolveTheme(null)).toEqual(finch);
+  });
+
+  it('resolveTheme returns finch when themeLike has empty name', () => {
+    expect(resolveTheme({ name: '' })).toEqual(finch);
+  });
+
+  it('findThemeByName returns undefined for null', () => {
+    expect(findThemeByName(null)).toBeUndefined();
+  });
+
+  it('findThemeByName returns undefined for undefined', () => {
+    expect(findThemeByName(undefined)).toBeUndefined();
+  });
+
+  it('getTheme returns finch when localStorage has no birdTheme entry', () => {
+    localStorage.removeItem('birdTheme');
+    expect(getTheme()).toEqual(finch);
+  });

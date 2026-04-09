@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGameState } from '@/hooks/useGameState';
 import { useSignUpPrompt } from '@/hooks/useSignUpPrompt';
@@ -76,7 +76,7 @@ function buildUnlockToasts(options: {
 
 export default function GameSection() {
   const [roundAnimation, setRoundAnimation] = useState<{ id: number; result: GameRoundResult } | null>(null);
-  const [unlockToasts, setUnlockToasts] = useState<UnlockToast[]>([]);
+  const [expiredToastRoundId, setExpiredToastRoundId] = useState<number | null>(null);
   const {
     birdData,
     isReal,
@@ -119,6 +119,29 @@ export default function GameSection() {
   const signUpPrompt = useSignUpPrompt('classic');
 
   const cardState = isLoading ? 'loading' : showQuestion ? 'question' : 'answer';
+  const activeToastRoundId = hasAnswered ? (roundAnimation?.id ?? 0) : null;
+  const unlockToastDefinitions = useMemo(() => {
+    if (!hasAnswered) {
+      return [];
+    }
+
+    return buildUnlockToasts({
+      isMilestone,
+      earnedBadgeName,
+      newThemeUnlockName,
+      roundResult: roundAnimation?.result ?? null,
+    });
+  }, [earnedBadgeName, hasAnswered, isMilestone, newThemeUnlockName, roundAnimation]);
+  const activeUnlockToasts = useMemo(() => {
+    if (activeToastRoundId === null || expiredToastRoundId === activeToastRoundId) {
+      return [];
+    }
+
+    return unlockToastDefinitions.map((toast) => ({
+      ...toast,
+      id: activeToastRoundId * 10 + toast.id,
+    }));
+  }, [activeToastRoundId, expiredToastRoundId, unlockToastDefinitions]);
 
   const handleAdvanceRound = useCallback(() => {
     if (signUpPrompt.shouldPrompt && signUpPrompt.activeThreshold !== null) {
@@ -142,36 +165,18 @@ export default function GameSection() {
   }, [signUpPrompt, tryAgain]);
 
   useEffect(() => {
-    if (!hasAnswered) {
-      setUnlockToasts([]);
+    if (activeToastRoundId === null || unlockToastDefinitions.length === 0 || expiredToastRoundId === activeToastRoundId) {
       return;
     }
-
-    const nextToasts = buildUnlockToasts({
-      isMilestone,
-      earnedBadgeName,
-      newThemeUnlockName,
-      roundResult: roundAnimation?.result ?? null,
-    }).map((toast, index) => ({
-      ...toast,
-      id: (roundAnimation?.id ?? 0) * 10 + toast.id,
-      detail: toast.detail,
-    }));
-
-    if (nextToasts.length === 0) {
-      return;
-    }
-
-    setUnlockToasts(nextToasts);
 
     const timerId = window.setTimeout(() => {
-      setUnlockToasts([]);
+      setExpiredToastRoundId(activeToastRoundId);
     }, TOAST_LIFETIME_MS);
 
     return () => {
       window.clearTimeout(timerId);
     };
-  }, [earnedBadgeName, hasAnswered, isMilestone, newThemeUnlockName, roundAnimation]);
+  }, [activeToastRoundId, expiredToastRoundId, unlockToastDefinitions.length]);
 
   return (
     <div className="box-border flex min-h-[calc(100dvh-7rem)] flex-1 flex-col items-center justify-center gap-6 py-6 md:min-h-0 md:py-4">
@@ -190,7 +195,7 @@ export default function GameSection() {
       <div className="pointer-events-none fixed inset-x-0 top-20 z-40 flex justify-center px-4">
         <div className="flex w-full max-w-sm flex-col gap-2">
           <AnimatePresence>
-            {unlockToasts.map((toast) => (
+            {activeUnlockToasts.map((toast) => (
               <motion.div
                 key={toast.id}
                 initial={{ opacity: 0, y: -12, scale: 0.96 }}

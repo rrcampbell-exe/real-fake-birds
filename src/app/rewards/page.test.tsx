@@ -63,7 +63,6 @@ describe('RewardsPage', () => {
     render(<RewardsPage />);
 
     expect(screen.getByText('Your bird-watching achievements.')).toBeInTheDocument();
-    expect(screen.getByText(/Mission rewards now land automatically in your seed total/i)).toBeInTheDocument();
     expect(screen.queryByText('Classic Run Bonus')).not.toBeInTheDocument();
   });
 
@@ -92,7 +91,7 @@ describe('RewardsPage', () => {
 
     render(<RewardsPage />);
 
-    expect(screen.getByText(/1 of 1 mission rewards have already been paid out today/i)).toBeInTheDocument();
+    expect(screen.getByText(/you've completed 1 of 1 mission today, including the high flyer bonus/i)).toBeInTheDocument();
   });
 
   it('mentions the high flyer bonus when it has already been auto-awarded', () => {
@@ -158,6 +157,5 @@ describe('RewardsPage', () => {
 
     expect(screen.getByText('Your bird-watching achievements.')).toBeInTheDocument();
     expect(screen.getByText('Polishing your trophy shelf...')).toBeInTheDocument();
-    expect(screen.getByText(/Mission rewards now land automatically in your seed total/i)).toBeInTheDocument();
   });
 });

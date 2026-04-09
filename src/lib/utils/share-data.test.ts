@@ -4,6 +4,8 @@ import {
   buildMilestoneSharePayload,
   buildRoundSharePayload,
   buildStatsSharePayload,
+  buildWeeklyLeaderboardSharePayload,
+  buildWeeklyChampionSharePayload,
 } from './share-data';
 
 describe('share-data', () => {
@@ -56,5 +58,78 @@ describe('share-data', () => {
       title: 'Real Fake Birds daily challenge',
       text: "I scored 4/5 on today's Real Fake Birds Daily Challenge.",
     });
+  });
+});
+describe('buildWeeklyLeaderboardSharePayload', () => {
+  it('uses "am currently sitting" and "this week\'s" when not final', () => {
+    const payload = buildWeeklyLeaderboardSharePayload({
+      challengeName: 'Seed Collector',
+      rank: 3,
+      isFinal: false,
+    });
+    expect(payload.title).toBe('Real Fake Birds leaderboard');
+    expect(payload.text).toContain('am currently sitting');
+    expect(payload.text).toContain("this week's");
+    expect(payload.text).toContain('#3');
+    expect(payload.text).toContain('Seed Collector');
+  });
+
+  it('uses "finished" and "last week\'s" when final', () => {
+    const payload = buildWeeklyLeaderboardSharePayload({
+      challengeName: 'Seed Collector',
+      rank: 1,
+      isFinal: true,
+    });
+    expect(payload.text).toContain('finished');
+    expect(payload.text).toContain("last week's");
+  });
+});
+
+describe('buildWeeklyChampionSharePayload', () => {
+  it('uses plural "finishes" when total podiums is not 1', () => {
+    const payload = buildWeeklyChampionSharePayload({
+      firstPlaceCount: 2,
+      secondPlaceCount: 1,
+      thirdPlaceCount: 0,
+    });
+    expect(payload.title).toBe('Real Fake Birds podiums');
+    expect(payload.text).toContain('3 weekly podium finishes');
+    expect(payload.text).toContain('2 gold');
+    expect(payload.text).toContain('1 silver');
+    expect(payload.text).toContain('0 bronze');
+  });
+
+  it('uses singular "finish" when total podiums is exactly 1', () => {
+    const payload = buildWeeklyChampionSharePayload({
+      firstPlaceCount: 1,
+      secondPlaceCount: 0,
+      thirdPlaceCount: 0,
+    });
+    expect(payload.text).toContain('1 weekly podium finish ');
+    expect(payload.text).not.toContain('finishes');
+  });
+});
+
+describe('buildRoundSharePayload – additional branches', () => {
+  it('includes badge text when earnedBadgeName is provided', () => {
+    const payload = buildRoundSharePayload({
+      birdName: 'Robin',
+      isReal: true,
+      isCorrect: true,
+      currentStreak: 1,
+      earnedBadgeName: 'Downy Feather',
+    });
+    expect(payload.text).toContain('Just earned the Downy Feather badge.');
+  });
+
+  it('omits streak text when currentStreak is 1', () => {
+    const payload = buildRoundSharePayload({
+      birdName: 'Robin',
+      isReal: false,
+      isCorrect: false,
+      currentStreak: 1,
+      earnedBadgeName: null,
+    });
+    expect(payload.text).not.toContain('streak');
   });
 });

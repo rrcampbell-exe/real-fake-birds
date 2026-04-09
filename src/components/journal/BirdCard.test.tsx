@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import BirdCard from './BirdCard';
 
@@ -87,6 +87,33 @@ describe('Journal BirdCard', () => {
 
     expect(screen.getByText('North America')).toBeInTheDocument();
     expect(screen.getByText('A bright and noisy corvid found across much of North America.')).toBeInTheDocument();
+  });
+
+  it('auto-expands when a card becomes the linked journal target later', async () => {
+    const { rerender } = render(
+      <BirdCard
+        entry={concealedEntry}
+        isMaskedForCurrentRound={false}
+        canAffordReveal
+        onRevealForCurrentRound={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByText('North America')).not.toBeInTheDocument();
+
+    rerender(
+      <BirdCard
+        entry={concealedEntry}
+        isMaskedForCurrentRound={false}
+        canAffordReveal
+        onRevealForCurrentRound={vi.fn()}
+        isLinkedTarget
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('North America')).toBeInTheDocument();
+    });
   });
 
   it('shows a shimmer over the journal image until it loads', () => {

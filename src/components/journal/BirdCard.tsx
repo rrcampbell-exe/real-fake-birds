@@ -27,25 +27,70 @@ function formatLastSeen(date: string): string {
   }).format(parsed);
 }
 
+interface JournalBirdImageProps {
+  birdName: string;
+  imageUrl: string;
+}
+
+function JournalBirdImage({ birdName, imageUrl }: JournalBirdImageProps) {
+  const [imageStatus, setImageStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+
+  return (
+    <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface)]">
+      {imageStatus === 'loading' ? (
+        <div
+          aria-hidden="true"
+          data-testid="journal-image-shimmer"
+          className="absolute inset-0 bg-[linear-gradient(110deg,var(--color-surface-hover)_8%,color-mix(in_srgb,var(--color-surface)_65%,white_35%)_18%,var(--color-surface-hover)_33%)] bg-[length:200%_100%] animate-[shimmer_1.25s_linear_infinite]"
+        />
+      ) : null}
+      {imageStatus === 'error' ? (
+        <div className="absolute inset-0 flex items-center justify-center bg-[var(--color-surface-hover)] px-4 text-center text-sm font-medium text-[var(--color-muted)]">
+          Image unavailable
+        </div>
+      ) : null}
+      <Image
+        src={imageUrl}
+        alt={birdName}
+        fill
+        sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+        className={`object-cover object-center transition-opacity duration-200 ${imageStatus === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
+        loading="lazy"
+        unoptimized
+        onLoad={() => setImageStatus('loaded')}
+        onError={() => setImageStatus('error')}
+      />
+    </div>
+  );
+}
+
 export default function BirdCard({ entry, isMaskedForCurrentRound, canAffordReveal, onRevealForCurrentRound, isLinkedTarget = false }: JournalBirdCardProps) {
   const [isExpanded, setIsExpanded] = useState(isLinkedTarget);
-  const [imageStatus, setImageStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>(entry.metadata.imageUrl ? 'loading' : 'idle');
   const accuracy = entry.seenCount > 0
     ? Math.floor((entry.correctCount / entry.seenCount) * 100)
     : 0;
   const summaryText = entry.metadata.summary ?? entry.metadata.fact;
   const hasImage = Boolean(entry.metadata.imageUrl);
-  const showExpandedArticleHeader = isExpanded && !isMaskedForCurrentRound && hasImage;
+  const expanded = isExpanded;
+  const showExpandedArticleHeader = expanded && !isMaskedForCurrentRound && hasImage;
 
   useEffect(() => {
-    if (isLinkedTarget) {
-      setIsExpanded(true);
+    if (!isLinkedTarget) {
+      return;
     }
+
+    const timerId = window.setTimeout(() => {
+      setIsExpanded(true);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [isLinkedTarget]);
 
-  useEffect(() => {
-    setImageStatus(entry.metadata.imageUrl ? 'loading' : 'idle');
-  }, [entry.metadata.imageUrl]);
+  const handleToggleExpanded = () => {
+    setIsExpanded((current) => !current);
+  };
 
   return (
     <article id={entry.birdKey} className="scroll-mt-28 rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-card)] transition hover:bg-[var(--color-surface-hover)]">
@@ -88,44 +133,20 @@ export default function BirdCard({ entry, isMaskedForCurrentRound, canAffordReve
         {!isMaskedForCurrentRound ? (
           <button
             type="button"
-            onClick={() => setIsExpanded((current) => !current)}
+            onClick={handleToggleExpanded}
             className="inline-flex items-center gap-1 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-3 py-1 text-xs font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-surface)]"
-            aria-expanded={isExpanded}
+            aria-expanded={expanded}
           >
             Details
-            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
         ) : null}
       </div>
 
-      {isExpanded && !isMaskedForCurrentRound ? (
+      {expanded && !isMaskedForCurrentRound ? (
         <div className="mt-4 space-y-3">
           {hasImage ? (
-            <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface)]">
-              {imageStatus === 'loading' ? (
-                <div
-                  aria-hidden="true"
-                  data-testid="journal-image-shimmer"
-                  className="absolute inset-0 bg-[linear-gradient(110deg,var(--color-surface-hover)_8%,color-mix(in_srgb,var(--color-surface)_65%,white_35%)_18%,var(--color-surface-hover)_33%)] bg-[length:200%_100%] animate-[shimmer_1.25s_linear_infinite]"
-                />
-              ) : null}
-              {imageStatus === 'error' ? (
-                <div className="absolute inset-0 flex items-center justify-center bg-[var(--color-surface-hover)] px-4 text-center text-sm font-medium text-[var(--color-muted)]">
-                  Image unavailable
-                </div>
-              ) : null}
-              <Image
-                src={entry.metadata.imageUrl ?? ''}
-                alt={entry.birdName}
-                fill
-                sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
-                className={`object-cover object-center transition-opacity duration-200 ${imageStatus === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
-                loading="lazy"
-                unoptimized
-                onLoad={() => setImageStatus('loaded')}
-                onError={() => setImageStatus('error')}
-              />
-            </div>
+            <JournalBirdImage key={entry.metadata.imageUrl} birdName={entry.birdName} imageUrl={entry.metadata.imageUrl ?? ''} />
           ) : null}
 
           {showExpandedArticleHeader ? (
