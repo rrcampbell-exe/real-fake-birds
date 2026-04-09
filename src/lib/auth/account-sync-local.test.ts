@@ -3,7 +3,7 @@ import { applyPulledAccountProgress, readAccountSyncMeta } from './account-sync-
 
 describe('account-sync-local', () => {
   it('applies pulled server progress into local storage and records sync meta', () => {
-    vi.setSystemTime(new Date('2026-04-04T15:00:00.000Z'));
+    vi.setSystemTime(new Date(2026, 3, 4, 15, 0, 0));
 
     applyPulledAccountProgress({
       score: {
@@ -36,19 +36,19 @@ describe('account-sync-local', () => {
 
     expect(JSON.parse(localStorage.getItem('birdScore') ?? '{}')).toMatchObject({
       birdsIdentified: 11,
-      bestDailyStreak: 2,
+      bestDailyStreak: 4,
       seeds: 28,
     });
     expect(JSON.parse(localStorage.getItem('unlockedThemes') ?? '[]')).toEqual(['Raven']);
     expect(JSON.parse(localStorage.getItem('dailyChallengeHistory') ?? '[]')).toHaveLength(4);
     expect(readAccountSyncMeta()).toMatchObject({
       lastServerSyncAt: '2026-04-04T14:45:00.000Z',
-      lastPulledAt: '2026-04-04T15:00:00.000Z',
+      lastPulledAt: new Date(2026, 3, 4, 15, 0, 0).toISOString(),
     });
   });
 
   it('restores today\'s daily challenge and claimed mission rewards after sign-in', () => {
-    vi.setSystemTime(new Date('2026-04-04T15:00:00.000Z'));
+    vi.setSystemTime(new Date(2026, 3, 4, 15, 0, 0));
 
     applyPulledAccountProgress({
       score: {
@@ -113,7 +113,7 @@ describe('account-sync-local', () => {
   });
 
   it('merges pulled progress with newer local stats instead of overwriting them', () => {
-    vi.setSystemTime(new Date('2026-04-04T15:00:00.000Z'));
+    vi.setSystemTime(new Date(2026, 3, 4, 15, 0, 0));
 
     localStorage.setItem(
       'birdScore',

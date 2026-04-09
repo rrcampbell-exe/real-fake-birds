@@ -7,6 +7,7 @@ import {
   writeDailyChallengeHistory,
   writeDailyChallengeState,
 } from '@/lib/utils/daily-challenge';
+import { getTodayMissionDate } from '@/lib/utils/daily-mission-date';
 import {
   DAILY_MISSION_HISTORY_STORAGE_KEY,
   readDailyMissionHistory,
@@ -153,11 +154,12 @@ export function applyPulledAccountProgress(progress: PulledAccountProgress): voi
     )
   );
 
-  const today = getTodayChallengeDate();
+  const today = getTodayMissionDate();
+  const todayChallengeDate = getTodayChallengeDate();
 
-  if (progress.todayDailyChallenge?.date === today) {
+  if (progress.todayDailyChallenge?.date === todayChallengeDate) {
     writeDailyChallengeState({
-      date: today,
+      date: todayChallengeDate,
       roundsPlayed: progress.todayDailyChallenge.roundsPlayed,
       correctAnswers: progress.todayDailyChallenge.correctAnswers,
       completed: true,
@@ -169,7 +171,7 @@ export function applyPulledAccountProgress(progress: PulledAccountProgress): voi
       roundResults: [],
     });
   } else {
-    resetDailyChallengeState(today);
+    resetDailyChallengeState(todayChallengeDate);
   }
 
   if (progress.todayMissionClaims?.date === today) {
