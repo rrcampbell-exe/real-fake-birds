@@ -25,30 +25,49 @@ function buildUnlockToasts(options: {
   isMilestone: boolean;
   earnedBadgeName: string | null;
   newThemeUnlockName: string | null;
+  roundResult: GameRoundResult | null;
 }): UnlockToast[] {
   const nextToasts: UnlockToast[] = [];
+
+  options.roundResult?.missionRewards.forEach((missionReward, index) => {
+    nextToasts.push({
+      id: 10 + index,
+      title: 'Mission Complete!',
+      detail: `${missionReward.toastDescription} You've earned an extra ${missionReward.rewardSeeds} seeds for your efforts!`,
+    });
+  });
+
+  if (options.roundResult?.completedDailyMissionSet) {
+    nextToasts.push({
+      id: 20,
+      title: 'Daily Streak Extended!',
+      detail: options.roundResult.dailyMissionStreak
+        ? `Your daily streak is now ${options.roundResult.dailyMissionStreak} day${options.roundResult.dailyMissionStreak > 1 ? 's' : ''}. Have +${options.roundResult.missionSetBonusSeedsEarned} bonus seeds as a treat.`
+        : `+${options.roundResult.missionSetBonusSeedsEarned} bonus seeds.`,
+    });
+  }
 
   if (options.earnedBadgeName) {
     nextToasts.push({
       id: 1,
-      title: 'Badge Unlocked',
-      detail: `${options.earnedBadgeName} Badge`,
+      title: 'Badge Unlocked!',
+      detail: `The ${options.earnedBadgeName} Badge is now yours. We won't stop you from shaking your tail feathers in celebration.`,
     });
   }
 
   if (options.newThemeUnlockName) {
     nextToasts.push({
       id: 2,
-      title: 'Theme Unlocked',
-      detail: `${options.newThemeUnlockName} Theme`,
+      title: 'Theme Unlocked!',
+      detail: `You can now use the ${options.newThemeUnlockName} Theme. Why not try out your new look?`,
     });
   }
 
   if (options.isMilestone && !options.earnedBadgeName && !options.newThemeUnlockName) {
     nextToasts.push({
       id: 3,
-      title: 'Milestone Reached',
-      detail: 'Your field guide just leveled up.',
+      title: 'Milestone Reached!',
+      detail: 'In real fake bird culture, this is kind of a big deal.',
     });
   }
 
@@ -132,6 +151,7 @@ export default function GameSection() {
       isMilestone,
       earnedBadgeName,
       newThemeUnlockName,
+      roundResult: roundAnimation?.result ?? null,
     }).map((toast, index) => ({
       ...toast,
       id: (roundAnimation?.id ?? 0) * 10 + toast.id,
@@ -151,7 +171,7 @@ export default function GameSection() {
     return () => {
       window.clearTimeout(timerId);
     };
-  }, [earnedBadgeName, hasAnswered, isMilestone, newThemeUnlockName, roundAnimation?.id]);
+  }, [earnedBadgeName, hasAnswered, isMilestone, newThemeUnlockName, roundAnimation]);
 
   return (
     <div className="box-border flex min-h-[calc(100dvh-7rem)] flex-1 flex-col items-center justify-center gap-6 py-6 md:min-h-0 md:py-4">

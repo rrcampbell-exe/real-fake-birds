@@ -40,8 +40,6 @@ describe('DailyChallengePage', () => {
       allClaimed: false,
       bonusClaimed: false,
       missionSetBonusSeeds: 15,
-      claimMissionReward: vi.fn(),
-      claimMissionSetBonus: vi.fn(),
     });
     mockedUseStoredJson.mockReturnValue([]);
 
@@ -76,8 +74,6 @@ describe('DailyChallengePage', () => {
       allClaimed: false,
       bonusClaimed: false,
       missionSetBonusSeeds: 15,
-      claimMissionReward: vi.fn(),
-      claimMissionSetBonus: vi.fn(),
     });
     mockedUseStoredJson.mockReturnValue([
       { date: '2026-04-05' },
@@ -94,7 +90,7 @@ describe('DailyChallengePage', () => {
     expect(screen.getByText('MissionPanel')).toBeInTheDocument();
   });
 
-  it('shows the clean sweep unlocked state once all missions are complete', () => {
+  it('shows the high flyer unlocked state once all missions are complete', () => {
     mockedUsePageProgressSync.mockReturnValue({
       isPageSyncLoading: false,
       isPageBackgroundRefreshing: false,
@@ -105,29 +101,27 @@ describe('DailyChallengePage', () => {
         date: '2026-04-05',
         missions: [
           { missionId: 'warmup-rounds', progress: 3, completed: true, claimed: true },
-          { missionId: 'real-deal', progress: 2, completed: true, claimed: false },
-          { missionId: 'seed-harvest', progress: 12, completed: true, claimed: false },
+          { missionId: 'real-deal', progress: 2, completed: true, claimed: true },
+          { missionId: 'seed-harvest', progress: 12, completed: true, claimed: true },
         ],
-        bonusClaimed: false,
+        bonusClaimed: true,
       },
       missions: [
         { id: 'warmup-rounds', missionId: 'warmup-rounds', description: 'Warmup', type: 'play_rounds', target: 3, rewardSeeds: 8, progress: 3, completed: true, claimed: true },
-        { id: 'real-deal', missionId: 'real-deal', description: 'Real Deal', type: 'identify_real_birds', target: 2, rewardSeeds: 10, progress: 2, completed: true, claimed: false },
-        { id: 'seed-harvest', missionId: 'seed-harvest', description: 'Seed Harvest', type: 'earn_seeds', target: 12, rewardSeeds: 12, progress: 12, completed: true, claimed: false },
+        { id: 'real-deal', missionId: 'real-deal', description: 'Real Deal', type: 'identify_real_birds', target: 2, rewardSeeds: 10, progress: 2, completed: true, claimed: true },
+        { id: 'seed-harvest', missionId: 'seed-harvest', description: 'Seed Harvest', type: 'earn_seeds', target: 12, rewardSeeds: 12, progress: 12, completed: true, claimed: true },
       ],
       allCompleted: true,
       allClaimed: false,
-      bonusClaimed: false,
+      bonusClaimed: true,
       missionSetBonusSeeds: 15,
-      claimMissionReward: vi.fn(),
-      claimMissionSetBonus: vi.fn(),
     });
     mockedUseStoredJson.mockReturnValue([{ date: '2026-04-05' }]);
 
     render(<DailyChallengePage />);
 
-    expect(screen.getByText('Claim Queue')).toBeInTheDocument();
-    expect(screen.getByText('3')).toBeInTheDocument();
-    expect(screen.queryByText('Sweep Bonus')).not.toBeInTheDocument();
+    expect(screen.getByText('Rewards Paid')).toBeInTheDocument();
+    expect(screen.getByText('4')).toBeInTheDocument();
+    expect(screen.getByText('Today\'s mission rewards have already been awarded.')).toBeInTheDocument();
   });
 });

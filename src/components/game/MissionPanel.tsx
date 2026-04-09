@@ -1,31 +1,23 @@
 'use client';
 
 import { CheckCircle2, Sprout } from 'lucide-react';
-import Link from 'next/link';
 import { useSessionMissions } from '@/hooks/useSessionMissions';
-import { useSound } from '@/hooks/useSound';
-import { track } from '@/lib/analytics';
 import { formatNumber } from '@/lib/utils/number-format';
 
 interface MissionPanelProps {
-  showClaimActions?: boolean;
   containerClassName?: string;
   isLoading?: boolean;
 }
 
 export default function MissionPanel({
-  showClaimActions = true,
   containerClassName = 'w-full max-w-md px-4',
   isLoading = false,
 }: MissionPanelProps) {
-  const { play } = useSound();
   const {
     missions,
     allCompleted,
     bonusClaimed,
     missionSetBonusSeeds,
-    claimMissionReward,
-    claimMissionSetBonus,
   } = useSessionMissions();
 
   if (isLoading) {
@@ -91,7 +83,7 @@ export default function MissionPanel({
           </div>
           <div className="inline-flex items-center gap-1 rounded-full bg-[var(--color-surface-hover)] px-2 py-1 text-[0.65rem] font-semibold text-[var(--color-muted)]">
             <Sprout size={12} />
-            {missions.filter((mission) => mission.claimed).length}/{missions.length}
+            {missions.filter((mission) => mission.completed).length}/{missions.length}
           </div>
         </div>
 
@@ -128,41 +120,15 @@ export default function MissionPanel({
                   {mission.completed ? (
                     <div className="inline-flex items-center gap-1 text-[0.7rem] font-semibold text-[var(--color-success)]">
                       <CheckCircle2 size={14} />
-                      {mission.claimed ? 'Claimed' : 'Ready to claim'}
+                      {mission.claimed ? 'Rewarded' : 'Completed'}
                     </div>
                   ) : (
                     <span className="text-[0.7rem] text-[var(--color-muted)]">Keep going</span>
                   )}
 
-                  {showClaimActions ? (
-                    <button
-                      type="button"
-                      disabled={!mission.completed || mission.claimed}
-                      onClick={async () => {
-                        play('streak');
-                        try {
-                          await claimMissionReward(mission.id);
-                          track('mission_claimed', { mission_id: mission.id, reward_seeds: mission.rewardSeeds });
-                        } catch {
-                          // The hook restores local state if the direct claim fails.
-                        }
-                      }}
-                      className={`rounded-full px-3 py-1.5 text-[0.7rem] font-semibold transition ${
-                        mission.completed && !mission.claimed
-                          ? 'bg-[var(--color-secondary)] text-[var(--color-on-secondary)]'
-                          : 'bg-[var(--color-surface-border)] text-[var(--color-muted)]'
-                      }`}
-                    >
-                      {mission.claimed ? 'Claimed' : 'Claim'}
-                    </button>
-                  ) : mission.completed && !mission.claimed ? (
-                    <Link
-                      href="/rewards"
-                      className="rounded-full bg-[var(--color-surface)] px-3 py-1.5 text-[0.7rem] font-semibold text-[var(--color-text)]"
-                    >
-                      Claim in Rewards
-                    </Link>
-                  ) : null}
+                  <span className="text-[0.7rem] text-[var(--color-muted)]">
+                    {mission.completed ? `+${formatNumber(mission.rewardSeeds)} seeds` : `${formatNumber(mission.rewardSeeds)} seeds`}
+                  </span>
                 </div>
               </div>
             );
@@ -175,38 +141,14 @@ export default function MissionPanel({
               <div>
                 <p className="text-sm font-semibold">Clean sweep bonus</p>
                 <p className="text-[0.7rem] text-[var(--color-muted)]">
-                  Claim {formatNumber(missionSetBonusSeeds)} more seeds for finishing all three missions.
+                  {bonusClaimed
+                    ? `You earned ${formatNumber(missionSetBonusSeeds)} bonus seeds for finishing all three missions.`
+                    : `Finish all three missions to earn ${formatNumber(missionSetBonusSeeds)} bonus seeds.`}
                 </p>
               </div>
-              {showClaimActions ? (
-                <button
-                  type="button"
-                  disabled={!allCompleted || bonusClaimed}
-                  onClick={async () => {
-                    play('streak');
-                    try {
-                      await claimMissionSetBonus();
-                      track('mission_claimed', { mission_id: 'daily-set-bonus', reward_seeds: missionSetBonusSeeds });
-                    } catch {
-                      // The hook restores local state if the direct claim fails.
-                    }
-                  }}
-                  className={`rounded-full px-3 py-1.5 text-[0.7rem] font-semibold transition ${
-                    allCompleted && !bonusClaimed
-                      ? 'bg-[var(--color-secondary)] text-[var(--color-on-secondary)]'
-                      : 'bg-[var(--color-surface-border)] text-[var(--color-muted)]'
-                  }`}
-                >
-                  {bonusClaimed ? 'Claimed' : 'Claim'}
-                </button>
-              ) : allCompleted && !bonusClaimed ? (
-                <Link
-                  href="/rewards"
-                  className="rounded-full bg-[var(--color-surface)] px-3 py-1.5 text-[0.7rem] font-semibold text-[var(--color-text)]"
-                >
-                  Claim in Rewards
-                </Link>
-              ) : null}
+              {!bonusClaimed && <div className="inline-flex items-center gap-1 rounded-full bg-[var(--color-surface)] px-3 py-1.5 text-[0.7rem] font-semibold text-[var(--color-text)]">
+                In Progress
+              </div>}
             </div>
           </div>
         )}

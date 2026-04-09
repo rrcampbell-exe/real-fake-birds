@@ -15,8 +15,7 @@ export default function DailyChallengePage() {
   const missionHistory = useStoredJson<DailyMissionHistoryEntry[]>(DAILY_MISSION_HISTORY_STORAGE_KEY, []);
   const { currentStreak } = getDailyMissionStreaks(missionHistory);
   const completedCount = missions.filter((mission) => mission.completed).length;
-  const readyToClaimCount = missions.filter((mission) => mission.completed && !mission.claimed).length;
-  const canClaimSweepBonus = allCompleted && !bonusClaimed;
+  const rewardedCount = missions.filter((mission) => mission.claimed).length + (bonusClaimed ? 1 : 0);
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">
@@ -60,12 +59,12 @@ export default function DailyChallengePage() {
             <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-4">
               <div className="inline-flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
                 <Gift size={14} />
-                Claim Queue
+                Rewards Paid
               </div>
-              <p className="mt-3 font-[family-name:var(--font-display)] text-3xl font-bold">
-                {readyToClaimCount + (canClaimSweepBonus ? 1 : 0)}
+              <p className="mt-3 font-[family-name:var(--font-display)] text-3xl font-bold">{rewardedCount}</p>
+              <p className="mt-2 text-xs text-[var(--color-muted)]">
+                {allCompleted ? 'Today\'s mission rewards have already been awarded.' : 'Mission rewards land instantly when you finish them.'}
               </p>
-              <p className="mt-2 text-xs text-[var(--color-muted)]">Rewards waiting in Missions or Rewards</p>
             </div>
           </div>
 
