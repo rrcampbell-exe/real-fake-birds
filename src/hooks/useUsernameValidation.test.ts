@@ -77,4 +77,74 @@ describe('useUsernameValidation', () => {
 
     expect(mockedValidateUsernameAvailability).toHaveBeenCalledWith('ceo', expect.any(AbortSignal));
   });
+
+  it('resets to the empty state when the value is cleared', async () => {
+    const { result } = renderHook(() => useUsernameValidation());
+
+    act(() => {
+      result.current.setValue('ceo');
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+      await Promise.resolve();
+    });
+
+    act(() => {
+      result.current.setValue('   ');
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.normalizedUsername).toBe('');
+    expect(result.current.issues).toEqual([]);
+    expect(result.current.available).toBeNull();
+    expect(result.current.error).toBeNull();
+  });
+
+  it('surfaces remote availability results', async () => {
+    mockedValidateUsernameAvailability.mockResolvedValueOnce({
+      isValid: true,
+      issues: ['already_taken'],
+      normalizedUsername: 'ceo',
+      available: false,
+    });
+
+    const { result } = renderHook(() => useUsernameValidation());
+
+    act(() => {
+      result.current.setValue('ceo');
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+      await Promise.resolve();
+    });
+
+    expect(result.current.normalizedUsername).toBe('ceo');
+    expect(result.current.available).toBe(false);
+    expect(result.current.issues).toEqual(['already_taken']);
+    expect(result.current.isChecking).toBe(false);
+  });
+
+  it('surfaces validation errors from the availability request', async () => {
+    mockedValidateUsernameAvailability.mockRejectedValueOnce(new Error('Network down'));
+
+    const { result } = renderHook(() => useUsernameValidation());
+
+    act(() => {
+      result.current.setValue('ceo');
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+      await Promise.resolve();
+    });
+
+    expect(result.current.available).toBeNull();
+    expect(result.current.isChecking).toBe(false);
+    expect(result.current.error).toBe('Network down');
+  });
 });

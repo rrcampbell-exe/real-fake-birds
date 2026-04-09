@@ -1,10 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DAILY_CHALLENGE_CONFIG, DAILY_CHALLENGE_HISTORY_STORAGE_KEY, DAILY_CHALLENGE_STORAGE_KEY } from '@/lib/constants/daily-challenge';
 import {
   claimDailyChallengeBonuses,
   createDailyChallengeState,
+  getDailyChallengeRewardSeeds,
   getDailyChallengeStreaks,
   getTodayChallengeDate,
   getUnclaimedDailyChallengeRewardSeeds,
+  markDailyChallengeBonusesClaimed,
+  readDailyChallengeHistory,
+  readDailyChallengeState,
   recordDailyChallengeRound,
   writeDailyChallengeState,
   writeDailyChallengeHistory,
@@ -12,8 +17,42 @@ import {
 
 describe('daily challenge utilities', () => {
   beforeEach(() => {
+    localStorage.clear();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-04-03T12:00:00Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('reads a fresh state when storage is missing, stale, or invalid', () => {
+    expect(readDailyChallengeState('2026-04-03')).toEqual(createDailyChallengeState('2026-04-03'));
+
+    localStorage.setItem(DAILY_CHALLENGE_STORAGE_KEY, JSON.stringify({ date: '2026-04-02', roundsPlayed: 5 }));
+    expect(readDailyChallengeState('2026-04-03')).toEqual(createDailyChallengeState('2026-04-03'));
+
+    localStorage.setItem(DAILY_CHALLENGE_STORAGE_KEY, '{bad json');
+    expect(readDailyChallengeState('2026-04-03')).toEqual(createDailyChallengeState('2026-04-03'));
+  });
+
+  it('normalizes stored challenge state and history records', () => {
+    const state = writeDailyChallengeState({
+      date: '2026-04-03',
+      roundsPlayed: 2,
+      correctAnswers: 1,
+      completed: false,
+      roundResults: [true, 'bad', false] as never,
+    });
+    localStorage.setItem(DAILY_CHALLENGE_HISTORY_STORAGE_KEY, JSON.stringify([
+      { date: '2026-04-03', correctAnswers: 4, roundsPlayed: 5, completed: true },
+      { bad: true },
+    ]));
+
+    expect(state.roundResults).toEqual([true, false]);
+    expect(readDailyChallengeHistory()).toEqual([
+      { date: '2026-04-03', correctAnswers: 4, roundsPlayed: 5, completed: true },
+    ]);
   });
 
   it('marks the challenge complete after five recorded rounds', () => {
@@ -28,6 +67,25 @@ describe('daily challenge utilities', () => {
     expect(finalState.completed).toBe(true);
     expect(finalState.roundsPlayed).toBe(5);
     expect(finalState.correctAnswers).toBe(4);
+  });
+
+  it('does not mutate the challenge once it is already complete', () => {
+    writeDailyChallengeState({
+      date: '2026-04-03',
+      roundsPlayed: 5,
+      correctAnswers: 4,
+      completed: true,
+      completionBonusAwarded: false,
+      perfectBonusAwarded: false,
+      bonusSeedsAwarded: 25,
+      roundResults: [true, true, true, true, false],
+    });
+
+    expect(recordDailyChallengeRound(true)).toMatchObject({
+      roundsPlayed: 5,
+      correctAnswers: 4,
+      completed: true,
+    });
   });
 
   it('claims completion and perfect bonuses once from the rewards flow', () => {
@@ -68,6 +126,59 @@ describe('daily challenge utilities', () => {
     expect(JSON.parse(localStorage.getItem('birdScore') ?? '{}').seeds).toBe(85);
   });
 
+  it('handles reward calculations for incomplete and partially claimed challenges', () => {
+    expect(getDailyChallengeRewardSeeds(createDailyChallengeState('2026-04-03'))).toBe(0);
+    expect(getUnclaimedDailyChallengeRewardSeeds(createDailyChallengeState('2026-04-03'))).toBe(0);
+
+    const completionOnly = {
+      date: '2026-04-03',
+      roundsPlayed: 5,
+      correctAnswers: 4,
+      completed: true,
+      completionBonusAwarded: false,
+      perfectBonusAwarded: false,
+      bonusSeedsAwarded: 0,
+      roundResults: [true, true, true, true, false],
+    };
+
+    expect(getDailyChallengeRewardSeeds(completionOnly)).toBe(DAILY_CHALLENGE_CONFIG.completionBonusSeeds);
+    expect(getUnclaimedDailyChallengeRewardSeeds({
+      ...completionOnly,
+      completionBonusAwarded: true,
+    })).toBe(0);
+    expect(getUnclaimedDailyChallengeRewardSeeds({
+      ...completionOnly,
+      correctAnswers: DAILY_CHALLENGE_CONFIG.roundCount,
+      perfectBonusAwarded: false,
+      completionBonusAwarded: true,
+    })).toBe(DAILY_CHALLENGE_CONFIG.perfectBonusSeeds);
+  });
+
+  it('marks bonuses claimed only when the challenge is complete', () => {
+    writeDailyChallengeState(createDailyChallengeState('2026-04-03'));
+    expect(markDailyChallengeBonusesClaimed()).toMatchObject({
+      completed: false,
+      completionBonusAwarded: false,
+    });
+
+    writeDailyChallengeState({
+      date: '2026-04-03',
+      roundsPlayed: 5,
+      correctAnswers: 4,
+      completed: true,
+      completionBonusAwarded: false,
+      perfectBonusAwarded: false,
+      bonusSeedsAwarded: 0,
+      roundResults: [true, true, true, true, false],
+    });
+
+    expect(markDailyChallengeBonusesClaimed()).toMatchObject({
+      completionBonusAwarded: true,
+      perfectBonusAwarded: false,
+      bonusSeedsAwarded: DAILY_CHALLENGE_CONFIG.completionBonusSeeds,
+    });
+  });
+
   it('computes both current and best daily streaks from history', () => {
     const streaks = getDailyChallengeStreaks(
       [
@@ -83,6 +194,13 @@ describe('daily challenge utilities', () => {
     expect(streaks).toEqual({
       currentStreak: 2,
       bestStreak: 3,
+    });
+  });
+
+  it('returns zero streaks when no completed history exists', () => {
+    expect(getDailyChallengeStreaks([], new Date('2026-04-03T12:00:00Z'))).toEqual({
+      currentStreak: 0,
+      bestStreak: 0,
     });
   });
 

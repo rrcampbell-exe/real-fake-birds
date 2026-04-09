@@ -11,3 +11,10 @@ describe('localStorageCheck', () => {
     expect(localStorageCheck()).toBe(true);
   });
 });
+  it('returns false when window is undefined (SSR)', () => {
+    const originalWindow = globalThis.window;
+    // @ts-expect-error intentional SSR simulation
+    delete globalThis.window;
+    expect(localStorageCheck()).toBe(false);
+    globalThis.window = originalWindow;
+  });

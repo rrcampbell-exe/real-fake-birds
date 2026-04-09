@@ -32,3 +32,20 @@ describe('correctnessText', () => {
     );
   });
 });
+  it('returns "Bonus seeds!" when streak is exactly 2', () => {
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({ currentStreak: 2, birdsIdentified: 5 })
+    );
+    expect(correctnessText(true, true, false)).toBe('Bonus seeds!');
+  });
+
+  it('returns combined streak + milestone copy', () => {
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({ currentStreak: 5, birdsIdentified: 25 })
+    );
+    expect(correctnessText(true, true, true)).toBe(
+      "That's 5 correct in a row and 25 birds you've now identified successfully!\nHave some bonus seeds as a treat."
+    );
+  });

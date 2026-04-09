@@ -37,6 +37,24 @@ describe('seed-spend', () => {
     expect(JSON.parse(localStorage.getItem(BIRD_SCORE_STORAGE_KEY) ?? '{}').seeds).toBe(10);
   });
 
+  it('returns true and does not mutate storage when the spend cost is not positive', () => {
+    localStorage.setItem(
+      BIRD_SCORE_STORAGE_KEY,
+      JSON.stringify({
+        birdsSeen: 0,
+        birdsIdentified: 0,
+        currentStreak: 0,
+        justAchievedStreak: false,
+        bestStreak: 0,
+        seeds: 10,
+      })
+    );
+
+    expect(spendSeeds(0)).toBe(true);
+    expect(spendSeeds(-5)).toBe(true);
+    expect(JSON.parse(localStorage.getItem(BIRD_SCORE_STORAGE_KEY) ?? '{}').seeds).toBe(10);
+  });
+
   it('refunds spent seeds', () => {
     localStorage.setItem(
       BIRD_SCORE_STORAGE_KEY,
@@ -53,5 +71,24 @@ describe('seed-spend', () => {
     refundSeeds(50);
 
     expect(JSON.parse(localStorage.getItem(BIRD_SCORE_STORAGE_KEY) ?? '{}').seeds).toBe(60);
+  });
+
+  it('does not mutate storage when the refund cost is not positive', () => {
+    localStorage.setItem(
+      BIRD_SCORE_STORAGE_KEY,
+      JSON.stringify({
+        birdsSeen: 0,
+        birdsIdentified: 0,
+        currentStreak: 0,
+        justAchievedStreak: false,
+        bestStreak: 0,
+        seeds: 10,
+      })
+    );
+
+    refundSeeds(0);
+    refundSeeds(-5);
+
+    expect(JSON.parse(localStorage.getItem(BIRD_SCORE_STORAGE_KEY) ?? '{}').seeds).toBe(10);
   });
 });
