@@ -5,6 +5,10 @@ export interface BirdResponse {
   sciName?: string;
   url?: string;
   fact?: string;
+  summary?: string;
+  articleUrl?: string;
+  imageUrl?: string;
+  description?: string;
 }
 
 export interface BirdErrorResponse {
@@ -17,7 +21,11 @@ export interface BirdJournalMetadata {
   regionLabel?: string;
   sciName?: string;
   fact?: string;
+  summary?: string;
   url?: string;
+  articleUrl?: string;
+  imageUrl?: string;
+  description?: string;
   classificationRevealed?: boolean;
 }
 

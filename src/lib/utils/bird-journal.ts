@@ -20,7 +20,11 @@ function normalizeMetadata(metadata: BirdJournalMetadata | null | undefined): Bi
     regionLabel: typeof metadata.regionLabel === 'string' ? metadata.regionLabel : undefined,
     sciName: typeof metadata.sciName === 'string' ? metadata.sciName : undefined,
     fact: typeof metadata.fact === 'string' ? metadata.fact : undefined,
+    summary: typeof metadata.summary === 'string' ? metadata.summary : undefined,
     url: typeof metadata.url === 'string' ? metadata.url : undefined,
+    articleUrl: typeof metadata.articleUrl === 'string' ? metadata.articleUrl : undefined,
+    imageUrl: typeof metadata.imageUrl === 'string' ? metadata.imageUrl : undefined,
+    description: typeof metadata.description === 'string' ? metadata.description : undefined,
     classificationRevealed: typeof metadata.classificationRevealed === 'boolean'
       ? metadata.classificationRevealed
       : undefined,
