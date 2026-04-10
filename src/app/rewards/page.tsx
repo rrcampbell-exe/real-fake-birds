@@ -3,23 +3,30 @@
 import { useEffect } from 'react';
 import { Bird } from 'lucide-react';
 import ShareButton from '@/components/ShareButton';
+import { useAccountState } from '@/components/account/AccountStateProvider';
 import DailyRewardsPanel from '@/components/rewards/DailyRewardsPanel';
 import TrophyCase from '@/components/rewards/TrophyCase';
 import PersonalBests from '@/components/rewards/PersonalBests';
 import { usePageProgressSync } from '@/hooks/usePageProgressSync';
 import { useStoredJson } from '@/hooks/useStoredValue';
+import { finch } from '@/lib/themes';
 import { buildStatsSharePayload } from '@/lib/utils/share-data';
 import { defaultBirdScore, normalizeBirdScore, setStoredBoolean, UNSEEN_BADGES_STORAGE_KEY } from '@/lib/utils/player-progress';
+import { resolveTheme } from '@/lib/utils/theme-handler';
+import type { Theme } from '@/types';
 
 export default function RewardsPage() {
   const { isPageBackgroundRefreshing } = usePageProgressSync();
+  const { accountUsername, remoteSummary } = useAccountState();
 
   useEffect(() => {
     setStoredBoolean(UNSEEN_BADGES_STORAGE_KEY, false);
   }, []);
 
   const storedStats = useStoredJson<typeof defaultBirdScore | null>('birdScore', null);
+  const storedTheme = useStoredJson<Theme>('birdTheme', finch);
   const normalizedStats = normalizeBirdScore(storedStats);
+  const currentTheme = resolveTheme(storedTheme);
   const accuracy = normalizedStats.birdsSeen > 0
     ? Math.floor((normalizedStats.birdsIdentified / normalizedStats.birdsSeen) * 100)
     : 0;
@@ -54,7 +61,25 @@ export default function RewardsPage() {
           <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">
             Personal Bests
           </h2>
-          <ShareButton payload={statsSharePayload} eventLabel="stats" />
+          <ShareButton
+            payload={statsSharePayload}
+            eventLabel="stats"
+            imageParams={{
+              type: 'stats-summary',
+              params: {
+                themeName: currentTheme.name,
+                username: accountUsername ?? 'Birder',
+                bestStreak: normalizedStats.bestStreak,
+                currentStreak: normalizedStats.currentStreak,
+                bestDailyStreak: normalizedStats.bestDailyStreak,
+                currentDailyStreak: normalizedStats.currentDailyStreak,
+                birdsIdentified: normalizedStats.birdsIdentified,
+                accuracy,
+                seeds: normalizedStats.seeds,
+                bestWeeklyPlacement: remoteSummary?.bestWeeklyPlacement ? `#${remoteSummary.bestWeeklyPlacement}` : '---',
+              },
+            }}
+          />
         </div>
         <PersonalBests />
       </section>

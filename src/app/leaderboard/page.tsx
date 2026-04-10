@@ -8,9 +8,12 @@ import { useAccountState } from '@/components/account/AccountStateProvider';
 import LeaderboardAvatar from '@/components/leaderboard/LeaderboardAvatar';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { useHasHydrated } from '@/hooks/useHasHydrated';
+import { useStoredJson } from '@/hooks/useStoredValue';
+import { finch } from '@/lib/themes';
 import { buildWeeklyLeaderboardSharePayload } from '@/lib/utils/share-data';
+import { resolveTheme } from '@/lib/utils/theme-handler';
 import { getTimeRemainingInWeek, markLeaderboardWeekSeen } from '@/lib/utils/weekly-leaderboard';
-import type { WeeklyChallengeIcon } from '@/types';
+import type { Theme, WeeklyChallengeIcon } from '@/types';
 
 const challengeIcons: Record<WeeklyChallengeIcon, typeof Trophy> = {
   bird: Bird,
@@ -46,6 +49,8 @@ function useMinuteTimestamp(enabled: boolean) {
 export default function LeaderboardPage() {
   const { accountUsername } = useAccountState();
   const { leaderboard, isLoading, error, reload } = useLeaderboard();
+  const storedTheme = useStoredJson<Theme>('birdTheme', finch);
+  const currentTheme = resolveTheme(storedTheme);
   const hasMounted = useHasHydrated();
   const now = useMinuteTimestamp(Boolean(leaderboard));
   const clock = useMemo(
@@ -77,6 +82,23 @@ export default function LeaderboardPage() {
       isFinal: false,
     });
   }, [leaderboard]);
+  const shareImageParams = useMemo(() => {
+    if (!leaderboard?.currentUserEntry) {
+      return null;
+    }
+
+    return {
+      type: 'leaderboard-rank' as const,
+      params: {
+        themeName: currentTheme.name,
+        challengeName: leaderboard.challenge.name,
+        username: leaderboard.currentUserEntry.username,
+        rank: leaderboard.currentUserEntry.rank,
+        score: leaderboard.currentUserEntry.primaryDisplayValue,
+        isFinal: false,
+      },
+    };
+  }, [currentTheme.name, leaderboard]);
 
   const Icon = leaderboard ? challengeIcons[leaderboard.challenge.icon] : UserStar;
   const isSkeleton = isLoading && !leaderboard && !error;
@@ -147,7 +169,7 @@ export default function LeaderboardPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {sharePayload ? <ShareButton payload={sharePayload} eventLabel="weekly-leaderboard" /> : null}
+          {sharePayload && shareImageParams ? <ShareButton payload={sharePayload} eventLabel="weekly-leaderboard" imageParams={shareImageParams} /> : null}
           {hasMounted && !accountUsername && !isLoading && Boolean(leaderboard) ? (
             <Link
               href="/settings"

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildDailyChallengeSharePayload,
+  buildDailyMissionSharePayload,
   buildMilestoneSharePayload,
   buildRoundSharePayload,
   buildStatsSharePayload,
@@ -57,6 +58,19 @@ describe('share-data', () => {
     ).toEqual({
       title: 'Real Fake Birds daily challenge',
       text: "I scored 4/5 on today's Real Fake Birds Daily Challenge.",
+    });
+  });
+
+  it('builds daily mission share copy with streak language', () => {
+    expect(
+      buildDailyMissionSharePayload({
+        currentStreak: 3,
+        completedCount: 2,
+        missionCount: 3,
+      })
+    ).toEqual({
+      title: 'Real Fake Birds daily missions',
+      text: 'I completed 2/3 daily missions in Real Fake Birds and kept my streak alive at 3 days.',
     });
   });
 });

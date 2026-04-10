@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import RewardsPage from './page';
+import { finch } from '@/lib/themes';
 
 vi.mock('@/hooks/useSessionMissions', () => ({
   useSessionMissions: vi.fn(),
@@ -18,6 +19,18 @@ vi.mock('@/components/rewards/PersonalBests', () => ({
   default: () => <div>PersonalBests</div>,
 }));
 
+vi.mock('@/components/account/AccountStateProvider', () => ({
+  useAccountState: vi.fn(),
+}));
+
+vi.mock('@/hooks/useStoredValue', () => ({
+  useStoredJson: vi.fn(),
+}));
+
+vi.mock('@/components/ShareButton', () => ({
+  default: () => <button type="button">Share</button>,
+}));
+
 vi.mock('@/lib/utils/player-progress', async () => {
   const actual = await vi.importActual<typeof import('@/lib/utils/player-progress')>('@/lib/utils/player-progress');
   return {
@@ -31,13 +44,55 @@ vi.mock('@/components/game/MissionPanel', () => ({
 }));
 
 import { useSessionMissions } from '@/hooks/useSessionMissions';
+import { useAccountState } from '@/components/account/AccountStateProvider';
 import { usePageProgressSync } from '@/hooks/usePageProgressSync';
+import { useStoredJson } from '@/hooks/useStoredValue';
 
 const mockedUseSessionMissions = vi.mocked(useSessionMissions);
+const mockedUseAccountState = vi.mocked(useAccountState);
 const mockedUsePageProgressSync = vi.mocked(usePageProgressSync);
+const mockedUseStoredJson = vi.mocked(useStoredJson);
+
+function mockRewardsState() {
+  mockedUseAccountState.mockReturnValue({
+    accountUsername: 'BirdFan',
+    remoteSummary: {
+      birdsIdentified: 10,
+      seeds: 50,
+      bestStreak: 4,
+      bestDailyStreak: 2,
+      bestWeeklyPlacement: 2,
+      firstPlaceCount: 0,
+      secondPlaceCount: 1,
+      thirdPlaceCount: 0,
+    },
+  } as ReturnType<typeof useAccountState>);
+
+  mockedUseStoredJson.mockImplementation((key) => {
+    if (key === 'birdScore') {
+      return {
+        birdsSeen: 20,
+        birdsIdentified: 10,
+        currentStreak: 2,
+        justAchievedStreak: false,
+        bestStreak: 4,
+        currentDailyStreak: 1,
+        bestDailyStreak: 2,
+        seeds: 50,
+      };
+    }
+
+    if (key === 'birdTheme') {
+      return finch;
+    }
+
+    return null;
+  });
+}
 
 describe('RewardsPage', () => {
   it('shows automatic mission reward copy in the rewards tab', () => {
+    mockRewardsState();
     mockedUsePageProgressSync.mockReturnValue({
       isPageSyncLoading: false,
       isPageBackgroundRefreshing: false,
@@ -63,10 +118,12 @@ describe('RewardsPage', () => {
     render(<RewardsPage />);
 
     expect(screen.getByText('Your bird-watching achievements.')).toBeInTheDocument();
+    expect(screen.getByText('Share')).toBeInTheDocument();
     expect(screen.queryByText('Classic Run Bonus')).not.toBeInTheDocument();
   });
 
   it('summarizes paid mission rewards from the rewards tab', () => {
+    mockRewardsState();
     mockedUsePageProgressSync.mockReturnValue({
       isPageSyncLoading: false,
       isPageBackgroundRefreshing: false,
@@ -95,6 +152,7 @@ describe('RewardsPage', () => {
   });
 
   it('mentions the high flyer bonus when it has already been auto-awarded', () => {
+    mockRewardsState();
     mockedUsePageProgressSync.mockReturnValue({
       isPageSyncLoading: false,
       isPageBackgroundRefreshing: false,
@@ -128,6 +186,7 @@ describe('RewardsPage', () => {
   });
 
   it('still shows the rewards page while background refresh is running', () => {
+    mockRewardsState();
     mockedUsePageProgressSync.mockReturnValue({
       isPageSyncLoading: false,
       isPageBackgroundRefreshing: true,

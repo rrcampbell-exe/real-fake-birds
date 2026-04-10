@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import DailyChallengePage from './page';
+import { finch } from '@/lib/themes';
 
 vi.mock('@/hooks/useSessionMissions', () => ({
   useSessionMissions: vi.fn(),
@@ -16,6 +17,10 @@ vi.mock('@/hooks/usePageProgressSync', () => ({
 
 vi.mock('@/components/game/MissionPanel', () => ({
   default: () => <div>MissionPanel</div>,
+}));
+
+vi.mock('@/components/ShareButton', () => ({
+  default: () => <button type="button">Share</button>,
 }));
 
 import { useSessionMissions } from '@/hooks/useSessionMissions';
@@ -41,12 +46,23 @@ describe('DailyChallengePage', () => {
       bonusClaimed: false,
       missionSetBonusSeeds: 15,
     });
-    mockedUseStoredJson.mockReturnValue([]);
+    mockedUseStoredJson.mockImplementation((key) => {
+      if (key === 'dailyMissionHistory') {
+        return [];
+      }
+
+      if (key === 'birdTheme') {
+        return finch;
+      }
+
+      return [];
+    });
 
     render(<DailyChallengePage />);
 
     expect(screen.getByText('Checking today\'s flock tasks...')).toBeInTheDocument();
     expect(screen.getByText('MissionPanel')).toBeInTheDocument();
+    expect(screen.getByText('Share')).toBeInTheDocument();
   });
 
   it('renders the mission hub copy and streak summary', () => {
@@ -75,11 +91,21 @@ describe('DailyChallengePage', () => {
       bonusClaimed: false,
       missionSetBonusSeeds: 15,
     });
-    mockedUseStoredJson.mockReturnValue([
-      { date: '2026-04-05' },
-      { date: '2026-04-04' },
-      { date: '2026-04-03' },
-    ]);
+    mockedUseStoredJson.mockImplementation((key) => {
+      if (key === 'dailyMissionHistory') {
+        return [
+          { date: '2026-04-05' },
+          { date: '2026-04-04' },
+          { date: '2026-04-03' },
+        ];
+      }
+
+      if (key === 'birdTheme') {
+        return finch;
+      }
+
+      return [];
+    });
 
     render(<DailyChallengePage />);
 
@@ -87,6 +113,7 @@ describe('DailyChallengePage', () => {
     expect(screen.getByText('Keep the streak alive by finishing all three missions.')).toBeInTheDocument();
     expect(screen.getByText('Current Streak')).toBeInTheDocument();
     expect(screen.getByText('1/3')).toBeInTheDocument();
+    expect(screen.getByText('Share')).toBeInTheDocument();
     expect(screen.getByText('MissionPanel')).toBeInTheDocument();
   });
 
@@ -116,7 +143,17 @@ describe('DailyChallengePage', () => {
       bonusClaimed: true,
       missionSetBonusSeeds: 15,
     });
-    mockedUseStoredJson.mockReturnValue([{ date: '2026-04-05' }]);
+    mockedUseStoredJson.mockImplementation((key) => {
+      if (key === 'dailyMissionHistory') {
+        return [{ date: '2026-04-05' }];
+      }
+
+      if (key === 'birdTheme') {
+        return finch;
+      }
+
+      return [];
+    });
 
     render(<DailyChallengePage />);
 

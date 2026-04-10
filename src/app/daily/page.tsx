@@ -2,20 +2,31 @@
 
 import { Bird, CalendarDays, Flame, Gift, Sprout } from 'lucide-react';
 import Link from 'next/link';
+import ShareButton from '@/components/ShareButton';
 import MissionPanel from '@/components/game/MissionPanel';
 import { usePageProgressSync } from '@/hooks/usePageProgressSync';
 import { useSessionMissions } from '@/hooks/useSessionMissions';
 import { useStoredJson } from '@/hooks/useStoredValue';
+import { finch } from '@/lib/themes';
+import { buildDailyMissionSharePayload } from '@/lib/utils/share-data';
 import { DAILY_MISSION_HISTORY_STORAGE_KEY, getDailyMissionStreaks } from '@/lib/utils/daily-mission-history';
-import type { DailyMissionHistoryEntry } from '@/types';
+import { resolveTheme } from '@/lib/utils/theme-handler';
+import type { DailyMissionHistoryEntry, Theme } from '@/types';
 
 export default function DailyChallengePage() {
   const { isPageBackgroundRefreshing } = usePageProgressSync();
   const { missions, allCompleted, bonusClaimed } = useSessionMissions();
   const missionHistory = useStoredJson<DailyMissionHistoryEntry[]>(DAILY_MISSION_HISTORY_STORAGE_KEY, []);
+  const storedTheme = useStoredJson<Theme>('birdTheme', finch);
   const { currentStreak } = getDailyMissionStreaks(missionHistory);
+  const currentTheme = resolveTheme(storedTheme);
   const completedCount = missions.filter((mission) => mission.completed).length;
   const rewardedCount = missions.filter((mission) => mission.claimed).length + (bonusClaimed ? 1 : 0);
+  const sharePayload = buildDailyMissionSharePayload({
+    currentStreak,
+    completedCount,
+    missionCount: missions.length,
+  });
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">
@@ -69,6 +80,20 @@ export default function DailyChallengePage() {
           </div>
 
           <div className="mt-6 flex flex-wrap gap-3">
+            <ShareButton
+              payload={sharePayload}
+              eventLabel="daily-summary"
+              imageParams={{
+                type: 'daily-summary',
+                params: {
+                  themeName: currentTheme.name,
+                  currentStreak,
+                  completedCount,
+                  rewardedCount,
+                  missionCount: missions.length,
+                },
+              }}
+            />
             <Link
               href="/rewards"
               className="inline-flex items-center gap-2 rounded-full bg-[var(--color-secondary)] px-4 py-2 text-sm font-semibold text-[var(--color-on-secondary)] transition hover:brightness-110"

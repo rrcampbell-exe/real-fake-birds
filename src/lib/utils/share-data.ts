@@ -52,6 +52,21 @@ export function buildDailyChallengeSharePayload(state: DailyChallengeState): Sha
   };
 }
 
+export function buildDailyMissionSharePayload(options: {
+  currentStreak: number;
+  completedCount: number;
+  missionCount: number;
+}): SharePayload {
+  const streakText = options.currentStreak > 0
+    ? ` and kept my streak alive at ${options.currentStreak} day${options.currentStreak === 1 ? '' : 's'}`
+    : '';
+
+  return {
+    title: `${APP_NAME} daily missions`,
+    text: `I completed ${options.completedCount}/${options.missionCount} daily missions in ${APP_NAME}${streakText}.`,
+  };
+}
+
 export function buildWeeklyLeaderboardSharePayload(options: {
   challengeName: string;
   rank: number;

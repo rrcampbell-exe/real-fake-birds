@@ -14,9 +14,10 @@ import { formatNumber } from '@/lib/utils/number-format';
 import { resolveTheme } from '@/lib/utils/theme-handler';
 
 export default function TrophyCase() {
-  const { remoteSummary } = useAccountState();
+  const { accountUsername, remoteSummary } = useAccountState();
   const score = useStoredJson<BirdScore | null>('birdScore', null);
-  const { textColor } = resolveTheme(useStoredJson('birdTheme', finch));
+  const currentTheme = resolveTheme(useStoredJson('birdTheme', finch));
+  const { textColor } = currentTheme;
 
   const birdsIdentified = score?.birdsIdentified ?? 0;
   const earnedValues = new Set(
@@ -74,6 +75,16 @@ export default function TrophyCase() {
                     birdsIdentified,
                   })}
                   eventLabel={`badge-${milestone.value}`}
+                  imageParams={{
+                    type: 'milestone-badge',
+                    params: {
+                      themeName: currentTheme.name,
+                      badgeName: milestone.badge,
+                      birdsIdentified,
+                      milestoneValue: milestone.value,
+                      description: milestone.description,
+                    },
+                  }}
                   className="mt-auto"
                 />
               ) : null}
@@ -96,6 +107,16 @@ export default function TrophyCase() {
                 thirdPlaceCount: remoteSummary.thirdPlaceCount,
               })}
               eventLabel="weekly-champions"
+              imageParams={{
+                type: 'weekly-champions',
+                params: {
+                  themeName: currentTheme.name,
+                  username: accountUsername ?? 'Birder',
+                  gold: remoteSummary.firstPlaceCount,
+                  silver: remoteSummary.secondPlaceCount,
+                  bronze: remoteSummary.thirdPlaceCount,
+                },
+              }}
             />
           ) : null}
         </div>

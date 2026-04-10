@@ -252,6 +252,21 @@ export interface SharePayload {
   text: string;
 }
 
+export type ShareImageType =
+  | 'round-result'
+  | 'leaderboard-rank'
+  | 'weekly-champions'
+  | 'milestone-badge'
+  | 'stats-summary'
+  | 'daily-summary';
+
+export type ShareImageParamValue = string | number | boolean | null | undefined;
+
+export interface ShareImageParams {
+  type: ShareImageType;
+  params: Record<string, ShareImageParamValue>;
+}
+
 export interface Theme {
   name: string;
   primary: string;

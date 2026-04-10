@@ -10,9 +10,11 @@ import { useSound } from '@/hooks/useSound';
 import { useStoredJson } from '@/hooks/useStoredValue';
 import ShareButton from '@/components/ShareButton';
 import { isMajorStreakCheckpoint } from '@/lib/constants/streaks';
+import { finch } from '@/lib/themes';
 import { deriveBirdKey, writeCurrentRoundJournalRevealKey } from '@/lib/utils/bird-journal';
 import { defaultBirdScore, normalizeBirdScore } from '@/lib/utils/player-progress';
 import { buildMilestoneSharePayload, buildRoundSharePayload } from '@/lib/utils/share-data';
+import { resolveTheme } from '@/lib/utils/theme-handler';
 import type { HintState } from '@/types';
 
 const FAKE_FIELD_NOTES = [
@@ -143,6 +145,7 @@ export default function Answer({
 }: AnswerProps) {
   const { play } = useSound();
   const score = normalizeBirdScore(useStoredJson<typeof defaultBirdScore | null>('birdScore', defaultBirdScore));
+  const currentTheme = resolveTheme(useStoredJson('birdTheme', finch));
   const isMajorStreak = isMajorStreakCheckpoint(score.currentStreak);
   const displayedFact = getAnswerFact(hints.fact?.content ?? fact);
   const journalHref = `/journal#${encodeURIComponent(deriveBirdKey(birdData, isReal))}`;
@@ -164,6 +167,23 @@ export default function Answer({
         currentStreak: score.currentStreak,
         earnedBadgeName,
       });
+  const shareImageParams = !isMilestone
+    ? {
+        type: 'round-result' as const,
+        params: {
+          themeName: currentTheme.name,
+          birdName: birdData,
+          scientificName: sciName,
+          isReal,
+          isCorrect,
+          imageUrl,
+          streak: score.currentStreak,
+          fieldNote: isReal
+            ? displayedFact ?? (regionLabel ? `Recently seen in ${regionLabel}.` : 'Field notes unavailable.')
+            : fakeFieldNote,
+        },
+      }
+    : undefined;
 
   // Play answer reveal sounds, synced with the spring animation delay
   useEffect(() => {
@@ -218,6 +238,7 @@ export default function Answer({
         <ShareButton
           payload={sharePayload}
           eventLabel={isMilestone && earnedBadgeName ? 'milestone' : 'round-result'}
+          imageParams={shareImageParams}
           className="min-h-11 rounded-xl px-4 py-2.5 text-sm shadow-[var(--shadow-button)]"
         />
         <button
