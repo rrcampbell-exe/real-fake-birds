@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { WeeklyChallengeId } from '@/types';
 import { getWeeklyChallengeById, getWeeklyChallengeForWeek, WEEKLY_CHALLENGE_IDS } from './weekly-challenges';
 
 describe('weekly challenges', () => {
@@ -9,7 +10,7 @@ describe('weekly challenges', () => {
   });
 
   it('falls back to the first challenge for an unknown ID', () => {
-    const challenge = getWeeklyChallengeById('nonexistent-id' as any);
+    const challenge = getWeeklyChallengeById('nonexistent-id' as WeeklyChallengeId);
     expect(challenge).toBeDefined();
     expect(WEEKLY_CHALLENGE_IDS).toContain(challenge.id);
   });
