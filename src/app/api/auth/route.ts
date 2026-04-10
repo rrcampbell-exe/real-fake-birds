@@ -31,7 +31,7 @@ import type {
   WeeklyPlacementSummary,
 } from '@/types';
 
-type AuthAction = 'validate-username' | 'register-account' | 'get-account-state' | 'get-leaderboard' | 'resolve-sign-in-identifier' | 'save-profile' | 'save-avatar-palette' | 'sync-local-progress' | 'pull-account-progress' | 'purchase-theme' | 'apply-progress-events' | 'sync-daily-mission-completion';
+type AuthAction = 'validate-username' | 'register-account' | 'get-account-state' | 'get-leaderboard' | 'resolve-sign-in-identifier' | 'save-profile' | 'save-avatar-palette' | 'sync-local-progress' | 'sync-bird-journal' | 'pull-account-progress' | 'purchase-theme' | 'apply-progress-events' | 'sync-daily-mission-completion';
 type RewardAuthAction = 'claim-daily-challenge-bonuses' | 'claim-mission-reward' | 'claim-mission-set-bonus' | 'purchase-streak-insurance';
 
 interface ValidateUsernameRequest {
@@ -114,6 +114,13 @@ interface SyncLocalProgressRequest {
     journalEntries: BirdJournalEntry[];
   };
 }
+
+interface SyncBirdJournalRequest {
+  action: AuthAction;
+  journalEntries: BirdJournalEntry[];
+}
+
+const BIRD_JOURNAL_PULL_LIMIT = 10_000;
 
 interface SyncDailyMissionCompletionRequest {
   action: AuthAction;
@@ -398,6 +405,16 @@ function isSyncLocalProgressRequest(value: unknown): value is SyncLocalProgressR
     && isBirdJournalEntryArray(candidate.progress.journalEntries);
 }
 
+function isSyncBirdJournalRequest(value: unknown): value is SyncBirdJournalRequest {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<SyncBirdJournalRequest>;
+  return candidate.action === 'sync-bird-journal'
+    && isBirdJournalEntryArray(candidate.journalEntries);
+}
+
 function isSyncDailyMissionCompletionRequest(value: unknown): value is SyncDailyMissionCompletionRequest {
   if (!value || typeof value !== 'object') {
     return false;
@@ -416,7 +433,11 @@ function normalizeBirdJournalMetadata(metadata: BirdJournalMetadata | null | und
     regionLabel: typeof metadata.regionLabel === 'string' ? metadata.regionLabel : undefined,
     sciName: typeof metadata.sciName === 'string' ? metadata.sciName : undefined,
     fact: typeof metadata.fact === 'string' ? metadata.fact : undefined,
+    summary: typeof metadata.summary === 'string' ? metadata.summary : undefined,
     url: typeof metadata.url === 'string' ? metadata.url : undefined,
+    articleUrl: typeof metadata.articleUrl === 'string' ? metadata.articleUrl : undefined,
+    imageUrl: typeof metadata.imageUrl === 'string' ? metadata.imageUrl : undefined,
+    description: typeof metadata.description === 'string' ? metadata.description : undefined,
     classificationRevealed: typeof metadata.classificationRevealed === 'boolean'
       ? metadata.classificationRevealed
       : undefined,
@@ -454,6 +475,74 @@ function normalizeBirdJournalEntries(entries: BirdJournalEntry[]): BirdJournalEn
   }
 
   return Array.from(entriesByKey.values()).sort((left, right) => right.lastSeenAt.localeCompare(left.lastSeenAt));
+}
+
+async function upsertBirdJournalEntries(options: {
+  admin: ReturnType<typeof createSupabaseAdminClient>;
+  userId: string;
+  journalEntries: BirdJournalEntry[];
+}): Promise<{ ok: true } | { ok: false }> {
+  const { admin, userId, journalEntries } = options;
+
+  if (journalEntries.length === 0) {
+    return { ok: true };
+  }
+
+  const journalKeys = journalEntries.map((entry) => entry.birdKey);
+  const { data: existingJournalRows, error: existingJournalError } = await admin
+    .from('bird_journal')
+    .select('bird_key, bird_name, is_real, seen_count, correct_count, incorrect_count, last_seen_at, metadata')
+    .eq('user_id', userId)
+    .in('bird_key', journalKeys);
+
+  if (existingJournalError) {
+    return { ok: false };
+  }
+
+  const existingJournalMap = new Map(
+    (existingJournalRows ?? []).map((entry) => [
+      entry.bird_key,
+      {
+        birdKey: entry.bird_key,
+        birdName: entry.bird_name,
+        isReal: entry.is_real,
+        seenCount: entry.seen_count,
+        correctCount: entry.correct_count,
+        incorrectCount: entry.incorrect_count,
+        lastSeenAt: entry.last_seen_at,
+        metadata: normalizeBirdJournalMetadata(entry.metadata as BirdJournalMetadata),
+      },
+    ])
+  );
+
+  const { error: journalError } = await admin
+    .from('bird_journal')
+    .upsert(
+      journalEntries.map((entry) => {
+        const existingEntry = existingJournalMap.get(entry.birdKey);
+        const useIncomingMetadata = !existingEntry || entry.lastSeenAt >= existingEntry.lastSeenAt;
+
+        return {
+          user_id: userId,
+          bird_key: entry.birdKey,
+          bird_name: existingEntry?.birdName ?? entry.birdName,
+          is_real: existingEntry?.isReal ?? entry.isReal,
+          seen_count: Math.max(existingEntry?.seenCount ?? 0, entry.seenCount),
+          correct_count: Math.max(existingEntry?.correctCount ?? 0, entry.correctCount),
+          incorrect_count: Math.max(existingEntry?.incorrectCount ?? 0, entry.incorrectCount),
+          last_seen_at: existingEntry && existingEntry.lastSeenAt > entry.lastSeenAt
+            ? existingEntry.lastSeenAt
+            : entry.lastSeenAt,
+          metadata: {
+            ...(useIncomingMetadata ? entry.metadata : existingEntry?.metadata),
+            classificationRevealed: Boolean(existingEntry?.metadata.classificationRevealed) || Boolean(entry.metadata.classificationRevealed),
+          },
+        };
+      }),
+      { onConflict: 'user_id,bird_key' }
+    );
+
+  return journalError ? { ok: false } : { ok: true };
 }
 
 function configErrorResponse() {
@@ -1698,7 +1787,8 @@ export async function POST(request: NextRequest) {
           .from('bird_journal')
           .select('bird_key, bird_name, is_real, seen_count, correct_count, incorrect_count, last_seen_at, metadata')
           .eq('user_id', context.userId)
-          .order('last_seen_at', { ascending: false }),
+          .order('last_seen_at', { ascending: false })
+          .limit(BIRD_JOURNAL_PULL_LIMIT),
       ]);
 
       const todayDailyChallenge = (dailyHistory ?? []).find((entry) => entry.challenge_date === today) ?? null;
@@ -1855,6 +1945,49 @@ export async function POST(request: NextRequest) {
       });
     } catch {
       return NextResponse.json({ error: 'daily_mission_completion_sync_failed' }, { status: 500 });
+    }
+  }
+
+  if (isSyncBirdJournalRequest(body)) {
+    const context = await getAuthenticatedRequestContext();
+
+    if (!context) {
+      return hasSupabaseEnv()
+        ? NextResponse.json({ error: 'not_authenticated' }, { status: 401 })
+        : configErrorResponse();
+    }
+
+    try {
+      const admin = createSupabaseAdminClient();
+      const journalEntries = normalizeBirdJournalEntries(body.journalEntries);
+      const syncedAt = new Date().toISOString();
+      const journalResult = await upsertBirdJournalEntries({
+        admin,
+        userId: context.userId,
+        journalEntries,
+      });
+
+      if (!journalResult.ok) {
+        return NextResponse.json({ error: 'progress_sync_failed' }, { status: 500 });
+      }
+
+      await admin
+        .from('player_progress')
+        .upsert(
+          {
+            user_id: context.userId,
+            last_local_sync_at: syncedAt,
+          },
+          { onConflict: 'user_id' }
+        );
+
+      return NextResponse.json({
+        action: 'sync-bird-journal',
+        syncedAt,
+        journalCount: journalEntries.length,
+      });
+    } catch {
+      return NextResponse.json({ error: 'progress_sync_failed' }, { status: 500 });
     }
   }
 
@@ -2051,61 +2184,13 @@ export async function POST(request: NextRequest) {
       }
 
       if (journalEntries.length > 0) {
-        const journalKeys = journalEntries.map((entry) => entry.birdKey);
-        const { data: existingJournalRows, error: existingJournalError } = await admin
-          .from('bird_journal')
-          .select('bird_key, bird_name, is_real, seen_count, correct_count, incorrect_count, last_seen_at, metadata')
-          .eq('user_id', context.userId)
-          .in('bird_key', journalKeys);
+        const journalResult = await upsertBirdJournalEntries({
+          admin,
+          userId: context.userId,
+          journalEntries,
+        });
 
-        if (existingJournalError) {
-          return NextResponse.json({ error: 'progress_sync_failed' }, { status: 500 });
-        }
-
-        const existingJournalMap = new Map(
-          (existingJournalRows ?? []).map((entry) => [
-            entry.bird_key,
-            {
-              birdKey: entry.bird_key,
-              birdName: entry.bird_name,
-              isReal: entry.is_real,
-              seenCount: entry.seen_count,
-              correctCount: entry.correct_count,
-              incorrectCount: entry.incorrect_count,
-              lastSeenAt: entry.last_seen_at,
-              metadata: normalizeBirdJournalMetadata(entry.metadata as BirdJournalMetadata),
-            },
-          ])
-        );
-
-        const { error: journalError } = await admin
-          .from('bird_journal')
-          .upsert(
-            journalEntries.map((entry) => {
-              const existingEntry = existingJournalMap.get(entry.birdKey);
-              const useIncomingMetadata = !existingEntry || entry.lastSeenAt >= existingEntry.lastSeenAt;
-
-              return {
-                user_id: context.userId,
-                bird_key: entry.birdKey,
-                bird_name: existingEntry?.birdName ?? entry.birdName,
-                is_real: existingEntry?.isReal ?? entry.isReal,
-                seen_count: Math.max(existingEntry?.seenCount ?? 0, entry.seenCount),
-                correct_count: Math.max(existingEntry?.correctCount ?? 0, entry.correctCount),
-                incorrect_count: Math.max(existingEntry?.incorrectCount ?? 0, entry.incorrectCount),
-                last_seen_at: existingEntry && existingEntry.lastSeenAt > entry.lastSeenAt
-                  ? existingEntry.lastSeenAt
-                  : entry.lastSeenAt,
-                metadata: {
-                  ...(useIncomingMetadata ? entry.metadata : existingEntry.metadata),
-                  classificationRevealed: Boolean(existingEntry?.metadata.classificationRevealed) || Boolean(entry.metadata.classificationRevealed),
-                },
-              };
-            }),
-            { onConflict: 'user_id,bird_key' }
-          );
-
-        if (journalError) {
+        if (!journalResult.ok) {
           return NextResponse.json({ error: 'progress_sync_failed' }, { status: 500 });
         }
       }

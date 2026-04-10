@@ -4,11 +4,14 @@ import type { ProgressEvent } from '@/lib/progress/progress-events';
 const {
   applyProgressEventsMock,
   pullAccountProgressMock,
+  syncBirdJournalMock,
   syncLocalProgressMock,
   applyPulledAccountProgressMock,
   clearProgressEventOutboxMock,
   readProgressEventOutboxMock,
   removeQueuedProgressEventsMock,
+  clearDirtyBirdJournalKeysMock,
+  getDirtyBirdJournalEntriesMock,
   readBirdJournalMock,
   writeBirdJournalMock,
   getTodayChallengeDateMock,
@@ -28,11 +31,14 @@ const {
 } = vi.hoisted(() => ({
   applyProgressEventsMock: vi.fn(),
   pullAccountProgressMock: vi.fn(),
+  syncBirdJournalMock: vi.fn(),
   syncLocalProgressMock: vi.fn(),
   applyPulledAccountProgressMock: vi.fn(),
   clearProgressEventOutboxMock: vi.fn(),
   readProgressEventOutboxMock: vi.fn(),
   removeQueuedProgressEventsMock: vi.fn(),
+  clearDirtyBirdJournalKeysMock: vi.fn(),
+  getDirtyBirdJournalEntriesMock: vi.fn(),
   readBirdJournalMock: vi.fn(),
   writeBirdJournalMock: vi.fn(),
   getTodayChallengeDateMock: vi.fn(),
@@ -54,6 +60,7 @@ const {
 vi.mock('@/lib/auth/account-sync', () => ({
   applyProgressEvents: applyProgressEventsMock,
   pullAccountProgress: pullAccountProgressMock,
+  syncBirdJournal: syncBirdJournalMock,
   syncLocalProgress: syncLocalProgressMock,
 }));
 
@@ -68,6 +75,8 @@ vi.mock('@/lib/progress/progress-event-outbox', () => ({
 }));
 
 vi.mock('@/lib/utils/bird-journal', () => ({
+  clearDirtyBirdJournalKeys: clearDirtyBirdJournalKeysMock,
+  getDirtyBirdJournalEntries: getDirtyBirdJournalEntriesMock,
   readBirdJournal: readBirdJournalMock,
   writeBirdJournal: writeBirdJournalMock,
 }));
@@ -143,12 +152,17 @@ describe('account-session', () => {
     localStorage.clear();
     applyProgressEventsMock.mockReset();
     pullAccountProgressMock.mockReset();
+    syncBirdJournalMock.mockReset();
+    syncBirdJournalMock.mockResolvedValue({ journalCount: 0 });
     syncLocalProgressMock.mockReset();
     applyPulledAccountProgressMock.mockReset();
     clearProgressEventOutboxMock.mockReset();
     readProgressEventOutboxMock.mockReset();
     readProgressEventOutboxMock.mockReturnValue([]);
     removeQueuedProgressEventsMock.mockReset();
+    clearDirtyBirdJournalKeysMock.mockReset();
+    getDirtyBirdJournalEntriesMock.mockReset();
+    getDirtyBirdJournalEntriesMock.mockReturnValue([]);
     readBirdJournalMock.mockReset();
     readBirdJournalMock.mockReturnValue({ bird1: { birdKey: 'bird1' } });
     writeBirdJournalMock.mockReset();
@@ -300,6 +314,42 @@ describe('account-session', () => {
     expect(writeBirdScoreMock).toHaveBeenCalled();
     expect(setUnlockedThemeNamesMock).toHaveBeenCalledWith(['Robin']);
     expect(writeDailyChallengeHistoryMock).toHaveBeenCalledWith([{ date: '2026-04-07', correctAnswers: 4, roundsPlayed: 5, completed: true }]);
+    expect(syncBirdJournalMock).not.toHaveBeenCalled();
+  });
+
+  it('pushes dirty bird journal entries after flushing progress events', async () => {
+    getDirtyBirdJournalEntriesMock.mockReturnValue([
+      {
+        birdKey: 'real:blue-jay',
+        birdName: 'Blue Jay',
+        isReal: true,
+        seenCount: 2,
+        correctCount: 1,
+        incorrectCount: 1,
+        lastSeenAt: '2026-04-07T10:00:00.000Z',
+        metadata: {},
+      },
+    ]);
+    readProgressEventOutboxMock
+      .mockReturnValueOnce([queuedEvent])
+      .mockReturnValueOnce([]);
+    applyProgressEventsMock.mockResolvedValue({
+      appliedEventIds: ['round-1'],
+      ignoredEventIds: [],
+      snapshot: {
+        score: defaultBirdScore,
+        unlockedThemes: [],
+        dailyChallengeHistory: [],
+      },
+    });
+    syncBirdJournalMock.mockResolvedValue({ journalCount: 1 });
+
+    await flushQueuedProgressEventsForSignedInUser();
+
+    expect(syncBirdJournalMock).toHaveBeenCalledWith([
+      expect.objectContaining({ birdKey: 'real:blue-jay' }),
+    ]);
+    expect(clearDirtyBirdJournalKeysMock).toHaveBeenCalledWith(['real:blue-jay']);
   });
 
   it('hydrates local state from the signed-in account and resets ephemeral state first', async () => {
@@ -357,6 +407,36 @@ describe('account-session', () => {
     expect(applyPulledAccountProgressMock).toHaveBeenCalled();
   });
 
+  it('pushes dirty bird journal entries before pulling signed-in account progress', async () => {
+    getDirtyBirdJournalEntriesMock.mockReturnValue([
+      {
+        birdKey: 'real:blue-jay',
+        birdName: 'Blue Jay',
+        isReal: true,
+        seenCount: 2,
+        correctCount: 1,
+        incorrectCount: 1,
+        lastSeenAt: '2026-04-07T10:00:00.000Z',
+        metadata: {},
+      },
+    ]);
+    syncBirdJournalMock.mockResolvedValue({ journalCount: 1 });
+    pullAccountProgressMock.mockResolvedValue({
+      progress: { score: { seeds: 30 } },
+      lastLocalSyncAt: '2026-04-07T11:00:00.000Z',
+      todayDailyChallenge: null,
+      todayMissionClaims: null,
+    });
+
+    await syncSignedInAccountToLocalState({ notify: false });
+
+    expect(syncBirdJournalMock).toHaveBeenCalledWith([
+      expect.objectContaining({ birdKey: 'real:blue-jay' }),
+    ]);
+    expect(clearDirtyBirdJournalKeysMock).toHaveBeenCalledWith(['real:blue-jay']);
+    expect(pullAccountProgressMock).toHaveBeenCalledWith('2026-04-07');
+  });
+
   it('pushes the current local payload to the account and notifies listeners', async () => {
     const listener = vi.fn();
     window.addEventListener(ACCOUNT_STATE_CHANGED_EVENT, listener);
@@ -394,6 +474,7 @@ describe('account-session', () => {
     expect(writeDailyChallengeHistoryMock).toHaveBeenCalledWith([]);
     expect(writeDailyMissionHistoryMock).toHaveBeenCalledWith([]);
     expect(writeBirdJournalMock).toHaveBeenCalledWith({});
+    expect(clearDirtyBirdJournalKeysMock).toHaveBeenCalled();
     expect(resetDailyChallengeStateMock).toHaveBeenCalledWith('2026-04-07');
     expect(resetSessionMissionsMock).toHaveBeenCalledWith('2026-04-07');
     expect(clearProgressEventOutboxMock).toHaveBeenCalled();

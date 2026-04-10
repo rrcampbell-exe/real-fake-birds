@@ -3,11 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next build && next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage"
   },
