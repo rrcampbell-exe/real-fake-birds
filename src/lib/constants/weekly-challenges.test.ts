@@ -1,7 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { getWeeklyChallengeForWeek } from './weekly-challenges';
+import { getWeeklyChallengeById, getWeeklyChallengeForWeek, WEEKLY_CHALLENGE_IDS } from './weekly-challenges';
 
 describe('weekly challenges', () => {
+  it('returns a known challenge by ID', () => {
+    const challenge = getWeeklyChallengeById('seed-collector');
+    expect(challenge.id).toBe('seed-collector');
+    expect(challenge.name).toBe('Seed Collector');
+  });
+
+  it('falls back to the first challenge for an unknown ID', () => {
+    const challenge = getWeeklyChallengeById('nonexistent-id' as any);
+    expect(challenge).toBeDefined();
+    expect(WEEKLY_CHALLENGE_IDS).toContain(challenge.id);
+  });
+
   it('uses Plumage Precision for the accuracy challenge copy', () => {
     const seenChallenges = new Set<string>();
 
@@ -30,6 +42,24 @@ describe('weekly challenges', () => {
       const challenge = getWeeklyChallengeForWeek(weekStart);
       expect(challenge.id).not.toBe(previousId);
       previousId = challenge.id;
+    }
+  });
+
+  it('returns all known challenge IDs', () => {
+    expect(WEEKLY_CHALLENGE_IDS.length).toBeGreaterThan(0);
+    for (const id of WEEKLY_CHALLENGE_IDS) {
+      const challenge = getWeeklyChallengeById(id);
+      expect(challenge.id).toBe(id);
+    }
+  });
+
+  it('always returns a valid challenge for any week start', () => {
+    for (let week = 0; week < 52; week += 1) {
+      const weekStart = new Date(Date.UTC(2025, 0, 6 + (week * 7))).toISOString().slice(0, 10);
+      const challenge = getWeeklyChallengeForWeek(weekStart);
+      expect(challenge).toBeDefined();
+      expect(typeof challenge.id).toBe('string');
+      expect(typeof challenge.name).toBe('string');
     }
   });
 });
