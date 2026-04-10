@@ -121,6 +121,7 @@ interface AnswerProps {
   seedsEarned: number;
   newThemeUnlockName: string | null;
   earnedBadgeName: string | null;
+  justBrokeBestStreak?: boolean;
   isNewBirdEncounter?: boolean;
   actionLabel?: string;
   onAction: () => void;
@@ -137,7 +138,9 @@ export default function Answer({
   isStreak,
   isCorrect,
   isMilestone,
+  newThemeUnlockName,
   earnedBadgeName,
+  justBrokeBestStreak = false,
   actionLabel = 'Next Bird',
   onAction,
 }: AnswerProps) {
@@ -187,10 +190,10 @@ export default function Answer({
   }, [isMajorStreak, isStreak, isMilestone, play]);
 
   useEffect(() => {
-    if (isMilestone || earnedBadgeName || isStreak) {
-      const duration = isMilestone || earnedBadgeName || isMajorStreak ? 2500 : 1200;
-      const particleCount = isMilestone || earnedBadgeName || isMajorStreak ? 2 : 1;
-      const spread = isMilestone || earnedBadgeName || isMajorStreak ? 55 : 40;
+    if (isMilestone || earnedBadgeName || newThemeUnlockName || isMajorStreak || justBrokeBestStreak) {
+      const duration = 800;
+      const particleCount = 1;
+      const spread = 40;
       const end = Date.now() + duration;
 
       const frame = () => {
@@ -200,7 +203,7 @@ export default function Answer({
       };
       frame();
     }
-  }, [earnedBadgeName, isMajorStreak, isStreak, isMilestone]);
+  }, [earnedBadgeName, isMajorStreak, isMilestone, justBrokeBestStreak, newThemeUnlockName]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {

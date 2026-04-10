@@ -5,7 +5,6 @@ export interface StreakCheckpoint {
 }
 
 const streakCheckpoints: StreakCheckpoint[] = [
-	{ value: 2, reward: 2, tier: 'minor' },
 	{ value: 5, reward: 6, tier: 'minor' },
 	{ value: 10, reward: 12, tier: 'major' },
 	{ value: 15, reward: 5, tier: 'minor' },

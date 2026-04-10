@@ -134,7 +134,7 @@ describe('Answer', () => {
     expect(confettiMock).toHaveBeenCalled();
   });
 
-  it('fires confetti for a minor streak checkpoint', () => {
+  it('does not fire confetti for a minor streak checkpoint', () => {
     localStorage.setItem(
       'birdScore',
       JSON.stringify({
@@ -159,6 +159,37 @@ describe('Answer', () => {
         description={null}
         isStreak
         seedsEarned={6}
+      />
+    );
+
+    expect(confettiMock).not.toHaveBeenCalled();
+  });
+
+  it('fires confetti when the player first breaks an eligible personal best', () => {
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 22,
+        birdsIdentified: 22,
+        currentStreak: 11,
+        bestStreak: 11,
+        activePersonalBestTarget: 10,
+        seeds: 9,
+      })
+    );
+
+    render(
+      <Answer
+        {...defaultProps}
+        isReal={false}
+        regionLabel={null}
+        sciName={null}
+        fact={null}
+        summary={null}
+        articleUrl={null}
+        imageUrl={null}
+        description={null}
+        justBrokeBestStreak
       />
     );
 

@@ -19,6 +19,7 @@ export const defaultBirdScore: BirdScore = {
   currentStreak: 0,
   justAchievedStreak: false,
   bestStreak: 0,
+  activePersonalBestTarget: null,
   currentDailyStreak: 0,
   bestDailyStreak: 0,
   seeds: 0,
@@ -63,6 +64,9 @@ export function normalizeBirdScore(scoreLike: Partial<BirdScore> | null | undefi
     justAchievedStreak:
       typeof scoreLike?.justAchievedStreak === 'boolean' ? scoreLike.justAchievedStreak : false,
     bestStreak: isFiniteNumber(scoreLike?.bestStreak) ? scoreLike.bestStreak : 0,
+    activePersonalBestTarget: isFiniteNumber(scoreLike?.activePersonalBestTarget)
+      ? scoreLike.activePersonalBestTarget
+      : null,
     currentDailyStreak: isFiniteNumber(scoreLike?.currentDailyStreak)
       ? scoreLike.currentDailyStreak
       : 0,
@@ -95,6 +99,7 @@ export function mergeNonRoundRemoteScore(
     currentStreak: localScore.currentStreak,
     justAchievedStreak: localScore.justAchievedStreak,
     bestStreak: Math.max(localScore.bestStreak, remoteScore.bestStreak),
+    activePersonalBestTarget: localScore.activePersonalBestTarget,
     currentDailyStreak: Math.max(localScore.currentDailyStreak, remoteScore.currentDailyStreak),
     bestDailyStreak: Math.max(localScore.bestDailyStreak, remoteScore.bestDailyStreak),
   });

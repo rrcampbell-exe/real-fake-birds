@@ -19,6 +19,11 @@ import {
 import type { GameMode, GameRoundResult, HintType } from '@/types';
 
 const BASE_CORRECT_SEED_REWARD = 1;
+const PERSONAL_BEST_MIN_STREAK = 10;
+
+function isEligiblePersonalBestTarget(target: number | null): target is number {
+  return typeof target === 'number' && target > PERSONAL_BEST_MIN_STREAK;
+}
 
 function calculateStreakSeedReward(currentStreak: number): number {
   return getStreakReward(currentStreak);
@@ -101,12 +106,18 @@ const responseEval = (
     const birdScore = readBirdScore();
     expireStreakInsuranceAfterGuess();
     const existingUnlockedThemeNames = new Set(getUnlockedThemeNames(birdScore));
-    let { birdsSeen, birdsIdentified, currentStreak, bestStreak, seeds } = birdScore;
+    let { birdsSeen, birdsIdentified, currentStreak, bestStreak, seeds, activePersonalBestTarget } = birdScore;
     const { justAchievedStreak } = birdScore;
+    const previousBestStreak = bestStreak;
 
     birdsSeen = birdsSeen + 1;
     birdsIdentified = birdsIdentified + 1;
+    activePersonalBestTarget = currentStreak === 0
+      ? (bestStreak > 0 ? bestStreak : null)
+      : (activePersonalBestTarget ?? bestStreak);
     currentStreak = currentStreak + 1;
+    const justBrokeBestStreak = isEligiblePersonalBestTarget(activePersonalBestTarget)
+      && currentStreak === activePersonalBestTarget + 1;
     bestStreak = currentStreak > bestStreak ? currentStreak : bestStreak;
 
     const streakSeedsEarned = streakEval(currentStreak, setIsStreak);
@@ -120,6 +131,7 @@ const responseEval = (
       currentStreak,
       justAchievedStreak,
       bestStreak,
+      activePersonalBestTarget,
       seeds,
     };
 
@@ -147,6 +159,10 @@ const responseEval = (
       streakProtected: false,
       earnedBadgeName: milestoneResult.earnedBadgeName,
       unlockedThemeName: milestoneResult.unlockedThemeName,
+      previousBestStreak,
+      justBrokeBestStreak,
+      justLostBestStreak: false,
+      personalBestRewardSeeds: 0,
       missionRewards: [],
       missionSetBonusSeedsEarned: 0,
       completedDailyMissionSet: false,
@@ -208,19 +224,25 @@ const responseEval = (
 
   const birdScore = readBirdScore();
   let { birdsSeen } = birdScore;
-  const { bestStreak } = birdScore;
-  const { birdsIdentified, seeds } = birdScore;
+  const { bestStreak, birdsIdentified, currentStreak, activePersonalBestTarget } = birdScore;
+  let { seeds } = birdScore;
   const streakProtected = consumeStreakInsurance();
+  const justLostBestStreak = !streakProtected
+    && isEligiblePersonalBestTarget(activePersonalBestTarget)
+    && currentStreak > activePersonalBestTarget;
+  const personalBestRewardSeeds = justLostBestStreak ? Math.floor(bestStreak / 2) : 0;
 
   birdsSeen = birdsSeen + 1;
+  seeds = seeds + personalBestRewardSeeds;
 
   const updatedBirdScore = {
     ...birdScore,
     birdsSeen,
     birdsIdentified,
-    currentStreak: streakProtected ? birdScore.currentStreak : 0,
+    currentStreak: streakProtected ? currentStreak : 0,
     bestStreak,
     justAchievedStreak: false,
+    activePersonalBestTarget: streakProtected ? activePersonalBestTarget : null,
     seeds,
   };
 
@@ -245,6 +267,10 @@ const responseEval = (
     streakProtected,
     earnedBadgeName: null,
     unlockedThemeName: null,
+    previousBestStreak: bestStreak,
+    justBrokeBestStreak: false,
+    justLostBestStreak,
+    personalBestRewardSeeds,
     missionRewards: [],
     missionSetBonusSeedsEarned: 0,
     completedDailyMissionSet: false,
@@ -276,7 +302,7 @@ const responseEval = (
 
   const finalResult = {
     ...result,
-    seedsEarned: missionUpdate.totalRewardSeeds,
+    seedsEarned: missionUpdate.totalRewardSeeds + personalBestRewardSeeds,
     missionRewards: missionUpdate.missionRewards,
     missionSetBonusSeedsEarned: missionUpdate.missionSetBonusSeedsEarned,
     completedDailyMissionSet: missionUpdate.completedDailyMissionSet,

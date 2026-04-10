@@ -75,6 +75,7 @@ export interface BirdScore {
   currentStreak: number;
   justAchievedStreak: boolean;
   bestStreak: number;
+  activePersonalBestTarget: number | null;
   currentDailyStreak: number;
   bestDailyStreak: number;
   seeds: number;
@@ -181,6 +182,10 @@ export interface GameRoundResult {
   streakProtected: boolean;
   earnedBadgeName: string | null;
   unlockedThemeName: string | null;
+  previousBestStreak: number | null;
+  justBrokeBestStreak: boolean;
+  justLostBestStreak: boolean;
+  personalBestRewardSeeds: number;
   missionRewards: MissionRewardSummary[];
   missionSetBonusSeedsEarned: number;
   completedDailyMissionSet: boolean;
