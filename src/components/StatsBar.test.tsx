@@ -94,7 +94,7 @@ describe('StatsBar', () => {
 
     render(<StatsBar refreshTrigger={0} />);
 
-    expectStatValue('2 to bonus', '0');
+    expectStatValue('5 to bonus', '0');
   });
 
   it('refreshes when the trigger changes', async () => {
@@ -174,6 +174,10 @@ describe('StatsBar', () => {
       streakProtected: false,
       earnedBadgeName: null,
       unlockedThemeName: null,
+      previousBestStreak: 9,
+      justBrokeBestStreak: false,
+      justLostBestStreak: false,
+      personalBestRewardSeeds: 0,
       missionRewards: [],
       missionSetBonusSeedsEarned: 0,
       completedDailyMissionSet: false,
@@ -210,6 +214,46 @@ describe('StatsBar', () => {
 
     expect(screen.getByText('14 to unlock Contour Feather Badge')).toBeInTheDocument();
     expect(screen.queryByText(/Robin Theme/i)).not.toBeInTheDocument();
+  });
+
+  it('pulses the personal best stat when the player is within five guesses of an eligible target', () => {
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 40,
+        birdsIdentified: 22,
+        currentStreak: 9,
+        bestStreak: 12,
+        activePersonalBestTarget: 12,
+        seeds: 8,
+      })
+    );
+
+    render(<StatsBar refreshTrigger={0} />);
+
+    expect(screen.getByTestId('best-streak-value').className).toContain('personal-best-pulse');
+    expect(screen.getByTestId('best-streak-value').className).toContain('personal-best-pulse-warm');
+    expect(screen.getByTestId('best-streak-label').className).toContain('personal-best-pulse');
+    expect(screen.getByTestId('best-streak-label').className).toContain('personal-best-pulse-warm');
+  });
+
+  it('stops pulsing the personal best stat once the target has been cleared', () => {
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 40,
+        birdsIdentified: 22,
+        currentStreak: 13,
+        bestStreak: 13,
+        activePersonalBestTarget: 12,
+        seeds: 8,
+      })
+    );
+
+    render(<StatsBar refreshTrigger={0} />);
+
+    expect(screen.getByTestId('best-streak-value').className).not.toContain('personal-best-pulse');
+    expect(screen.getByTestId('best-streak-label').className).not.toContain('personal-best-pulse');
   });
 
   it('shows streak insurance before the player can afford it', () => {

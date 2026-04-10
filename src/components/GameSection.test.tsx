@@ -197,9 +197,8 @@ describe('GameSection', () => {
 
     render(<GameSection />);
 
-    expect(screen.getByText(/Badge Unlocked/i)).toBeInTheDocument();
-    expect(screen.getByText(/Downy Feather Badge is now yours/i)).toBeInTheDocument();
-    expect(screen.getByText(/Theme Unlocked/i)).toBeInTheDocument();
-    expect(screen.getByText(/use the Raven Theme/i)).toBeInTheDocument();
+    expect(screen.getByText(/Badge & Theme Unlocked/i)).toBeInTheDocument();
+    expect(screen.getByText(/Downy Feather Badge is now yours, and the Raven Theme just joined your flock/i)).toBeInTheDocument();
+    expect(screen.queryByText(/^Theme Unlocked!$/i)).not.toBeInTheDocument();
   });
 });

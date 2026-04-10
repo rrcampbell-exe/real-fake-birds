@@ -55,6 +55,7 @@ describe('responseEval', () => {
       currentStreak: 1,
       justAchievedStreak: false,
       bestStreak: 1,
+      activePersonalBestTarget: null,
       currentDailyStreak: 0,
       bestDailyStreak: 0,
       seeds: 1,
@@ -67,9 +68,9 @@ describe('responseEval', () => {
       JSON.stringify({
         birdsSeen: 3,
         birdsIdentified: 1,
-        currentStreak: 1,
+        currentStreak: 4,
         justAchievedStreak: false,
-        bestStreak: 1,
+        bestStreak: 4,
         seeds: 0,
       })
     );
@@ -94,8 +95,8 @@ describe('responseEval', () => {
     );
 
     expect(setIsStreak).toHaveBeenCalledWith(true);
-    expect(setSeedsEarned).toHaveBeenCalledWith(3);
-    expect(JSON.parse(localStorage.getItem('birdScore')!)).toMatchObject({ seeds: 3 });
+    expect(setSeedsEarned).toHaveBeenCalledWith(7);
+    expect(JSON.parse(localStorage.getItem('birdScore')!)).toMatchObject({ currentStreak: 5, seeds: 7 });
     expect(localStorage.getItem('birdStreakAchieved')).toBe('true');
   });
 
@@ -308,6 +309,7 @@ describe('responseEval', () => {
       currentStreak: 0,
       bestStreak: 5,
       justAchievedStreak: false,
+      activePersonalBestTarget: null,
       currentDailyStreak: 0,
       bestDailyStreak: 0,
       seeds: 8,
@@ -354,6 +356,7 @@ describe('responseEval', () => {
       currentStreak: 4,
       bestStreak: 5,
       justAchievedStreak: false,
+      activePersonalBestTarget: null,
       currentDailyStreak: 0,
       bestDailyStreak: 0,
       seeds: 8,
@@ -363,6 +366,136 @@ describe('responseEval', () => {
       protectedMissesRemaining: 0,
       cost: 0,
       purchasedAtStreak: 0,
+    });
+  });
+
+  it('marks the first personal-best break only once for eligible streaks', () => {
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 40,
+        birdsIdentified: 40,
+        currentStreak: 12,
+        justAchievedStreak: false,
+        bestStreak: 12,
+        activePersonalBestTarget: 12,
+        seeds: 5,
+      })
+    );
+
+    const result = responseEval(
+      createEvent(),
+      true,
+      'real',
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn()
+    );
+
+    expect(result.justBrokeBestStreak).toBe(true);
+
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 40,
+        birdsIdentified: 40,
+        currentStreak: 13,
+        justAchievedStreak: false,
+        bestStreak: 13,
+        activePersonalBestTarget: 12,
+        seeds: 6,
+      })
+    );
+
+    const followUp = responseEval(
+      createEvent(),
+      true,
+      'real',
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn()
+    );
+
+    expect(followUp.justBrokeBestStreak).toBe(false);
+  });
+
+  it('flags the first break of an eligible personal best and preserves the chase target', () => {
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 40,
+        birdsIdentified: 40,
+        currentStreak: 12,
+        justAchievedStreak: false,
+        bestStreak: 12,
+        activePersonalBestTarget: 12,
+        seeds: 5,
+      })
+    );
+
+    const result = responseEval(
+      createEvent(),
+      true,
+      'real',
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn()
+    );
+
+    expect(result.justBrokeBestStreak).toBe(true);
+    expect(result.previousBestStreak).toBe(12);
+    expect(JSON.parse(localStorage.getItem('birdScore')!)).toMatchObject({
+      currentStreak: 13,
+      bestStreak: 13,
+      activePersonalBestTarget: 12,
+    });
+  });
+
+  it('rewards the player when they finally lose a new personal best streak', () => {
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 50,
+        birdsIdentified: 45,
+        currentStreak: 13,
+        justAchievedStreak: false,
+        bestStreak: 13,
+        activePersonalBestTarget: 12,
+        seeds: 8,
+      })
+    );
+
+    const setSeedsEarned = vi.fn();
+    const result = responseEval(
+      createEvent(),
+      true,
+      'fake',
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      setSeedsEarned,
+      vi.fn(),
+      vi.fn()
+    );
+
+    expect(result.justLostBestStreak).toBe(true);
+    expect(result.personalBestRewardSeeds).toBe(6);
+    expect(result.seedsEarned).toBeGreaterThanOrEqual(6);
+    expect(setSeedsEarned).toHaveBeenCalledWith(result.seedsEarned);
+    expect(JSON.parse(localStorage.getItem('birdScore')!)).toMatchObject({
+      currentStreak: 0,
+      bestStreak: 13,
+      activePersonalBestTarget: null,
+      seeds: 14,
     });
   });
 

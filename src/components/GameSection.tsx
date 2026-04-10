@@ -17,6 +17,7 @@ interface UnlockToast {
   id: number;
   title: string;
   detail: string;
+  priority: number;
 }
 
 const TOAST_LIFETIME_MS = 3600;
@@ -34,8 +35,27 @@ function buildUnlockToasts(options: {
       id: 10 + index,
       title: 'Mission Complete!',
       detail: `${missionReward.toastDescription} You've earned an extra ${missionReward.rewardSeeds} seeds for your efforts!`,
+      priority: 60,
     });
   });
+
+  if (options.roundResult?.justLostBestStreak) {
+    nextToasts.push({
+      id: 90,
+      title: 'New Personal Best!',
+      detail: `What a run! Your best streak of ${options.roundResult.bestStreak} earns you +${options.roundResult.personalBestRewardSeeds} bonus seeds.`,
+      priority: 100,
+    });
+  }
+
+  if (options.roundResult?.justBrokeBestStreak) {
+    nextToasts.push({
+      id: 91,
+      title: 'New Personal Best!',
+      detail: `You've beaten your record with a streak of ${options.roundResult.currentStreak}.`,
+      priority: 100,
+    });
+  }
 
   if (options.roundResult?.completedDailyMissionSet) {
     nextToasts.push({
@@ -44,30 +64,39 @@ function buildUnlockToasts(options: {
       detail: options.roundResult.dailyMissionStreak
         ? `Your daily streak is now ${options.roundResult.dailyMissionStreak} day${options.roundResult.dailyMissionStreak > 1 ? 's' : ''}. Have +${options.roundResult.missionSetBonusSeedsEarned} bonus seeds as a treat.`
         : `+${options.roundResult.missionSetBonusSeedsEarned} bonus seeds.`,
+      priority: 40,
     });
   }
 
-  if (options.earnedBadgeName) {
+  if (options.earnedBadgeName && options.newThemeUnlockName) {
     nextToasts.push({
       id: 1,
-      title: 'Badge Unlocked!',
-      detail: `The ${options.earnedBadgeName} Badge is now yours. We won't stop you from shaking your tail feathers in celebration.`,
+      title: 'Badge & Theme Unlocked!',
+      detail: `The ${options.earnedBadgeName} Badge is now yours, and the ${options.newThemeUnlockName} Theme just joined your flock.`,
+      priority: 80,
     });
-  }
-
-  if (options.newThemeUnlockName) {
+  } else if (options.earnedBadgeName) {
     nextToasts.push({
       id: 2,
+      title: 'Badge Unlocked!',
+      detail: `The ${options.earnedBadgeName} Badge is now yours. We won't stop you from shaking your tail feathers in celebration.`,
+      priority: 80,
+    });
+  } else if (options.newThemeUnlockName) {
+    nextToasts.push({
+      id: 3,
       title: 'Theme Unlocked!',
       detail: `You can now use the ${options.newThemeUnlockName} Theme. Why not try out your new look?`,
+      priority: 80,
     });
   }
 
   if (options.isMilestone && !options.earnedBadgeName && !options.newThemeUnlockName) {
     nextToasts.push({
-      id: 3,
+      id: 4,
       title: 'Milestone Reached!',
       detail: 'In real fake bird culture, this is kind of a big deal.',
+      priority: 20,
     });
   }
 
@@ -137,10 +166,17 @@ export default function GameSection() {
       return [];
     }
 
-    return unlockToastDefinitions.map((toast) => ({
-      ...toast,
-      id: activeToastRoundId * 10 + toast.id,
-    }));
+    const highestPriorityToast = [...unlockToastDefinitions]
+      .sort((left, right) => right.priority - left.priority || left.id - right.id)[0];
+
+    if (!highestPriorityToast) {
+      return [];
+    }
+
+    return [{
+      ...highestPriorityToast,
+      id: activeToastRoundId * 100 + highestPriorityToast.id,
+    }];
   }, [activeToastRoundId, expiredToastRoundId, unlockToastDefinitions]);
 
   const handleAdvanceRound = useCallback(() => {
@@ -251,6 +287,7 @@ export default function GameSection() {
               seedsEarned={seedsEarned}
               newThemeUnlockName={newThemeUnlockName}
               earnedBadgeName={earnedBadgeName}
+              justBrokeBestStreak={Boolean(roundAnimation?.result.justBrokeBestStreak)}
               isNewBirdEncounter={isNewBirdEncounter}
               onAction={handleAdvanceRound}
             />

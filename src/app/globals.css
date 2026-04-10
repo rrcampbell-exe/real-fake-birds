@@ -1,5 +1,44 @@
 @import "tailwindcss";
 
+@keyframes personal-best-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: var(--personal-best-pulse-opacity, 0.82);
+    transform: scale(var(--personal-best-pulse-scale, 1.03));
+  }
+}
+
+.personal-best-pulse {
+  animation: personal-best-pulse 1.05s ease-in-out infinite;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
+.personal-best-pulse-calm {
+  --personal-best-pulse-scale: 1.03;
+  --personal-best-pulse-opacity: 0.82;
+}
+
+.personal-best-pulse-warm {
+  --personal-best-pulse-scale: 1.06;
+  --personal-best-pulse-opacity: 0.72;
+}
+
+.personal-best-pulse-hot {
+  --personal-best-pulse-scale: 1.1;
+  --personal-best-pulse-opacity: 0.62;
+}
+
+.personal-best-pulse-critical {
+  --personal-best-pulse-scale: 1.12;
+  --personal-best-pulse-opacity: 0.56;
+}
+
 button:not(:disabled) {
   cursor: pointer;
 }

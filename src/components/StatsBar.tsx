@@ -56,7 +56,7 @@ export default function StatsBar({ refreshTrigger, roundAnimation }: StatsBarPro
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [floatingSeeds, setFloatingSeeds] = useState<{ id: number; amount: number } | null>(null);
   const handledRoundAnimationIdRef = useRef<number | null>(null);
-  const { birdsSeen, birdsIdentified, currentStreak, bestStreak, seeds } = normalizeBirdScore(storedStats);
+  const { birdsSeen, birdsIdentified, currentStreak, bestStreak, seeds, activePersonalBestTarget } = normalizeBirdScore(storedStats);
   const accuracy = birdsSeen > 0 ? Math.floor((birdsIdentified / birdsSeen) * 100) : 0;
   const nextStreak = isNextStreakEval(streakValues, currentStreak);
   const milestoneValues = milestones.map((milestone) => milestone.value);
@@ -81,6 +81,24 @@ export default function StatsBar({ refreshTrigger, roundAnimation }: StatsBarPro
     : 'All live themes unlocked';
   const canShowInsurance = effectiveInsuranceState.active || currentStreak >= STREAK_INSURANCE_MIN_STREAK;
   const insuranceError = insuranceErrorState?.interactionKey === interactionKey ? insuranceErrorState.message : null;
+  const pulseTarget = activePersonalBestTarget;
+  const hasClearedPersonalBest = typeof pulseTarget === 'number' && currentStreak > pulseTarget;
+  const personalBestDistance = typeof pulseTarget === 'number' ? pulseTarget - currentStreak : null;
+  const shouldPulsePersonalBest = typeof pulseTarget === 'number'
+    && typeof personalBestDistance === 'number'
+    && pulseTarget > 10
+    && personalBestDistance <= 5
+    && personalBestDistance >= 0
+    && !hasClearedPersonalBest;
+  const personalBestPulseClass = !shouldPulsePersonalBest
+    ? ''
+    : personalBestDistance === 0
+      ? 'personal-best-pulse personal-best-pulse-critical'
+      : personalBestDistance <= 1
+        ? 'personal-best-pulse personal-best-pulse-hot'
+        : personalBestDistance <= 3
+          ? 'personal-best-pulse personal-best-pulse-warm'
+          : 'personal-best-pulse personal-best-pulse-calm';
 
   useEffect(() => {
     return () => {
@@ -211,7 +229,7 @@ export default function StatsBar({ refreshTrigger, roundAnimation }: StatsBarPro
                   animate={{ opacity: 1, y: -24, scale: 1 }}
                   exit={{ opacity: 0, y: -34, scale: 0.96 }}
                   transition={{ duration: 1.15, ease: 'easeOut' }}
-                  className="pointer-events-none absolute -right-1 -top-1 flex h-8 min-w-8 items-center justify-center rounded-full border border-[var(--color-surface-border)] bg-[var(--color-secondary)] px-2 text-[0.68rem] font-bold text-[var(--color-on-secondary)] shadow-[var(--shadow-button)]"
+                  className="pointer-events-none absolute -right-1 -top-1 flex h-8 min-w-8 items-center justify-center rounded-full border border-[var(--color-surface-border)] bg-[var(--color-secondary)] px-2 text-[0.68rem] font-bold text-[var(--color-on-secondary)] shadow-[var(--shadow-button)] md:right-0"
                 >
                   +{formatNumber(floatingSeeds.amount)}
                 </motion.div>
@@ -227,11 +245,25 @@ export default function StatsBar({ refreshTrigger, roundAnimation }: StatsBarPro
             </div>
           </div>
 
-          <div className="flex items-center gap-2 min-w-0">
-            <Zap size={16} className="text-[var(--color-secondary)]" fill="currentColor" />
+          <div className="flex items-center gap-2 min-w-0" data-testid="best-streak-stat">
+            <Zap
+              size={16}
+              className={`text-[var(--color-secondary)] ${personalBestPulseClass}`.trim()}
+              fill="currentColor"
+            />
             <div className="flex min-w-0 flex-col">
-              <span className="font-bold text-sm leading-none">{formatNumber(bestStreak)}</span>
-              <span className="text-[var(--color-muted)] text-[0.6rem] leading-tight">best</span>
+              <span
+                data-testid="best-streak-value"
+                className={`font-bold text-sm leading-none ${personalBestPulseClass}`.trim()}
+              >
+                {formatNumber(bestStreak)}
+              </span>
+              <span
+                data-testid="best-streak-label"
+                className={`text-[var(--color-muted)] text-[0.6rem] leading-tight ${personalBestPulseClass}`.trim()}
+              >
+                best
+              </span>
             </div>
           </div>
         </div>
