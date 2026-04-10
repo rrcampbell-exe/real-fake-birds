@@ -112,12 +112,45 @@ export class SoundManager implements SoundController {
   private settings: SoundSettings;
   private activeLoops = new Map<string, { stop: () => void }>();
   private activeThemeSongKey: string | null = null;
+  private desiredThemeSongUrl: string | null = null;
   private pendingPreloadUrls = new Set<string>();
   private pendingLoops = new Set<SoundKey>();
   private pendingThemeSongUrl: string | null = null;
+  private themeSongGeneration = 0;
+  private themeSongLoadingKey: string | null = null;
+  private gestureUnlockRegistered = false;
+  private gestureUnlockHandler: (() => void) | null = null;
+  private readonly handleVisibilityChange = () => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    if (document.visibilityState === 'hidden') {
+      this.stopAllPlayback({ preserveThemeSong: true });
+      return;
+    }
+
+    if (document.visibilityState === 'visible') {
+      this.restoreDesiredThemeSong();
+    }
+  };
+
+  private readonly handlePageShow = (event: Event) => {
+    const persisted = 'persisted' in event && Boolean((event as PageTransitionEvent).persisted);
+
+    if (!persisted) {
+      this.restoreDesiredThemeSong();
+      return;
+    }
+
+    this.stopAllPlayback({ preserveThemeSong: true });
+    this.resetAudioContext();
+    this.restoreDesiredThemeSong();
+  };
 
   private constructor() {
     this.settings = this.loadSettings();
+    this.registerLifecycleListeners();
   }
 
   static getInstance(): SoundManager {
@@ -134,6 +167,29 @@ export class SoundManager implements SoundController {
     }
   }
 
+  registerGestureUnlock(): void {
+    if (typeof window === 'undefined' || this.gestureUnlockRegistered) {
+      return;
+    }
+
+    const unlock = () => {
+      void this.unlock();
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('touchstart', unlock);
+      window.removeEventListener('click', unlock);
+      window.removeEventListener('keydown', unlock);
+      this.gestureUnlockRegistered = false;
+      this.gestureUnlockHandler = null;
+    };
+
+    this.gestureUnlockRegistered = true;
+    this.gestureUnlockHandler = unlock;
+    window.addEventListener('pointerdown', unlock, { once: true });
+    window.addEventListener('touchstart', unlock, { once: true });
+    window.addEventListener('click', unlock, { once: true });
+    window.addEventListener('keydown', unlock, { once: true });
+  }
+
   private ensureContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
 
@@ -148,6 +204,20 @@ export class SoundManager implements SoundController {
         this.sfxGain.connect(this.masterGain);
         this.musicGain.connect(this.masterGain);
         this.masterGain.connect(this.ctx.destination);
+        this.ctx.onstatechange = () => {
+          if (!this.ctx) {
+            return;
+          }
+
+          if (this.ctx.state === 'running') {
+            this.flushDeferredAudio();
+            return;
+          }
+
+          if ((this.ctx.state as string) === 'interrupted') {
+            this.stopAllPlayback({ preserveThemeSong: true });
+          }
+        };
       } catch {
         return null;
       }
@@ -274,12 +344,16 @@ export class SoundManager implements SoundController {
 
   startThemeSong(url: string): void {
     const loopKey = `theme-song:${url}`;
+    this.desiredThemeSongUrl = url;
 
     if (this.settings.musicMuted) return;
 
-    if (this.activeThemeSongKey === loopKey && this.activeLoops.has(loopKey)) {
+    if (this.activeThemeSongKey === loopKey && (this.activeLoops.has(loopKey) || this.themeSongLoadingKey === loopKey)) {
       return;
     }
+
+    this.themeSongGeneration += 1;
+    const currentGeneration = this.themeSongGeneration;
 
     if (!this.ctx || !this.musicGain) {
       this.pendingThemeSongUrl = url;
@@ -289,9 +363,13 @@ export class SoundManager implements SoundController {
     const ctx = this.ctx;
     const startThemeSong = () => {
       if (!this.musicGain) return;
-      this.stopThemeSong();
+      this.stopAllPlayback({ preserveThemeSong: true, stopSfx: false, invalidateThemeGeneration: false });
       this.activeThemeSongKey = loopKey;
-      void this.startFileLoop(loopKey, url, this.musicGain, 0.18);
+      this.themeSongLoadingKey = loopKey;
+      this.pendingThemeSongUrl = url;
+      void this.startFileLoop(loopKey, url, this.musicGain, 0.18, {
+        themeSongGeneration: currentGeneration,
+      });
     };
 
     this.runWhenReady(ctx, startThemeSong, () => {
@@ -300,10 +378,13 @@ export class SoundManager implements SoundController {
   }
 
   stopThemeSong(): void {
+    this.desiredThemeSongUrl = null;
     this.pendingThemeSongUrl = null;
-    if (!this.activeThemeSongKey) return;
-    this.stopLoop(this.activeThemeSongKey);
-    this.activeThemeSongKey = null;
+    this.stopThemeSongPlayback();
+  }
+
+  stopAllLoops(): void {
+    this.stopAllPlayback();
   }
 
   private playBufferedFile(ctx: AudioContext, buffer: AudioBuffer, destination: GainNode, gainValue: number): void {
@@ -324,17 +405,43 @@ export class SoundManager implements SoundController {
     this.playBufferedFile(ctx, audioBuffer, this.sfxGain, gainValue);
   }
 
-  private async startFileLoop(key: string, url: string, destination: GainNode, volume = 0.08): Promise<void> {
+  private async startFileLoop(
+    key: string,
+    url: string,
+    destination: GainNode,
+    volume = 0.08,
+    options?: { themeSongGeneration?: number }
+  ): Promise<void> {
     const ctx = this.ctx;
     if (!ctx || this.activeLoops.has(key)) return;
 
     const buffer = await this.loadBuffer(ctx, url);
-    if (!buffer) return;
+    if (!buffer) {
+      if (key.startsWith('theme-song:')) {
+        this.themeSongLoadingKey = null;
+      }
+      return;
+    }
 
-    if (this.activeLoops.has(key)) return;
+    if (this.activeLoops.has(key)) {
+      if (key.startsWith('theme-song:')) {
+        this.themeSongLoadingKey = null;
+      }
+      return;
+    }
 
     // If this is a theme song that was superseded during loading, don't start it
-    if (key.startsWith('theme-song:') && this.activeThemeSongKey !== key) return;
+    if (key.startsWith('theme-song:')) {
+      if (this.activeThemeSongKey !== key) {
+        this.themeSongLoadingKey = null;
+        return;
+      }
+
+      if (options?.themeSongGeneration !== undefined && this.themeSongGeneration !== options.themeSongGeneration) {
+        this.themeSongLoadingKey = null;
+        return;
+      }
+    }
 
     const source = ctx.createBufferSource();
     const gain = ctx.createGain();
@@ -343,6 +450,10 @@ export class SoundManager implements SoundController {
     gain.gain.setValueAtTime(volume, ctx.currentTime);
     source.connect(gain).connect(destination);
     source.start(0);
+    if (key.startsWith('theme-song:')) {
+      this.pendingThemeSongUrl = null;
+      this.themeSongLoadingKey = null;
+    }
 
     this.activeLoops.set(key, {
       stop: () => {
@@ -380,6 +491,11 @@ export class SoundManager implements SoundController {
 
     if (muted) {
       this.stopThemeSong();
+      return;
+    }
+
+    if (this.desiredThemeSongUrl) {
+      this.startThemeSong(this.desiredThemeSongUrl);
     }
   }
 
@@ -434,17 +550,24 @@ export class SoundManager implements SoundController {
   }
 
   private dispose(): void {
-    for (const key of this.activeLoops.keys()) {
-      this.stopLoop(key);
+    if (typeof window !== 'undefined') {
+      if (this.gestureUnlockHandler) {
+        window.removeEventListener('pointerdown', this.gestureUnlockHandler);
+        window.removeEventListener('touchstart', this.gestureUnlockHandler);
+        window.removeEventListener('click', this.gestureUnlockHandler);
+        window.removeEventListener('keydown', this.gestureUnlockHandler);
+      }
+      window.removeEventListener('pageshow', this.handlePageShow);
     }
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+    }
+
+    this.gestureUnlockHandler = null;
+    this.gestureUnlockRegistered = false;
+    this.stopAllPlayback();
     this.bufferCache.clear();
-    if (this.ctx) {
-      this.ctx.close();
-      this.ctx = null;
-      this.masterGain = null;
-      this.sfxGain = null;
-      this.musicGain = null;
-    }
+    this.resetAudioContext();
   }
 
   private queuePreloadUrls(extraUrls: string[] = []): void {
@@ -496,5 +619,88 @@ export class SoundManager implements SoundController {
     void ctx.resume().then(runTask).catch(() => {
       onBlocked?.();
     });
+  }
+
+  private registerLifecycleListeners(): void {
+    if (typeof window !== 'undefined') {
+      window.addEventListener('pageshow', this.handlePageShow);
+    }
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', this.handleVisibilityChange);
+    }
+  }
+
+  private restoreDesiredThemeSong(): void {
+    if (this.settings.musicMuted || !this.desiredThemeSongUrl) {
+      return;
+    }
+
+    const themeSongUrl = this.desiredThemeSongUrl;
+    this.pendingThemeSongUrl = themeSongUrl;
+
+    const ctx = this.ensureContext();
+    if (!ctx) {
+      return;
+    }
+
+    this.runWhenReady(ctx, () => {
+      this.flushDeferredAudio();
+    }, () => {
+      this.pendingThemeSongUrl = themeSongUrl;
+    });
+  }
+
+  private stopThemeSongPlayback(): void {
+    this.themeSongGeneration += 1;
+    this.themeSongLoadingKey = null;
+    this.pendingThemeSongUrl = null;
+
+    if (!this.activeThemeSongKey) {
+      return;
+    }
+
+    this.stopLoop(this.activeThemeSongKey);
+    this.activeThemeSongKey = null;
+  }
+
+  private stopAllPlayback(options: { preserveThemeSong?: boolean; stopSfx?: boolean; invalidateThemeGeneration?: boolean } = {}): void {
+    const { preserveThemeSong = false, stopSfx = true, invalidateThemeGeneration = true } = options;
+    const preservedThemeSongUrl = preserveThemeSong ? this.desiredThemeSongUrl : null;
+
+    if (invalidateThemeGeneration) {
+      this.themeSongGeneration += 1;
+    }
+    this.themeSongLoadingKey = null;
+    this.activeThemeSongKey = null;
+
+    const keys = [...this.activeLoops.keys()];
+    for (const key of keys) {
+      if (!stopSfx && !key.startsWith('theme-song:')) {
+        continue;
+      }
+
+      this.stopLoop(key);
+    }
+
+    if (preserveThemeSong && preservedThemeSongUrl && !this.settings.musicMuted) {
+      this.pendingThemeSongUrl = preservedThemeSongUrl;
+      return;
+    }
+
+    this.pendingThemeSongUrl = null;
+  }
+
+  private resetAudioContext(): void {
+    if (!this.ctx) {
+      return;
+    }
+
+    this.ctx.onstatechange = null;
+    void this.ctx.close();
+    this.ctx = null;
+    this.masterGain = null;
+    this.sfxGain = null;
+    this.musicGain = null;
   }
 }

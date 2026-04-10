@@ -7,6 +7,17 @@ async function flushAsyncAudioWork() {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((innerResolve, innerReject) => {
+    resolve = innerResolve;
+    reject = innerReject;
+  });
+
+  return { promise, resolve, reject };
+}
+
 // ---- Mock AudioContext ----
 
 function createMockOscillator() {
@@ -39,6 +50,7 @@ function createMockGain() {
 function createMockBufferSource() {
   return {
     buffer: null as AudioBuffer | null,
+    loop: false,
     connect: vi.fn().mockReturnThis(),
     start: vi.fn(),
     stop: vi.fn(),
@@ -51,6 +63,7 @@ function createMockAudioContext() {
     currentTime: 0,
     sampleRate: 44100,
     destination: {} as AudioDestinationNode,
+    onstatechange: null as (() => void) | null,
     resume: vi.fn().mockResolvedValue(undefined),
     close: vi.fn().mockResolvedValue(undefined),
     createOscillator: vi.fn(() => createMockOscillator()),
@@ -80,8 +93,16 @@ function createMockAudioContext() {
 }
 
 let mockCtx: ReturnType<typeof createMockAudioContext>;
+let visibilityState: DocumentVisibilityState;
 
 beforeEach(() => {
+  localStorage.clear();
+  visibilityState = 'visible';
+  Object.defineProperty(document, 'visibilityState', {
+    configurable: true,
+    get: () => visibilityState,
+  });
+
   mockCtx = createMockAudioContext();
   vi.stubGlobal('AudioContext', function (this: ReturnType<typeof createMockAudioContext>) {
     Object.assign(this, mockCtx);
@@ -90,6 +111,7 @@ beforeEach(() => {
 
 afterEach(() => {
   SoundManager.resetInstance();
+  vi.unstubAllGlobals();
 });
 
 describe('SoundManager', () => {
@@ -375,11 +397,259 @@ describe('SoundManager', () => {
       expect(fetchSpy).not.toHaveBeenCalled();
       expect(mockCtx.createBufferSource).toHaveBeenCalled();
     });
+
+    it('prevents duplicate theme-song starts while the first load is still in flight', async () => {
+      const deferredDecode = createDeferred<AudioBuffer>();
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+        })
+      );
+      mockCtx.decodeAudioData.mockReturnValueOnce(deferredDecode.promise);
+
+      const mgr = SoundManager.getInstance();
+      mgr.play('tap');
+      mgr.startThemeSong('/sounds/themes/crane.mp3');
+      mgr.startThemeSong('/sounds/themes/crane.mp3');
+
+      deferredDecode.resolve({
+        length: 44100,
+        sampleRate: 44100,
+      } as AudioBuffer);
+      await flushAsyncAudioWork();
+
+      expect(mockCtx.createBufferSource).toHaveBeenCalledTimes(1);
+    });
+
+    it('stops active audio when hidden and restores the desired theme when visible again', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+        })
+      );
+
+      const mgr = SoundManager.getInstance();
+      mgr.startThemeSong('/sounds/themes/crane.mp3');
+      await mgr.unlock();
+      await flushAsyncAudioWork();
+
+      const firstThemeSource = mockCtx.createBufferSource.mock.results[0]?.value;
+      expect(firstThemeSource?.start).toHaveBeenCalledTimes(1);
+
+      visibilityState = 'hidden';
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      expect(firstThemeSource?.stop).toHaveBeenCalledTimes(1);
+
+      visibilityState = 'visible';
+      document.dispatchEvent(new Event('visibilitychange'));
+      await flushAsyncAudioWork();
+
+      expect(mockCtx.createBufferSource).toHaveBeenCalledTimes(2);
+    });
+
+    it('resets the audio context on persisted pageshow restores', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+        })
+      );
+
+      const mgr = SoundManager.getInstance();
+      mgr.startThemeSong('/sounds/themes/crane.mp3');
+      await mgr.unlock();
+      await flushAsyncAudioWork();
+
+      const pageShowEvent = new Event('pageshow');
+      Object.defineProperty(pageShowEvent, 'persisted', {
+        configurable: true,
+        value: true,
+      });
+
+      window.dispatchEvent(pageShowEvent);
+      await flushAsyncAudioWork();
+
+      expect(mockCtx.close).toHaveBeenCalledTimes(1);
+      expect(mockCtx.createBufferSource).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('additional lifecycle and branching coverage', () => {
+    it('falls back to defaults when stored settings JSON is invalid', () => {
+      localStorage.setItem('birdSoundSettings', '{not-json');
+
+      const mgr = SoundManager.getInstance();
+
+      expect(mgr.getSettings()).toEqual({
+        sfxMuted: false,
+        sfxVolume: 0.7,
+        musicMuted: false,
+        musicVolume: 1,
+      });
+    });
+
+    it('falls back to defaults when stored settings shape is unsupported', () => {
+      localStorage.setItem('birdSoundSettings', JSON.stringify({ enabled: true }));
+
+      const mgr = SoundManager.getInstance();
+
+      expect(mgr.getSettings()).toEqual({
+        sfxMuted: false,
+        sfxVolume: 0.7,
+        musicMuted: false,
+        musicVolume: 1,
+      });
+    });
+
+    it('plays cached file-backed sounds without refetching', async () => {
+      const fetchSpy = vi.fn().mockResolvedValue({
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+      });
+      vi.stubGlobal('fetch', fetchSpy);
+
+      const mgr = SoundManager.getInstance();
+      await mgr.preloadAll(['/sounds/fx/correct.mp3']);
+      await mgr.unlock();
+      await flushAsyncAudioWork();
+
+      fetchSpy.mockClear();
+      mockCtx.createBufferSource.mockClear();
+
+      mgr.play('correct');
+      await flushAsyncAudioWork();
+
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(mockCtx.createBufferSource).toHaveBeenCalledTimes(1);
+    });
+
+    it('starts synth-backed loops when the context is already ready', () => {
+      const mgr = SoundManager.getInstance();
+      mgr.play('tap');
+      mockCtx.createOscillator.mockClear();
+
+      mgr.startLoop('tap');
+
+      expect(mockCtx.createOscillator).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores unknown sound keys', () => {
+      const mgr = SoundManager.getInstance();
+
+      expect(() => mgr.play('unknown-sound' as never)).not.toThrow();
+      expect(mockCtx.createOscillator).not.toHaveBeenCalled();
+      expect(mockCtx.createBufferSource).not.toHaveBeenCalled();
+    });
+
+    it('does not start theme songs while music is muted', async () => {
+      const fetchSpy = vi.fn().mockResolvedValue({
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+      });
+      vi.stubGlobal('fetch', fetchSpy);
+
+      const mgr = SoundManager.getInstance();
+      mgr.setMusicMuted(true);
+      mgr.startThemeSong('/sounds/themes/crane.mp3');
+      await flushAsyncAudioWork();
+
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(mockCtx.createBufferSource).not.toHaveBeenCalled();
+    });
+
+    it('restarts the desired theme song when music is unmuted', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+        })
+      );
+
+      const mgr = SoundManager.getInstance();
+      mgr.setMusicMuted(true);
+      mgr.startThemeSong('/sounds/themes/crane.mp3');
+
+      expect(fetch).not.toHaveBeenCalled();
+
+      mgr.setMusicMuted(false);
+      await mgr.unlock();
+      await flushAsyncAudioWork();
+
+      expect(fetch).toHaveBeenCalledWith('/sounds/themes/crane.mp3');
+      expect(mockCtx.createBufferSource).toHaveBeenCalled();
+    });
+
+    it('restores the desired theme on non-persisted pageshow without resetting the context', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+        })
+      );
+
+      const mgr = SoundManager.getInstance();
+      mgr.startThemeSong('/sounds/themes/crane.mp3');
+      await mgr.unlock();
+      await flushAsyncAudioWork();
+
+      const firstThemeSource = mockCtx.createBufferSource.mock.results[0]?.value;
+      visibilityState = 'hidden';
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(firstThemeSource?.stop).toHaveBeenCalledTimes(1);
+
+      window.dispatchEvent(new Event('pageshow'));
+      await flushAsyncAudioWork();
+
+      expect(mockCtx.close).not.toHaveBeenCalled();
+      expect(mockCtx.createBufferSource).toHaveBeenCalledTimes(2);
+    });
+
+    it('stops active playback when the audio context reports an interruption', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+        })
+      );
+
+      const mgr = SoundManager.getInstance();
+      mgr.startThemeSong('/sounds/themes/crane.mp3');
+      await mgr.unlock();
+      await flushAsyncAudioWork();
+
+      const themeSource = mockCtx.createBufferSource.mock.results[0]?.value;
+      const activeCtx = (mgr as unknown as { ctx: AudioContext | null }).ctx;
+      if (!activeCtx) {
+        throw new Error('expected audio context');
+      }
+
+      Object.assign(activeCtx, { state: 'interrupted' as AudioContextState });
+      activeCtx.onstatechange?.();
+
+      expect(themeSource?.stop).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('gesture unlock registration', () => {
+    it('registers the gesture unlock listener only once', () => {
+      const mgr = SoundManager.getInstance();
+      const unlockSpy = vi.spyOn(mgr, 'unlock').mockResolvedValue(undefined);
+
+      mgr.registerGestureUnlock();
+      mgr.registerGestureUnlock();
+
+      window.dispatchEvent(new PointerEvent('pointerdown'));
+
+      expect(unlockSpy).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('graceful fallback', () => {
     it('handles AudioContext constructor throwing', () => {
-      vi.stubGlobal('AudioContext', vi.fn(() => { throw new Error('Not supported'); }));
+      vi.stubGlobal('AudioContext', function BrokenAudioContext() {
+        throw new Error('Not supported');
+      });
       const mgr = SoundManager.getInstance();
       // play should not throw
       mgr.play('tap');
