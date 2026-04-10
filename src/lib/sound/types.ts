@@ -12,6 +12,7 @@ export type SoundKey =
   | 'loadingLoop';
 
 export interface SoundController {
+  registerGestureUnlock(): void;
   unlock(): Promise<void>;
   preloadAll(extraUrls?: string[]): Promise<void>;
   play(key: SoundKey): void;
@@ -19,6 +20,7 @@ export interface SoundController {
   stopLoop(key: SoundKey | string): void;
   startThemeSong(url: string): void;
   stopThemeSong(): void;
+  stopAllLoops(): void;
   getSettings(): SoundSettings;
   setSfxMuted(muted: boolean): void;
   setSfxVolume(volume: number): void;

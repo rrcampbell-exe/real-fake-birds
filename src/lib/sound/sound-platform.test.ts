@@ -27,6 +27,7 @@ describe('sound-platform', () => {
 
   it('allows overriding the controller for future platform adapters', () => {
     const controller: SoundController = {
+      registerGestureUnlock: vi.fn(),
       unlock: vi.fn().mockResolvedValue(undefined),
       preloadAll: vi.fn().mockResolvedValue(undefined),
       play: vi.fn(),
@@ -34,6 +35,7 @@ describe('sound-platform', () => {
       stopLoop: vi.fn(),
       startThemeSong: vi.fn(),
       stopThemeSong: vi.fn(),
+      stopAllLoops: vi.fn(),
       getSettings: vi.fn().mockReturnValue({ sfxMuted: false, sfxVolume: 0.7, musicMuted: false, musicVolume: 1 }),
       setSfxMuted: vi.fn(),
       setSfxVolume: vi.fn(),
@@ -50,6 +52,7 @@ describe('sound-platform', () => {
     const resetInstanceSpy = vi.spyOn(SoundManager, 'resetInstance');
 
     setSoundController({
+      registerGestureUnlock: vi.fn(),
       unlock: vi.fn().mockResolvedValue(undefined),
       preloadAll: vi.fn().mockResolvedValue(undefined),
       play: vi.fn(),
@@ -57,6 +60,7 @@ describe('sound-platform', () => {
       stopLoop: vi.fn(),
       startThemeSong: vi.fn(),
       stopThemeSong: vi.fn(),
+      stopAllLoops: vi.fn(),
       getSettings: vi.fn().mockReturnValue({ sfxMuted: false, sfxVolume: 0.7, musicMuted: false, musicVolume: 1 }),
       setSfxMuted: vi.fn(),
       setSfxVolume: vi.fn(),

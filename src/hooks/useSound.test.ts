@@ -2,7 +2,18 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetSoundController } from '@/lib/sound/sound-platform';
 
+const mockResolveTheme = vi.fn();
+
+vi.mock('@/lib/utils/theme-handler', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/utils/theme-handler')>('@/lib/utils/theme-handler');
+  return {
+    ...actual,
+    resolveTheme: (...args: Parameters<typeof actual.resolveTheme>) => mockResolveTheme(...args),
+  };
+});
+
 // Mock the platform sound controller so hooks stay decoupled from the web implementation.
+const mockRegisterGestureUnlock = vi.fn();
 const mockPlay = vi.fn();
 const mockStartLoop = vi.fn();
 const mockStopLoop = vi.fn();
@@ -23,11 +34,13 @@ const mockUnlock = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@/lib/sound/sound-platform', () => ({
   getSoundController: vi.fn(() => ({
+    registerGestureUnlock: mockRegisterGestureUnlock,
     play: mockPlay,
     startLoop: mockStartLoop,
     stopLoop: mockStopLoop,
     startThemeSong: mockStartThemeSong,
     stopThemeSong: mockStopThemeSong,
+    stopAllLoops: vi.fn(),
     setSfxMuted: mockSetSfxMuted,
     setSfxVolume: mockSetSfxVolume,
     setMusicMuted: mockSetMusicMuted,
@@ -41,8 +54,11 @@ vi.mock('@/lib/sound/sound-platform', () => ({
 
 import { useSound } from './useSound';
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
+  mockResolveTheme.mockReset();
+  const actual = await vi.importActual<typeof import('@/lib/utils/theme-handler')>('@/lib/utils/theme-handler');
+  mockResolveTheme.mockImplementation(actual.resolveTheme);
 });
 
 afterEach(() => {
@@ -53,6 +69,7 @@ afterEach(() => {
 describe('useSound', () => {
   it('calls preloadAll on mount', () => {
     renderHook(() => useSound());
+    expect(mockRegisterGestureUnlock).toHaveBeenCalledTimes(1);
     expect(mockPreloadAll).toHaveBeenCalledTimes(1);
     expect(mockPreloadAll).toHaveBeenCalledWith(['/sounds/themes/finch.mp3']);
   });
@@ -199,13 +216,48 @@ describe('useSound', () => {
     expect(mockSetMusicVolume).toHaveBeenCalledWith(0.8);
   });
 
-  it('unlocks audio on the first user gesture', () => {
+  it('syncs music muted setting into SoundManager when it differs', () => {
+    localStorage.setItem(
+      'birdSoundSettings',
+      JSON.stringify({ sfxMuted: false, sfxVolume: 0.7, musicMuted: true, musicVolume: 1 })
+    );
+    mockGetSettings.mockReturnValue({ sfxMuted: false, sfxVolume: 0.7, musicMuted: false, musicVolume: 1 });
+
+    renderHook(() => useSound());
+    expect(mockSetMusicMuted).toHaveBeenCalledWith(true);
+  });
+
+  it('does not resync settings when the controller already matches stored values', () => {
+    localStorage.setItem(
+      'birdSoundSettings',
+      JSON.stringify({ sfxMuted: true, sfxVolume: 0.25, musicMuted: true, musicVolume: 0.5 })
+    );
+    mockGetSettings.mockReturnValue({ sfxMuted: true, sfxVolume: 0.25, musicMuted: true, musicVolume: 0.5 });
+
     renderHook(() => useSound());
 
-    act(() => {
-      window.dispatchEvent(new PointerEvent('pointerdown'));
+    expect(mockSetSfxMuted).not.toHaveBeenCalled();
+    expect(mockSetSfxVolume).not.toHaveBeenCalled();
+    expect(mockSetMusicMuted).not.toHaveBeenCalled();
+    expect(mockSetMusicVolume).not.toHaveBeenCalled();
+  });
+
+  it('skips theme-song preloading when the resolved theme has no song', () => {
+    mockResolveTheme.mockReturnValue({
+      name: 'Silent',
+      primary: '#000000',
+      secondary: '#111111',
+      textColor: '#FFFFFF',
     });
 
-    expect(mockUnlock).toHaveBeenCalledTimes(1);
+    renderHook(() => useSound());
+
+    expect(mockPreloadAll).not.toHaveBeenCalled();
+  });
+
+  it('registers gesture unlock handling on mount', () => {
+    renderHook(() => useSound());
+    expect(mockRegisterGestureUnlock).toHaveBeenCalledTimes(1);
+    expect(mockUnlock).not.toHaveBeenCalled();
   });
 });
