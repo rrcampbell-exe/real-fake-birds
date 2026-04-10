@@ -118,6 +118,7 @@ export class SoundManager implements SoundController {
   private pendingThemeSongUrl: string | null = null;
   private themeSongGeneration = 0;
   private themeSongLoadingKey: string | null = null;
+  private isFlushing = false;
   private gestureUnlockRegistered = false;
   private gestureUnlockHandler: (() => void) | null = null;
   private readonly handleVisibilityChange = () => {
@@ -363,10 +364,9 @@ export class SoundManager implements SoundController {
     const ctx = this.ctx;
     const startThemeSong = () => {
       if (!this.musicGain) return;
-      this.stopAllPlayback({ preserveThemeSong: true, stopSfx: false, invalidateThemeGeneration: false });
+      this.stopAllPlayback({ preserveThemeSong: false, stopSfx: false, invalidateThemeGeneration: false });
       this.activeThemeSongKey = loopKey;
       this.themeSongLoadingKey = loopKey;
-      this.pendingThemeSongUrl = url;
       void this.startFileLoop(loopKey, url, this.musicGain, 0.18, {
         themeSongGeneration: currentGeneration,
       });
@@ -440,6 +440,16 @@ export class SoundManager implements SoundController {
       if (options?.themeSongGeneration !== undefined && this.themeSongGeneration !== options.themeSongGeneration) {
         this.themeSongLoadingKey = null;
         return;
+      }
+
+      // Hard guard: stop any theme-song source that already slipped through.
+      // This prevents two theme AudioBufferSourceNodes from co-existing
+      // regardless of any race window we failed to close above.
+      for (const [loopKey, existing] of this.activeLoops) {
+        if (loopKey.startsWith('theme-song:')) {
+          existing.stop();
+          this.activeLoops.delete(loopKey);
+        }
       }
     }
 
@@ -581,21 +591,27 @@ export class SoundManager implements SoundController {
   }
 
   private flushDeferredAudio(): void {
+    if (this.isFlushing) return;
     if (!this.ctx || this.ctx.state !== 'running') return;
 
-    const pendingThemeSongUrl = this.pendingThemeSongUrl;
-    const pendingLoops = [...this.pendingLoops];
+    this.isFlushing = true;
+    try {
+      const pendingThemeSongUrl = this.pendingThemeSongUrl;
+      const pendingLoops = [...this.pendingLoops];
 
-    this.pendingThemeSongUrl = null;
-    this.pendingLoops.clear();
+      this.pendingThemeSongUrl = null;
+      this.pendingLoops.clear();
 
-    if (pendingThemeSongUrl && !this.settings.musicMuted) {
-      this.startThemeSong(pendingThemeSongUrl);
-    }
+      if (pendingThemeSongUrl && !this.settings.musicMuted) {
+        this.startThemeSong(pendingThemeSongUrl);
+      }
 
-    for (const key of pendingLoops) {
-      if (this.settings.sfxMuted) break;
-      this.startLoop(key);
+      for (const key of pendingLoops) {
+        if (this.settings.sfxMuted) break;
+        this.startLoop(key);
+      }
+    } finally {
+      this.isFlushing = false;
     }
   }
 

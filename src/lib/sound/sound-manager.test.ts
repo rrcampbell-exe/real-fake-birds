@@ -422,6 +422,33 @@ describe('SoundManager', () => {
       expect(mockCtx.createBufferSource).toHaveBeenCalledTimes(1);
     });
 
+    it('hard-kills an existing theme-song source if a second slips through to startFileLoop', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+        })
+      );
+
+      const mgr = SoundManager.getInstance();
+      mgr.startThemeSong('/sounds/themes/crane.mp3');
+      await mgr.unlock();
+      await flushAsyncAudioWork();
+
+      const firstSource = mockCtx.createBufferSource.mock.results[0]?.value;
+      expect(firstSource?.start).toHaveBeenCalledTimes(1);
+
+      // Simulate a second theme-song arriving despite dedup guards (e.g. iOS event race).
+      // Switch to a different theme to bypass the dedup key check.
+      mgr.startThemeSong('/sounds/themes/heron.mp3');
+      await flushAsyncAudioWork();
+
+      // The hard guard in startFileLoop should have stopped the first source.
+      expect(firstSource?.stop).toHaveBeenCalled();
+      // And a new source was created for heron.
+      expect(mockCtx.createBufferSource).toHaveBeenCalledTimes(2);
+    });
+
     it('stops active audio when hidden and restores the desired theme when visible again', async () => {
       vi.stubGlobal(
         'fetch',
@@ -628,6 +655,30 @@ describe('SoundManager', () => {
       activeCtx.onstatechange?.();
 
       expect(themeSource?.stop).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not re-enter flushDeferredAudio when already flushing', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+        })
+      );
+
+      const mgr = SoundManager.getInstance();
+
+      // Queue a pending theme song that would trigger startThemeSong during flush,
+      // which in turn calls runWhenReady → flushDeferredAudio again.
+      mgr.startThemeSong('/sounds/themes/crane.mp3');
+      await mgr.unlock();
+      await flushAsyncAudioWork();
+
+      // Should have created exactly one theme-song source, not two
+      // (re-entrant flush guard prevents the circular startThemeSong→flush→startThemeSong loop).
+      const themeSources = mockCtx.createBufferSource.mock.results.filter(
+        (r: { value: ReturnType<typeof createMockBufferSource> }) => r.value?.loop === true
+      );
+      expect(themeSources.length).toBe(1);
     });
   });
 
