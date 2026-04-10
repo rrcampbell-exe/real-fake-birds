@@ -70,6 +70,12 @@ export interface SyncLocalProgressResponse {
   journalCount: number;
 }
 
+export interface SyncBirdJournalResponse {
+  action: 'sync-bird-journal';
+  syncedAt: string;
+  journalCount: number;
+}
+
 export interface PullAccountProgressResponse {
   action: 'pull-account-progress';
   progress: LocalProgressPayload;
@@ -260,6 +266,13 @@ export function syncLocalProgress(progress: LocalProgressPayload): Promise<SyncL
   return postAuthAction<SyncLocalProgressResponse>({
     action: 'sync-local-progress',
     progress,
+  });
+}
+
+export function syncBirdJournal(journalEntries: BirdJournalEntry[]): Promise<SyncBirdJournalResponse> {
+  return postAuthAction<SyncBirdJournalResponse>({
+    action: 'sync-bird-journal',
+    journalEntries,
   });
 }
 

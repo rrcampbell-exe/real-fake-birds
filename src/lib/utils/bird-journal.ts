@@ -2,6 +2,7 @@ import { notifyStoredValueChanged } from '@/hooks/useStoredValue';
 import type { BirdJournalEntry, BirdJournalMetadata, BirdJournalStore } from '@/types';
 
 export const BIRD_JOURNAL_STORAGE_KEY = 'birdJournal';
+export const BIRD_JOURNAL_DIRTY_KEYS_STORAGE_KEY = 'birdJournalDirtyKeys';
 export const CURRENT_ROUND_JOURNAL_BIRD_KEY = 'currentRoundJournalBirdKey';
 export const CURRENT_ROUND_JOURNAL_REVEAL_KEY = 'currentRoundJournalRevealKey';
 
@@ -120,6 +121,48 @@ function readStoredStringValue(key: string): string | null {
   }
 }
 
+function readStoredStringArrayValue(key: string): string[] {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  const raw = localStorage.getItem(key);
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter((value): value is string => typeof value === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredStringArrayValue(key: string, values: string[], notify = true): string[] {
+  const nextValues = Array.from(
+    new Set(values.filter((value): value is string => typeof value === 'string' && value.length > 0))
+  );
+
+  if (typeof window === 'undefined') {
+    return nextValues;
+  }
+
+  if (nextValues.length === 0) {
+    localStorage.removeItem(key);
+  } else {
+    localStorage.setItem(key, JSON.stringify(nextValues));
+  }
+
+  if (notify) {
+    notifyStoredValueChanged(key);
+  }
+
+  return nextValues;
+}
+
 function writeStoredStringValue(key: string, value: string | null): void {
   if (typeof window === 'undefined') {
     return;
@@ -148,6 +191,36 @@ export function readCurrentRoundJournalRevealKey(): string | null {
 
 export function writeCurrentRoundJournalRevealKey(birdKey: string | null): void {
   writeStoredStringValue(CURRENT_ROUND_JOURNAL_REVEAL_KEY, birdKey);
+}
+
+export function readDirtyBirdJournalKeys(): string[] {
+  return readStoredStringArrayValue(BIRD_JOURNAL_DIRTY_KEYS_STORAGE_KEY);
+}
+
+export function markDirtyBirdJournalKeys(birdKeys: string[]): string[] {
+  return writeStoredStringArrayValue(
+    BIRD_JOURNAL_DIRTY_KEYS_STORAGE_KEY,
+    [...readDirtyBirdJournalKeys(), ...birdKeys]
+  );
+}
+
+export function clearDirtyBirdJournalKeys(birdKeys?: string[]): string[] {
+  if (!birdKeys) {
+    return writeStoredStringArrayValue(BIRD_JOURNAL_DIRTY_KEYS_STORAGE_KEY, []);
+  }
+
+  const removedKeys = new Set(birdKeys);
+  return writeStoredStringArrayValue(
+    BIRD_JOURNAL_DIRTY_KEYS_STORAGE_KEY,
+    readDirtyBirdJournalKeys().filter((birdKey) => !removedKeys.has(birdKey))
+  );
+}
+
+export function getDirtyBirdJournalEntries(): BirdJournalEntry[] {
+  const journal = readBirdJournal();
+  return readDirtyBirdJournalKeys()
+    .map((birdKey) => journal[birdKey])
+    .filter((entry): entry is BirdJournalEntry => Boolean(entry));
 }
 
 export function isJournalEntryMaskedForCurrentRound(options: {
@@ -191,6 +264,7 @@ export function recordBirdEncounter(options: {
     ...journal,
     [birdKey]: nextEntry,
   });
+  markDirtyBirdJournalKeys([birdKey]);
 
   return nextEntry;
 }
@@ -215,6 +289,7 @@ export function revealBirdClassification(birdKey: string): BirdJournalEntry | nu
     ...journal,
     [birdKey]: nextEntry,
   });
+  markDirtyBirdJournalKeys([birdKey]);
 
   return nextEntry;
 }

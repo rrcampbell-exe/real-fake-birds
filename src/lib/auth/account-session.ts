@@ -1,9 +1,9 @@
 import { CURRENT_HINTS_STORAGE_KEY } from '@/lib/constants/hints';
-import { applyProgressEvents, pullAccountProgress, syncLocalProgress, type LocalProgressPayload } from '@/lib/auth/account-sync';
+import { applyProgressEvents, pullAccountProgress, syncBirdJournal, syncLocalProgress, type LocalProgressPayload } from '@/lib/auth/account-sync';
 import { applyPulledAccountProgress } from '@/lib/auth/account-sync-local';
 import type { ProgressEvent } from '@/lib/progress/progress-events';
 import { clearProgressEventOutbox, readProgressEventOutbox, removeQueuedProgressEvents } from '@/lib/progress/progress-event-outbox';
-import { readBirdJournal, writeBirdJournal } from '@/lib/utils/bird-journal';
+import { clearDirtyBirdJournalKeys, getDirtyBirdJournalEntries, readBirdJournal, writeBirdJournal } from '@/lib/utils/bird-journal';
 import {
   getTodayChallengeDate,
   readDailyChallengeHistory,
@@ -69,6 +69,18 @@ function resetEphemeralLocalState(): void {
   localStorage.removeItem(`${CURRENT_HINTS_STORAGE_KEY}:daily`);
 }
 
+async function pushDirtyBirdJournalEntriesToAccount(): Promise<void> {
+  const dirtyJournalEntries = getDirtyBirdJournalEntries();
+  if (dirtyJournalEntries.length === 0) {
+    return;
+  }
+
+  const response = await syncBirdJournal(dirtyJournalEntries);
+  if (response.journalCount > 0) {
+    clearDirtyBirdJournalKeys(dirtyJournalEntries.map((entry) => entry.birdKey));
+  }
+}
+
 export function mergeFlushedProgressScore(
   localScore: BirdScore,
   remoteScoreLike: Partial<BirdScore>,
@@ -115,6 +127,7 @@ export async function flushQueuedProgressEventsForSignedInUser(): Promise<void> 
       writeBirdScore(mergeFlushedProgressScore(readBirdScore(), response.snapshot.score, queuedEvents));
       setUnlockedThemeNames(response.snapshot.unlockedThemes);
       writeDailyChallengeHistory(response.snapshot.dailyChallengeHistory);
+      await pushDirtyBirdJournalEntriesToAccount();
     }
   })().finally(() => {
     progressFlushPromise = null;
@@ -159,6 +172,12 @@ export async function syncSignedInAccountToLocalState(options?: { notify?: boole
       // Pull the latest snapshot even if local event flush fails.
     }
 
+    try {
+      await pushDirtyBirdJournalEntriesToAccount();
+    } catch {
+      // Keep unsynced journal updates so the next sync attempt can retry.
+    }
+
     const response = await pullAccountProgress(getTodayMissionDate());
     applyPulledAccountProgress({
       ...response.progress,
@@ -201,6 +220,7 @@ export function resetLocalStateForGuestSession(): void {
   writeDailyChallengeHistory([]);
   writeDailyMissionHistory([]);
   writeBirdJournal({});
+  clearDirtyBirdJournalKeys();
   resetEphemeralLocalState();
   clearProgressEventOutbox();
   notifyAccountStateChanged();
