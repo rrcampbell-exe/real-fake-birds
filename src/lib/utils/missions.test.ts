@@ -1,7 +1,78 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { applyRoundToSessionMissions, createMissionRewardSummary, createSessionMissionsStateForDate, getMissionDefinitionsForState, getMissionRewardEventId, readSessionMissions, resetSessionMissions, writeSessionMissions } from './missions';
+import {
+  applyJournalClassificationViewToSessionMissions,
+  applyRoundToSessionMissions,
+  applyStreakInsuranceUseToSessionMissions,
+  buildMissionRewardGrantEvents,
+  createMissionRewardSummary,
+  createSessionMissionsStateForDate,
+  getMissionDefinitionsForState,
+  getMissionRewardEventId,
+  readSessionMissions,
+  resetSessionMissions,
+  writeSessionMissions,
+} from './missions';
 import { BIRD_SCORE_STORAGE_KEY, defaultBirdScore } from './player-progress';
-import type { GameRoundResult } from '@/types';
+import { missionDefinitions } from '@/lib/constants/missions';
+import type { GameRoundResult, MissionType } from '@/types';
+
+function formatDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function findDateWithMissionIds(missionIds: string[], startDate = '2026-04-01', maxDays = 365): string {
+  const cursor = new Date(`${startDate}T12:00:00.000Z`);
+
+  for (let index = 0; index < maxDays; index += 1) {
+    const date = formatDate(cursor);
+    const missionIdSet = new Set(createSessionMissionsStateForDate(date).missions.map((mission) => mission.missionId));
+
+    if (missionIds.every((missionId) => missionIdSet.has(missionId))) {
+      return date;
+    }
+
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  throw new Error(`Unable to find mission date for: ${missionIds.join(', ')}`);
+}
+
+function findDateWithMissionTypes(
+  allowedMissionTypes: MissionType[],
+  startDate = '2026-04-01',
+  maxDays = 365
+): string {
+  const allowedTypeSet = new Set(allowedMissionTypes);
+  const cursor = new Date(`${startDate}T12:00:00.000Z`);
+
+  for (let index = 0; index < maxDays; index += 1) {
+    const date = formatDate(cursor);
+    const missionTypes = getMissionDefinitionsForState(createSessionMissionsStateForDate(date)).map(
+      (mission) => mission.type
+    );
+
+    if (missionTypes.every((missionType) => allowedTypeSet.has(missionType))) {
+      return date;
+    }
+
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  throw new Error(`Unable to find mission date for mission types: ${allowedMissionTypes.join(', ')}`);
+}
+
+function setupMissionState(missionId: string) {
+  const date = findDateWithMissionIds([missionId]);
+  vi.setSystemTime(new Date(`${date}T12:00:00.000Z`));
+  const baseState = createSessionMissionsStateForDate(date);
+  const mission = getMissionDefinitionsForState(baseState).find((definition) => definition.id === missionId);
+
+  if (!mission) {
+    throw new Error(`Mission ${missionId} was not present for ${date}`);
+  }
+
+  return { date, baseState, mission };
+}
 
 function buildRoundResult(overrides: Partial<GameRoundResult> = {}): GameRoundResult {
   return {
@@ -35,6 +106,12 @@ describe('mission rewards', () => {
     localStorage.clear();
     localStorage.setItem(BIRD_SCORE_STORAGE_KEY, JSON.stringify(defaultBirdScore));
     vi.setSystemTime(new Date(2026, 3, 5, 12, 0, 0));
+  });
+
+  it('defines a 20-mission pool', () => {
+    expect(missionDefinitions).toHaveLength(20);
+    expect(missionDefinitions.some((mission) => mission.id === 'bird-brain')).toBe(true);
+    expect(missionDefinitions.some((mission) => mission.id === 'true-colors')).toBe(true);
   });
 
   it('auto-claims mission rewards and credits seeds when a mission completes', () => {
@@ -87,11 +164,8 @@ describe('incrementForMission – branch coverage', () => {
     localStorage.setItem(BIRD_SCORE_STORAGE_KEY, JSON.stringify(defaultBirdScore));
   });
 
-  // 2026-04-05 has: no-peeking (correct_without_hints), deep-focus (correct_without_hints), full-flight (play_rounds)
   it('correct_without_hints increments for correct answer without hints', () => {
-    vi.setSystemTime(new Date(2026, 3, 5, 12, 0, 0));
-    const date = '2026-04-05';
-    const baseState = createSessionMissionsStateForDate(date);
+    const { baseState } = setupMissionState('no-peeking');
     writeSessionMissions({
       ...baseState,
       missions: baseState.missions.map((m) =>
@@ -106,9 +180,7 @@ describe('incrementForMission – branch coverage', () => {
   });
 
   it('correct_without_hints does not increment when hints were used', () => {
-    vi.setSystemTime(new Date(2026, 3, 5, 12, 0, 0));
-    const date = '2026-04-05';
-    const baseState = createSessionMissionsStateForDate(date);
+    const { baseState } = setupMissionState('no-peeking');
     writeSessionMissions({
       ...baseState,
       missions: baseState.missions.map((m) =>
@@ -122,11 +194,8 @@ describe('incrementForMission – branch coverage', () => {
     expect(missionEntry?.progress).toBe(0);
   });
 
-  // 2026-04-01 has: fraud-watch (identify_fake_birds), seed-harvest (earn_seeds), field-notes (use_hints)
   it('use_hints increments by the number of hints used', () => {
-    vi.setSystemTime(new Date(2026, 3, 1, 12, 0, 0));
-    const date = '2026-04-01';
-    const baseState = createSessionMissionsStateForDate(date);
+    const { baseState } = setupMissionState('field-notes');
     writeSessionMissions({
       ...baseState,
       missions: baseState.missions.map((m) =>
@@ -141,9 +210,7 @@ describe('incrementForMission – branch coverage', () => {
   });
 
   it('use_hints does not increment when no hints were used', () => {
-    vi.setSystemTime(new Date(2026, 3, 1, 12, 0, 0));
-    const date = '2026-04-01';
-    const baseState = createSessionMissionsStateForDate(date);
+    const { baseState } = setupMissionState('field-notes');
     writeSessionMissions({
       ...baseState,
       missions: baseState.missions.map((m) =>
@@ -158,9 +225,7 @@ describe('incrementForMission – branch coverage', () => {
   });
 
   it('identify_fake_birds increments for correct fake bird identification', () => {
-    vi.setSystemTime(new Date(2026, 3, 1, 12, 0, 0));
-    const date = '2026-04-01';
-    const baseState = createSessionMissionsStateForDate(date);
+    const { baseState } = setupMissionState('fraud-watch');
     writeSessionMissions({
       ...baseState,
       missions: baseState.missions.map((m) =>
@@ -175,9 +240,7 @@ describe('incrementForMission – branch coverage', () => {
   });
 
   it('identify_fake_birds does not increment for incorrect answer', () => {
-    vi.setSystemTime(new Date(2026, 3, 1, 12, 0, 0));
-    const date = '2026-04-01';
-    const baseState = createSessionMissionsStateForDate(date);
+    const { baseState } = setupMissionState('fraud-watch');
     writeSessionMissions({
       ...baseState,
       missions: baseState.missions.map((m) =>
@@ -191,11 +254,8 @@ describe('incrementForMission – branch coverage', () => {
     expect(missionEntry?.progress).toBe(0);
   });
 
-  // 2026-04-02 has: field-notes (use_hints), real-deal (identify_real_birds), no-peeking (correct_without_hints)
   it('identify_real_birds increments for correct real bird identification', () => {
-    vi.setSystemTime(new Date(2026, 3, 2, 12, 0, 0));
-    const date = '2026-04-02';
-    const baseState = createSessionMissionsStateForDate(date);
+    const { baseState } = setupMissionState('real-deal');
     writeSessionMissions({
       ...baseState,
       missions: baseState.missions.map((m) =>
@@ -210,9 +270,7 @@ describe('incrementForMission – branch coverage', () => {
   });
 
   it('identify_real_birds does not increment for fake bird', () => {
-    vi.setSystemTime(new Date(2026, 3, 2, 12, 0, 0));
-    const date = '2026-04-02';
-    const baseState = createSessionMissionsStateForDate(date);
+    const { baseState } = setupMissionState('real-deal');
     writeSessionMissions({
       ...baseState,
       missions: baseState.missions.map((m) =>
@@ -226,10 +284,17 @@ describe('incrementForMission – branch coverage', () => {
     expect(missionEntry?.progress).toBe(0);
   });
 
-  // 2026-04-06 has: warmup-rounds (play_rounds), full-flight (play_rounds), no-peeking (correct_without_hints)
   it('completes the mission set bonus when all missions complete in one round', () => {
-    vi.setSystemTime(new Date(2026, 3, 6, 12, 0, 0));
-    const date = '2026-04-06';
+    const date = findDateWithMissionTypes([
+      'play_rounds',
+      'correct_answers',
+      'correct_without_hints',
+      'earn_seeds',
+      'identify_real_birds',
+      'identify_new_species',
+      'reach_streak',
+    ]);
+    vi.setSystemTime(new Date(`${date}T12:00:00.000Z`));
     const baseState = createSessionMissionsStateForDate(date);
     const defs = getMissionDefinitionsForState(baseState);
     writeSessionMissions({
@@ -245,12 +310,78 @@ describe('incrementForMission – branch coverage', () => {
       isReal: true,
       roundSeedsEarned: 20,
       seedsEarned: 20,
+      currentStreak: 20,
       usedHintTypes: [],
     });
-    const update = applyRoundToSessionMissions(roundResult);
+    const update = applyRoundToSessionMissions(roundResult, { isNewBirdEncounter: true });
     expect(update.completedDailyMissionSet).toBe(true);
     expect(update.missionSetBonusSeedsEarned).toBeGreaterThan(0);
     expect(update.dailyMissionStreak).toBeGreaterThanOrEqual(1);
+  });
+
+  it('increments new-species missions when a round reveals a first-time encounter', () => {
+    const { baseState } = setupMissionState('fresh-feathers');
+    writeSessionMissions({
+      ...baseState,
+      missions: baseState.missions.map((mission) =>
+        mission.missionId === 'fresh-feathers' ? { ...mission, progress: 1 } : mission
+      ),
+    });
+
+    const update = applyRoundToSessionMissions(buildRoundResult(), {
+      isNewBirdEncounter: true,
+    });
+
+    expect(update.nextState.missions.find((mission) => mission.missionId === 'fresh-feathers')).toMatchObject({
+      completed: true,
+      claimed: true,
+    });
+  });
+
+  it('completes streak missions when the target streak is reached', () => {
+    const { baseState } = setupMissionState('hot-streak');
+    writeSessionMissions({
+      ...baseState,
+      missions: baseState.missions.map((mission) =>
+        mission.missionId === 'hot-streak' ? { ...mission, progress: 0 } : mission
+      ),
+    });
+
+    const update = applyRoundToSessionMissions(buildRoundResult({ currentStreak: 10 }));
+
+    expect(update.nextState.missions.find((mission) => mission.missionId === 'hot-streak')).toMatchObject({
+      completed: true,
+      claimed: true,
+    });
+  });
+
+  it('credits journal-classification missions when a journal detail view is opened', () => {
+    const { date, baseState } = setupMissionState('journal-check-in');
+    writeSessionMissions(baseState);
+
+    const update = applyJournalClassificationViewToSessionMissions(date);
+
+    expect(update.nextState.missions.find((mission) => mission.missionId === 'journal-check-in')).toMatchObject({
+      completed: true,
+      claimed: true,
+    });
+  });
+
+  it('includes only missions that can progress from live product actions', () => {
+    expect(missionDefinitions.every((mission) => mission.id !== 'daily-dedication')).toBe(true);
+    expect(missionDefinitions.every((mission) => mission.id !== 'perfect-plumage')).toBe(true);
+  });
+
+  it('credits streak-insurance missions when insurance is armed', () => {
+    const { date, baseState } = setupMissionState('insurance-audit');
+    writeSessionMissions(baseState);
+
+    const update = applyStreakInsuranceUseToSessionMissions(date);
+
+    expect(update.nextState.missions.find((mission) => mission.missionId === 'insurance-audit')).toMatchObject({
+      completed: true,
+      claimed: true,
+    });
   });
 });
 
@@ -329,6 +460,14 @@ describe('mission state storage and helper coverage', () => {
       rewardSeeds: expect.any(Number),
     });
     expect(createMissionRewardSummary('unknown-mission')).toBeNull();
+
+    expect(buildMissionRewardGrantEvents('2026-04-05', {
+      missionRewards: [{ missionId: 'warmup-rounds', description: 'Warmup', toastDescription: 'Warmup', rewardSeeds: 8 }],
+      missionSetBonusSeedsEarned: 15,
+    })).toEqual([
+      { eventId: '2026-04-05:warmup-rounds', missionId: 'warmup-rounds', rewardSeeds: 8 },
+      { eventId: '2026-04-05:mission-set-bonus', missionId: 'mission-set-bonus', rewardSeeds: 15 },
+    ]);
   });
 
   it('filters unknown mission ids from mission definitions', () => {

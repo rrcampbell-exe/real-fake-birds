@@ -100,6 +100,19 @@ describe('buildSignUpPromptContent', () => {
     expect(content.nextRewardLine).toContain('Gull');
   });
 
+  it('can point the next reward line at an intermediate seed milestone', () => {
+    const content = buildSignUpPromptContent({
+      birdsSeen: 380,
+      birdsIdentified: 360,
+      seeds: 44,
+      unlockedThemeNames: ['Finch', 'Raven', 'Robin', 'Gull', 'Crane', 'Woodpecker', 'Blue Jay', 'Oriole', 'Heron', 'Cardinal'],
+      leaderboard: null,
+    });
+
+    expect(content.nextRewardLine).toContain('+50 bonus seeds');
+    expect(content.nextRewardLine).toContain('15 more correct birds');
+  });
+
   it('supports badges-only and themes-only achievement copy', () => {
     const badgesOnly = buildSignUpPromptContent({
       birdsSeen: 20,

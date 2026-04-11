@@ -1,5 +1,5 @@
 import { DAILY_CHALLENGE_CONFIG } from '@/lib/constants/daily-challenge';
-import { milestones } from '@/lib/constants/milestones';
+import { progressMilestones } from '@/lib/constants/milestones';
 import { getStreakReward } from '@/lib/constants/streaks';
 import { getThemeUnlockByMilestoneValue } from '@/lib/constants/theme-unlocks';
 import { defaultBirdScore, normalizeBirdScore } from '@/lib/utils/player-progress';
@@ -167,9 +167,11 @@ export function applyProgressEvents(
     const nextBestStreak = event.payload.isCorrect
       ? Math.max(snapshot.score.bestStreak, nextCurrentStreak)
       : snapshot.score.bestStreak;
-    const seedsEarned = event.payload.isCorrect
-      ? BASE_CORRECT_SEED_REWARD + calculateStreakSeedReward(nextCurrentStreak)
-      : 0;
+    const seedsEarned = typeof event.payload.seedsEarned === 'number'
+      ? Math.max(0, Math.floor(event.payload.seedsEarned))
+      : event.payload.isCorrect
+        ? BASE_CORRECT_SEED_REWARD + calculateStreakSeedReward(nextCurrentStreak)
+        : 0;
     const nextSeeds = snapshot.score.seeds + seedsEarned;
 
     let nextHistory = snapshot.dailyChallengeHistory;
@@ -182,7 +184,7 @@ export function applyProgressEvents(
     }
     const nextMilestones = uniqueNumbers([
       ...snapshot.milestoneValues,
-      ...milestones
+      ...progressMilestones
         .filter((milestone) => milestone.value <= nextBirdsIdentified)
         .map((milestone) => milestone.value),
     ]);

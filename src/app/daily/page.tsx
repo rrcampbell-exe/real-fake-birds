@@ -1,21 +1,27 @@
 'use client';
 
+import { useEffect } from 'react';
 import { Bird, CalendarDays, Flame, Gift, Sprout } from 'lucide-react';
 import Link from 'next/link';
 import MissionPanel from '@/components/game/MissionPanel';
 import { usePageProgressSync } from '@/hooks/usePageProgressSync';
 import { useSessionMissions } from '@/hooks/useSessionMissions';
 import { useStoredJson } from '@/hooks/useStoredValue';
+import { markDailyMissionDateSeen } from '@/lib/utils/daily-mission-notification';
 import { DAILY_MISSION_HISTORY_STORAGE_KEY, getDailyMissionStreaks } from '@/lib/utils/daily-mission-history';
 import type { DailyMissionHistoryEntry } from '@/types';
 
 export default function DailyChallengePage() {
   const { isPageBackgroundRefreshing } = usePageProgressSync();
-  const { missions, allCompleted, bonusClaimed } = useSessionMissions();
+  const { state, missions, allCompleted, bonusClaimed } = useSessionMissions();
   const missionHistory = useStoredJson<DailyMissionHistoryEntry[]>(DAILY_MISSION_HISTORY_STORAGE_KEY, []);
   const { currentStreak } = getDailyMissionStreaks(missionHistory);
   const completedCount = missions.filter((mission) => mission.completed).length;
   const rewardedCount = missions.filter((mission) => mission.claimed).length + (bonusClaimed ? 1 : 0);
+
+  useEffect(() => {
+    markDailyMissionDateSeen(state.date);
+  }, [state.date]);
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">

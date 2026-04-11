@@ -9,13 +9,11 @@ import { useHasHydrated } from '@/hooks/useHasHydrated';
 import { useStoredBoolean, useStoredJson } from '@/hooks/useStoredValue';
 import { useSound } from '@/hooks/useSound';
 import { NEW_THEME_UNLOCK_STORAGE_KEY, UNSEEN_BADGES_STORAGE_KEY } from '@/lib/utils/player-progress';
-import { DAILY_CHALLENGE_STORAGE_KEY } from '@/lib/constants/daily-challenge';
 import { SESSION_MISSIONS_STORAGE_KEY } from '@/lib/constants/missions';
-import { createDailyChallengeState } from '@/lib/utils/daily-challenge';
+import { DAILY_MISSION_LAST_SEEN_DATE_STORAGE_KEY } from '@/lib/utils/daily-mission-notification';
 import { readSessionMissions } from '@/lib/utils/missions';
-import { hasPendingRewards } from '@/lib/utils/rewards-notification';
 import { LEADERBOARD_LAST_SEEN_WEEK_STORAGE_KEY, getCurrentWeekStart } from '@/lib/utils/weekly-leaderboard';
-import type { DailyChallengeState, SessionMissionsState } from '@/types';
+import type { SessionMissionsState } from '@/types';
 import MenuDrawer from './MenuDrawer';
 
 export default function BottomNav() {
@@ -25,22 +23,15 @@ export default function BottomNav() {
   const hasUnseenBadges = useStoredBoolean(UNSEEN_BADGES_STORAGE_KEY);
   const hasNewThemeUnlock = useStoredBoolean(NEW_THEME_UNLOCK_STORAGE_KEY);
   const lastSeenLeaderboardWeek = useStoredJson<string | null>(LEADERBOARD_LAST_SEEN_WEEK_STORAGE_KEY, null);
-  const dailyChallengeState = useStoredJson<DailyChallengeState>(
-    DAILY_CHALLENGE_STORAGE_KEY,
-    createDailyChallengeState()
-  );
+  const lastSeenDailyMissionDate = useStoredJson<string | null>(DAILY_MISSION_LAST_SEEN_DATE_STORAGE_KEY, null);
   const sessionMissionsState = useStoredJson<SessionMissionsState>(
     SESSION_MISSIONS_STORAGE_KEY,
     readSessionMissions()
   );
-  const hasPendingRewardClaims = hasPendingRewards(dailyChallengeState, sessionMissionsState);
   const { play } = useSound();
   const hasIncompleteDaily = sessionMissionsState.missions.some((mission) => !mission.completed);
-  const rewardsNotificationLabel = hasPendingRewardClaims
-    ? 'Claim new rewards now!'
-    : hasUnseenBadges
-      ? 'See your newest badge now!'
-      : undefined;
+  const showDailyNotification = hasIncompleteDaily && lastSeenDailyMissionDate !== sessionMissionsState.date;
+  const rewardsNotificationLabel = hasUnseenBadges ? 'See your newest badge now!' : undefined;
   const settingsNotificationLabel = hasNewThemeUnlock
     ? 'Try your new theme now!'
     : undefined;
@@ -48,8 +39,8 @@ export default function BottomNav() {
   const showLeaderboardNotification = Boolean(accountUsername) && lastSeenLeaderboardWeek !== currentWeekStart;
   const hasMounted = useHasHydrated();
   const showMenuDot = useMemo(
-    () => hasMounted && (hasIncompleteDaily || hasPendingRewardClaims || hasUnseenBadges || hasNewThemeUnlock || showLeaderboardNotification),
-    [hasMounted, hasIncompleteDaily, hasNewThemeUnlock, hasPendingRewardClaims, hasUnseenBadges, showLeaderboardNotification]
+    () => hasMounted && (showDailyNotification || hasUnseenBadges || hasNewThemeUnlock || showLeaderboardNotification),
+    [hasMounted, hasNewThemeUnlock, hasUnseenBadges, showDailyNotification, showLeaderboardNotification]
   );
   const playActive = pathname === '/';
 
@@ -97,15 +88,15 @@ export default function BottomNav() {
         onClose={() => setMenuOpen(false)}
         notifications={{
           '/daily': {
-            show: hasIncompleteDaily,
-            label: hasIncompleteDaily ? 'Visit Daily Missions to keep your streak alive today.' : undefined,
+            show: showDailyNotification,
+            label: showDailyNotification ? 'Visit Daily Missions to keep your streak alive today.' : undefined,
           },
           '/leaderboard': {
             show: showLeaderboardNotification,
             label: showLeaderboardNotification ? 'Visit Leaderboard to see this week\'s challenge and standings.' : undefined,
           },
           '/rewards': {
-            show: hasPendingRewardClaims || hasUnseenBadges,
+            show: hasUnseenBadges,
             label: rewardsNotificationLabel,
           },
           '/settings': {

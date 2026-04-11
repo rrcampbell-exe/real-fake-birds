@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useGameState } from '@/hooks/useGameState';
 import { useSignUpPrompt } from '@/hooks/useSignUpPrompt';
 import WeeklyChallengeBanner from '@/components/WeeklyChallengeBanner';
+import MilestoneBadgeSvg from '@/components/icons/MilestoneBadgeSvg';
 import BirdCard from './game/BirdCard';
 import LoadingState from './LoadingState';
 import Answer from './Answer';
@@ -18,6 +19,7 @@ interface UnlockToast {
   title: string;
   detail: string;
   priority: number;
+  badgeName?: string;
 }
 
 const TOAST_LIFETIME_MS = 3600;
@@ -26,9 +28,20 @@ function buildUnlockToasts(options: {
   isMilestone: boolean;
   earnedBadgeName: string | null;
   newThemeUnlockName: string | null;
+  firstGameOfDayBonusSeedsEarned: number;
+  milestoneRewardSeedsEarned: number;
   roundResult: GameRoundResult | null;
 }): UnlockToast[] {
   const nextToasts: UnlockToast[] = [];
+
+  if (options.firstGameOfDayBonusSeedsEarned > 0) {
+    nextToasts.push({
+      id: 15,
+      title: 'First Bird Bonus!',
+      detail: `That's your first correct bird of the day. Have +${options.firstGameOfDayBonusSeedsEarned} bonus seeds!`,
+      priority: 70,
+    });
+  }
 
   options.roundResult?.missionRewards.forEach((missionReward, index) => {
     nextToasts.push({
@@ -68,12 +81,26 @@ function buildUnlockToasts(options: {
     });
   }
 
+  if (options.milestoneRewardSeedsEarned > 0) {
+    const milestoneDetail = typeof options.roundResult?.birdsIdentified === 'number'
+      ? `You hit ${options.roundResult.birdsIdentified} birds identified. Have +${options.milestoneRewardSeedsEarned} bonus seeds!`
+      : `You hit a new milestone. Have +${options.milestoneRewardSeedsEarned} bonus seeds!`;
+
+    nextToasts.push({
+      id: 21,
+      title: 'Milestone Bonus!',
+      detail: milestoneDetail,
+      priority: 75,
+    });
+  }
+
   if (options.earnedBadgeName && options.newThemeUnlockName) {
     nextToasts.push({
       id: 1,
       title: 'Badge & Theme Unlocked!',
       detail: `The ${options.earnedBadgeName} Badge is now yours, and the ${options.newThemeUnlockName} Theme just joined your flock.`,
       priority: 80,
+      badgeName: options.earnedBadgeName,
     });
   } else if (options.earnedBadgeName) {
     nextToasts.push({
@@ -81,6 +108,7 @@ function buildUnlockToasts(options: {
       title: 'Badge Unlocked!',
       detail: `The ${options.earnedBadgeName} Badge is now yours. We won't stop you from shaking your tail feathers in celebration.`,
       priority: 80,
+      badgeName: options.earnedBadgeName,
     });
   } else if (options.newThemeUnlockName) {
     nextToasts.push({
@@ -91,7 +119,12 @@ function buildUnlockToasts(options: {
     });
   }
 
-  if (options.isMilestone && !options.earnedBadgeName && !options.newThemeUnlockName) {
+  if (
+    options.isMilestone
+    && !options.earnedBadgeName
+    && !options.newThemeUnlockName
+    && options.milestoneRewardSeedsEarned === 0
+  ) {
     nextToasts.push({
       id: 4,
       title: 'Milestone Reached!',
@@ -123,6 +156,8 @@ export default function GameSection() {
     isStreak,
     isMilestone,
     seedsEarned,
+    firstGameOfDayBonusSeedsEarned,
+    milestoneRewardSeedsEarned,
     newThemeUnlockName,
     earnedBadgeName,
     isNewBirdEncounter,
@@ -158,9 +193,11 @@ export default function GameSection() {
       isMilestone,
       earnedBadgeName,
       newThemeUnlockName,
+      firstGameOfDayBonusSeedsEarned,
+      milestoneRewardSeedsEarned,
       roundResult: roundAnimation?.result ?? null,
     });
-  }, [earnedBadgeName, hasAnswered, isMilestone, newThemeUnlockName, roundAnimation]);
+  }, [earnedBadgeName, firstGameOfDayBonusSeedsEarned, hasAnswered, isMilestone, milestoneRewardSeedsEarned, newThemeUnlockName, roundAnimation]);
   const activeUnlockToasts = useMemo(() => {
     if (activeToastRoundId === null || expiredToastRoundId === activeToastRoundId) {
       return [];
@@ -242,10 +279,21 @@ export default function GameSection() {
                 role="status"
                 aria-live="polite"
               >
-                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-secondary)]">
-                  {toast.title}
-                </p>
-                <p className="mt-1 text-sm font-medium text-[var(--color-text)]">{toast.detail}</p>
+                <div className="flex items-start gap-3">
+                  {toast.badgeName ? (
+                    <MilestoneBadgeSvg
+                      badgeName={toast.badgeName}
+                      size="3.25rem"
+                      containerClassName="shrink-0"
+                    />
+                  ) : null}
+                  <div className="min-w-0">
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-secondary)]">
+                      {toast.title}
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-[var(--color-text)]">{toast.detail}</p>
+                  </div>
+                </div>
               </motion.div>
             ))}
           </AnimatePresence>
@@ -285,6 +333,7 @@ export default function GameSection() {
               isCorrect={isCorrect}
               isMilestone={isMilestone}
               seedsEarned={seedsEarned}
+              firstGameOfDayBonusSeedsEarned={firstGameOfDayBonusSeedsEarned}
               newThemeUnlockName={newThemeUnlockName}
               earnedBadgeName={earnedBadgeName}
               justBrokeBestStreak={Boolean(roundAnimation?.result.justBrokeBestStreak)}

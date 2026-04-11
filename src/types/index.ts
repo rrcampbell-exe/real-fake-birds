@@ -174,6 +174,8 @@ export interface GameRoundResult {
   chosenResponse: 'real' | 'fake';
   roundSeedsEarned: number;
   seedsEarned: number;
+  firstGameOfDayBonusSeedsEarned?: number;
+  milestoneRewardSeedsEarned?: number;
   currentStreak: number;
   bestStreak: number;
   birdsSeen: number;
@@ -221,7 +223,11 @@ export type MissionType =
   | 'use_hints'
   | 'earn_seeds'
   | 'identify_real_birds'
-  | 'identify_fake_birds';
+  | 'identify_fake_birds'
+  | 'identify_new_species'
+  | 'view_journal_classification'
+  | 'reach_streak'
+  | 'use_streak_insurance';
 
 export interface MissionDefinition {
   id: string;

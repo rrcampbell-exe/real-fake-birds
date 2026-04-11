@@ -7,6 +7,11 @@ import ThemeProvider from "@/components/ThemeProvider";
 import TopNav from "@/components/nav/TopNav";
 import BottomNav from "@/components/nav/BottomNav";
 import AnalyticsProvider from '@/components/analytics/AnalyticsProvider';
+import { themeUnlocks } from '@/lib/constants/theme-unlocks';
+
+const liveThemeUnlockThresholds = themeUnlocks
+  .filter((themeUnlock) => !themeUnlock.comingSoon)
+  .map((themeUnlock) => [themeUnlock.themeName, themeUnlock.milestoneValue]);
 
 const themeBootstrapScript = `
   (() => {
@@ -16,17 +21,7 @@ const themeBootstrapScript = `
       const score = JSON.parse(window.localStorage.getItem('birdScore') || '{}');
       const birdsIdentified = typeof score?.birdsIdentified === 'number' ? score.birdsIdentified : 0;
       const purchased = JSON.parse(window.localStorage.getItem('unlockedThemes') || '[]');
-      const unlockThresholds = [
-        ['Raven', 10],
-        ['Robin', 25],
-        ['Gull', 50],
-        ['Crane', 75],
-        ['Woodpecker', 100],
-        ['Blue Jay', 150],
-        ['Oriole', 200],
-        ['Heron', 275],
-        ['Cardinal', 350],
-      ];
+      const unlockThresholds = ${JSON.stringify(liveThemeUnlockThresholds)};
       const unlocked = new Set(['Finch']);
       unlockThresholds.forEach(([name, threshold]) => {
         if (birdsIdentified >= threshold) unlocked.add(name);

@@ -10,6 +10,17 @@ vi.mock('@/hooks/useSignUpPrompt', () => ({
   useSignUpPrompt: vi.fn(),
 }));
 
+vi.mock('next/image', () => ({
+  default: ({
+    alt,
+    src,
+    fill: _fill,
+    ...props
+  }: React.ImgHTMLAttributes<HTMLImageElement> & { fill?: boolean }) => (
+    <img alt={alt} src={src} {...props} />
+  ),
+}));
+
 vi.mock('./game/BirdCard', () => ({
   default: ({ state, answerContent }: { state: string; answerContent?: React.ReactNode }) => (
     <div>
@@ -62,6 +73,8 @@ function createGameState(overrides: Partial<ReturnType<typeof useGameState>> = {
     birdData: 'Silver Finch',
     earnedBadgeName: null,
     fact: null,
+    firstGameOfDayBonusSeedsEarned: 0,
+    milestoneRewardSeedsEarned: 0,
     hasAnswered: false,
     handleAnswer: vi.fn(),
     hintError: null,
@@ -199,6 +212,52 @@ describe('GameSection', () => {
 
     expect(screen.getByText(/Badge & Theme Unlocked/i)).toBeInTheDocument();
     expect(screen.getByText(/Downy Feather Badge is now yours, and the Raven Theme just joined your flock/i)).toBeInTheDocument();
+    expect(screen.getByAltText('Downy Feather badge')).toHaveAttribute('src', '/images/badges/downy_feather.png');
     expect(screen.queryByText(/^Theme Unlocked!$/i)).not.toBeInTheDocument();
+  });
+
+  it('shows a first bird bonus toast after the first correct answer of the day', () => {
+    mockedUseGameState.mockReturnValue(createGameState({
+      hasAnswered: true,
+      showQuestion: false,
+      firstGameOfDayBonusSeedsEarned: 5,
+    }));
+    mockedUseSignUpPrompt.mockReturnValue({
+      birdsSeen: 0,
+      birdsIdentified: 0,
+      seeds: 0,
+      activeThreshold: null,
+      shouldPrompt: false,
+      dismiss: vi.fn(),
+      onAccountCreated: vi.fn(),
+    });
+
+    render(<GameSection />);
+
+    expect(screen.getByText(/First Bird Bonus!/i)).toBeInTheDocument();
+    expect(screen.getByText(/That's your first correct bird of the day. Have \+5 bonus seeds!/i)).toBeInTheDocument();
+  });
+
+  it('shows a milestone bonus toast for seed-only checkpoints', () => {
+    mockedUseGameState.mockReturnValue(createGameState({
+      hasAnswered: true,
+      isMilestone: true,
+      milestoneRewardSeedsEarned: 25,
+      showQuestion: false,
+    }));
+    mockedUseSignUpPrompt.mockReturnValue({
+      birdsSeen: 0,
+      birdsIdentified: 0,
+      seeds: 0,
+      activeThreshold: null,
+      shouldPrompt: false,
+      dismiss: vi.fn(),
+      onAccountCreated: vi.fn(),
+    });
+
+    render(<GameSection />);
+
+    expect(screen.getByText(/Milestone Bonus!/i)).toBeInTheDocument();
+    expect(screen.getByText(/Have \+25 bonus seeds!/i)).toBeInTheDocument();
   });
 });

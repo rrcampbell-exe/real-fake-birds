@@ -1,6 +1,15 @@
 import type { Milestone } from '@/types';
 
-const milestoneValues: Milestone[] = [
+export interface IntermediateMilestone {
+  value: number;
+  rewardSeeds: number;
+  description: string;
+  achievement: string;
+}
+
+export type ProgressMilestone = Milestone | IntermediateMilestone;
+
+const badgeMilestones: Milestone[] = [
   {
     badge: 'Downy Feather',
     value: 10,
@@ -104,7 +113,7 @@ const milestoneValues: Milestone[] = [
     achievement: 'Earned for correctly identifying 2,000 real fake birds.',
   },
   {
-    badge: 'Celestial Feather',
+    badge: 'Transplanar Feather',
     value: 2500,
     description: 'Transcending the mortal realm of bird identification.',
     achievement: 'Earned for correctly identifying 2,500 real fake birds.',
@@ -117,4 +126,62 @@ const milestoneValues: Milestone[] = [
   },
 ];
 
-export { milestoneValues as milestones };
+const intermediateMilestones: IntermediateMilestone[] = [
+  {
+    value: 125,
+    rewardSeeds: 25,
+    description: 'A quick seed cache to keep your migration moving.',
+    achievement: 'Earned for correctly identifying 125 real fake birds.',
+  },
+  {
+    value: 375,
+    rewardSeeds: 50,
+    description: 'A mid-flight snack for the climb between major rewards.',
+    achievement: 'Earned for correctly identifying 375 real fake birds.',
+  },
+  {
+    value: 500,
+    rewardSeeds: 50,
+    description: 'Another seed cache for the long haul.',
+    achievement: 'Earned for correctly identifying 500 real fake birds.',
+  },
+  {
+    value: 600,
+    rewardSeeds: 75,
+    description: 'A hearty late-game payout before the next feather tier.',
+    achievement: 'Earned for correctly identifying 600 real fake birds.',
+  },
+];
+
+const progressMilestones: ProgressMilestone[] = [
+  ...badgeMilestones,
+  ...intermediateMilestones,
+].sort((left, right) => left.value - right.value);
+
+export function isBadgeMilestone(milestone: ProgressMilestone): milestone is Milestone {
+  return 'badge' in milestone;
+}
+
+export function isIntermediateMilestone(
+  milestone: ProgressMilestone
+): milestone is IntermediateMilestone {
+  return 'rewardSeeds' in milestone;
+}
+
+export function getIntermediateMilestoneByValue(
+  milestoneValue: number
+): IntermediateMilestone | undefined {
+  return intermediateMilestones.find((milestone) => milestone.value === milestoneValue);
+}
+
+export function getProgressMilestoneByValue(
+  milestoneValue: number
+): ProgressMilestone | undefined {
+  return progressMilestones.find((milestone) => milestone.value === milestoneValue);
+}
+
+export {
+  badgeMilestones as milestones,
+  intermediateMilestones,
+  progressMilestones,
+};

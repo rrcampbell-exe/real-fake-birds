@@ -23,7 +23,7 @@ export const flamingo: Theme = {
   primary: '#EC7189',
   secondary: '#0F4C5C',
   textColor: '#3D0D18',
-  themeSong: sharedThemeSong,
+  themeSong: '/sounds/themes/flamingo.mp3',
 };
 
 export const gull: Theme = {
@@ -39,7 +39,7 @@ export const swan: Theme = {
   primary: '#FAF9F6',
   secondary: '#8B5E12',
   textColor: '#2d2d2d',
-  themeSong: sharedThemeSong,
+  themeSong: 'sounds/themes/swan.mp3',
 };
 
 export const robin: Theme = {
@@ -103,7 +103,7 @@ export const owl: Theme = {
   primary: '#33291A',
   secondary: '#FFC107',
   textColor: '#FFFFFF',
-  themeSong: sharedThemeSong,
+  themeSong: 'sounds/themes/owl.mp3',
 };
 
 export const hawk: Theme = {

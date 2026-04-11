@@ -97,4 +97,46 @@ describe('applyProgressEvents', () => {
 
     expect(snapshot.score.seeds).toBe(11);
   });
+
+  it('uses the exact round seed payload and captures intermediate milestone values', () => {
+    const events: ProgressEvent[] = [
+      {
+        eventId: 'round-125',
+        eventType: 'round-resolved',
+        occurredAt: '2026-04-04T12:00:00.000Z',
+        payload: {
+          mode: 'classic',
+          isCorrect: true,
+          streakProtected: false,
+          currentStreak: 1,
+          seedsEarned: 26,
+        },
+      },
+    ];
+
+    const snapshot = applyProgressEvents(
+      createProgressSnapshot({
+        score: {
+          birdsSeen: 140,
+          birdsIdentified: 124,
+          currentStreak: 0,
+          justAchievedStreak: false,
+          bestStreak: 9,
+          currentDailyStreak: 0,
+          bestDailyStreak: 0,
+          seeds: 10,
+        },
+      }),
+      events
+    );
+
+    expect(snapshot.score).toMatchObject({
+      birdsSeen: 141,
+      birdsIdentified: 125,
+      currentStreak: 1,
+      bestStreak: 9,
+      seeds: 36,
+    });
+    expect(snapshot.milestoneValues).toContain(125);
+  });
 });

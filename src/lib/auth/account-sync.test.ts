@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   applyProgressEvents,
-  claimDailyChallengeBonusesDirect,
   claimMissionRewardDirect,
   claimMissionSetBonusDirect,
   fetchAccountState,
@@ -53,7 +52,6 @@ describe('account-sync', () => {
     await purchaseTheme('Robin');
     await applyProgressEvents(events);
     await purchaseStreakInsuranceDirect();
-    await claimDailyChallengeBonusesDirect({ date: '2026-04-07', rewardSeeds: 25, correctAnswers: 4, roundsPlayed: 5 });
     await claimMissionRewardDirect({ claimId: 'm1', rewardSeeds: 8 });
     await claimMissionSetBonusDirect({ claimId: 'bonus', rewardSeeds: 15 });
 
@@ -100,12 +98,9 @@ describe('account-sync', () => {
       body: JSON.stringify({ action: 'purchase-streak-insurance' }),
     }));
     expect(fetchMock).toHaveBeenNthCalledWith(14, '/api/auth', expect.objectContaining({
-      body: JSON.stringify({ action: 'claim-daily-challenge-bonuses', date: '2026-04-07', rewardSeeds: 25, correctAnswers: 4, roundsPlayed: 5 }),
-    }));
-    expect(fetchMock).toHaveBeenNthCalledWith(15, '/api/auth', expect.objectContaining({
       body: JSON.stringify({ action: 'claim-mission-reward', claimId: 'm1', rewardSeeds: 8 }),
     }));
-    expect(fetchMock).toHaveBeenNthCalledWith(16, '/api/auth', expect.objectContaining({
+    expect(fetchMock).toHaveBeenNthCalledWith(15, '/api/auth', expect.objectContaining({
       body: JSON.stringify({ action: 'claim-mission-set-bonus', claimId: 'bonus', rewardSeeds: 15 }),
     }));
   });

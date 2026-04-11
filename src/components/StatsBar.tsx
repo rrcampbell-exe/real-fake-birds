@@ -6,14 +6,21 @@ import { usePathname } from 'next/navigation';
 import { Flame, LoaderCircle, Target, Trophy, Zap } from 'lucide-react';
 import SeedIcon from '@/components/icons/SeedIcon';
 import { flushQueuedProgressEventsForSignedInUser } from '@/lib/auth/account-session';
+import { queueProgressEvent } from '@/lib/progress/progress-event-outbox';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { hasSupabaseEnv } from '@/lib/supabase/env';
 import { purchaseStreakInsuranceDirect } from '@/lib/auth/account-sync';
-import { milestones } from '@/lib/constants/milestones';
+import {
+  getProgressMilestoneByValue,
+  isBadgeMilestone,
+  progressMilestones,
+} from '@/lib/constants/milestones';
 import { streakValues } from '@/lib/constants/streaks';
 import { track } from '@/lib/analytics';
 import { getThemeUnlockByMilestoneValue } from '@/lib/constants/theme-unlocks';
+import { getTodayMissionDate } from '@/lib/utils/daily-mission-date';
 import { isNextMilestoneEval, isNextStreakEval } from '@/lib/utils/goals-evaluation';
+import { applyStreakInsuranceUseToSessionMissions, buildMissionRewardGrantEvents } from '@/lib/utils/missions';
 import { useStoredJson } from '@/hooks/useStoredValue';
 import { defaultBirdScore, getUnlockedThemeNames, mergeNonRoundRemoteScore, normalizeBirdScore, writeBirdScore } from '@/lib/utils/player-progress';
 import { formatNumber } from '@/lib/utils/number-format';
@@ -59,9 +66,10 @@ export default function StatsBar({ refreshTrigger, roundAnimation }: StatsBarPro
   const { birdsSeen, birdsIdentified, currentStreak, bestStreak, seeds, activePersonalBestTarget } = normalizeBirdScore(storedStats);
   const accuracy = birdsSeen > 0 ? Math.floor((birdsIdentified / birdsSeen) * 100) : 0;
   const nextStreak = isNextStreakEval(streakValues, currentStreak);
-  const milestoneValues = milestones.map((milestone) => milestone.value);
+  const milestoneValues = progressMilestones.map((milestone) => milestone.value);
   const nextMilestone = isNextMilestoneEval(milestoneValues, birdsIdentified);
   const previousMilestone = [...milestoneValues].reverse().find((value) => value <= birdsIdentified) ?? 0;
+  const nextMilestoneDefinition = nextMilestone ? getProgressMilestoneByValue(nextMilestone) : undefined;
   const nextUnlock = nextMilestone ? getThemeUnlockByMilestoneValue(nextMilestone) : undefined;
   const unlockedThemeNames = new Set(getUnlockedThemeNames({ birdsSeen, birdsIdentified, currentStreak, bestStreak, seeds }));
   const isNextThemeAlreadyUnlocked = Boolean(nextUnlock?.themeName && unlockedThemeNames.has(nextUnlock.themeName));
@@ -77,7 +85,9 @@ export default function StatsBar({ refreshTrigger, roundAnimation }: StatsBarPro
   const unlockLabel = nextMilestone
     ? nextUnlock && !nextUnlock.comingSoon && !isNextThemeAlreadyUnlocked
       ? `${formatNumber(remainingMilestoneBirds)} to unlock ${nextUnlock.milestoneBadge} Badge and ${nextUnlock.themeName} Theme`
-      : `${formatNumber(remainingMilestoneBirds)} to unlock ${milestones.find((milestone) => milestone.value === nextMilestone)?.badge} Badge`
+      : nextMilestoneDefinition && !isBadgeMilestone(nextMilestoneDefinition)
+        ? `${formatNumber(remainingMilestoneBirds)} to earn +${formatNumber(nextMilestoneDefinition.rewardSeeds)} bonus seeds`
+        : `${formatNumber(remainingMilestoneBirds)} to unlock ${isBadgeMilestone(nextMilestoneDefinition!) ? nextMilestoneDefinition.badge : 'the next badge'} Badge`
     : 'All live themes unlocked';
   const canShowInsurance = effectiveInsuranceState.active || currentStreak >= STREAK_INSURANCE_MIN_STREAK;
   const insuranceError = insuranceErrorState?.interactionKey === interactionKey ? insuranceErrorState.message : null;
@@ -333,6 +343,28 @@ export default function StatsBar({ refreshTrigger, roundAnimation }: StatsBarPro
                     }
 
                     setInsuranceErrorState(null);
+                    const missionDate = getTodayMissionDate();
+                    const missionUpdate = applyStreakInsuranceUseToSessionMissions(missionDate);
+                    if (isSignedIn) {
+                      buildMissionRewardGrantEvents(missionDate, {
+                        missionRewards: missionUpdate.missionRewards,
+                        missionSetBonusSeedsEarned: missionUpdate.missionSetBonusSeedsEarned,
+                      }).forEach((missionReward) => {
+                        queueProgressEvent({
+                          eventId: missionReward.eventId,
+                          eventType: 'mission-reward-granted',
+                          occurredAt: new Date().toISOString(),
+                          payload: {
+                            missionDate,
+                            missionId: missionReward.missionId,
+                            rewardSeeds: missionReward.rewardSeeds,
+                          },
+                        });
+                      });
+
+                      await flushQueuedProgressEventsForSignedInUser();
+                    }
+
                     track('streak_insurance_purchased', {
                       cost: result.state.cost,
                       purchased_at_streak: result.state.purchasedAtStreak,

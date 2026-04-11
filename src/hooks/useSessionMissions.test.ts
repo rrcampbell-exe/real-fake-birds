@@ -11,8 +11,7 @@ const {
   syncDailyMissionStreaksToBirdScoreMock,
   readSessionMissionsMock,
   writeSessionMissionsMock,
-  createMissionRewardSummaryMock,
-  getMissionRewardEventIdMock,
+  buildMissionRewardGrantEventsMock,
   readBirdScoreMock,
   writeBirdScoreMock,
   mergeNonRoundRemoteScoreMock,
@@ -26,10 +25,20 @@ const {
   syncDailyMissionStreaksToBirdScoreMock: vi.fn(),
   readSessionMissionsMock: vi.fn(),
   writeSessionMissionsMock: vi.fn((state) => state),
-  createMissionRewardSummaryMock: vi.fn((id) => id === 'mission-set-bonus'
-    ? { missionId: 'mission-set-bonus', rewardSeeds: 15 }
-    : null),
-  getMissionRewardEventIdMock: vi.fn((date, missionId) => `${date}:${missionId}`),
+  buildMissionRewardGrantEventsMock: vi.fn((date, payload) => [
+    ...payload.missionRewards.map((mission: { missionId: string; rewardSeeds: number }) => ({
+      eventId: `${date}:${mission.missionId}`,
+      missionId: mission.missionId,
+      rewardSeeds: mission.rewardSeeds,
+    })),
+    ...(payload.missionSetBonusSeedsEarned > 0
+      ? [{
+          eventId: `${date}:mission-set-bonus`,
+          missionId: 'mission-set-bonus',
+          rewardSeeds: payload.missionSetBonusSeedsEarned,
+        }]
+      : []),
+  ]),
   readBirdScoreMock: vi.fn(),
   writeBirdScoreMock: vi.fn(),
   mergeNonRoundRemoteScoreMock: vi.fn((score) => score),
@@ -66,9 +75,8 @@ vi.mock('@/lib/utils/daily-mission-history', () => ({
 }));
 
 vi.mock('@/lib/utils/missions', () => ({
-  createMissionRewardSummary: createMissionRewardSummaryMock,
+  buildMissionRewardGrantEvents: buildMissionRewardGrantEventsMock,
   createSessionMissionsStateForDate: (date: string) => ({ date, missions: [], bonusClaimed: false }),
-  getMissionRewardEventId: getMissionRewardEventIdMock,
   getMissionDefinitionsForState: (state: { missions: unknown[] }) => state.missions,
   readSessionMissions: readSessionMissionsMock,
   writeSessionMissions: writeSessionMissionsMock,
@@ -95,8 +103,7 @@ describe('useSessionMissions', () => {
     syncDailyMissionStreaksToBirdScoreMock.mockReset();
     readSessionMissionsMock.mockReset();
     writeSessionMissionsMock.mockClear();
-    createMissionRewardSummaryMock.mockClear();
-    getMissionRewardEventIdMock.mockClear();
+    buildMissionRewardGrantEventsMock.mockClear();
     readBirdScoreMock.mockReset();
     readBirdScoreMock.mockReturnValue({ seeds: 5 });
     writeBirdScoreMock.mockReset();
@@ -166,6 +173,10 @@ describe('useSessionMissions', () => {
 
     await waitFor(() => {
       expect(queueProgressEventMock).toHaveBeenCalledTimes(2);
+    });
+    expect(buildMissionRewardGrantEventsMock).toHaveBeenCalledWith('2026-04-07', {
+      missionRewards: [storedState.missions[0]],
+      missionSetBonusSeedsEarned: 15,
     });
     expect(queueProgressEventMock).toHaveBeenNthCalledWith(1, expect.objectContaining({
       eventId: '2026-04-07:m1',

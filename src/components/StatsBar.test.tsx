@@ -216,6 +216,23 @@ describe('StatsBar', () => {
     expect(screen.queryByText(/Robin Theme/i)).not.toBeInTheDocument();
   });
 
+  it('points to intermediate seed milestones when they are the next reward', () => {
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 420,
+        birdsIdentified: 360,
+        currentStreak: 4,
+        bestStreak: 12,
+        seeds: 44,
+      })
+    );
+
+    render(<StatsBar refreshTrigger={0} />);
+
+    expect(screen.getByText('15 to earn +50 bonus seeds')).toBeInTheDocument();
+  });
+
   it('pulses the personal best stat when the player is within five guesses of an eligible target', () => {
     localStorage.setItem(
       'birdScore',

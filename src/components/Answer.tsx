@@ -119,6 +119,7 @@ interface AnswerProps {
   isCorrect: boolean;
   isMilestone: boolean;
   seedsEarned: number;
+  firstGameOfDayBonusSeedsEarned?: number;
   newThemeUnlockName: string | null;
   earnedBadgeName: string | null;
   justBrokeBestStreak?: boolean;
@@ -138,6 +139,7 @@ export default function Answer({
   isStreak,
   isCorrect,
   isMilestone,
+  firstGameOfDayBonusSeedsEarned = 0,
   newThemeUnlockName,
   earnedBadgeName,
   justBrokeBestStreak = false,
@@ -182,12 +184,12 @@ export default function Answer({
 
   // Play celebration sounds for streaks / milestones
   useEffect(() => {
-    if (isMilestone) {
+    if (isMilestone || firstGameOfDayBonusSeedsEarned > 0) {
       play('milestone');
     } else if (isStreak) {
       play(isMajorStreak ? 'milestone' : 'streak');
     }
-  }, [isMajorStreak, isStreak, isMilestone, play]);
+  }, [firstGameOfDayBonusSeedsEarned, isMajorStreak, isStreak, isMilestone, play]);
 
   useEffect(() => {
     if (isMilestone || earnedBadgeName || newThemeUnlockName || isMajorStreak || justBrokeBestStreak) {

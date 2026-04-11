@@ -151,7 +151,6 @@ export async function hydrateSignedInAccountToLocalState(options?: { notify?: bo
   applyPulledAccountProgress({
     ...response.progress,
     lastLocalSyncAt: response.lastLocalSyncAt,
-    todayDailyChallenge: response.todayDailyChallenge,
     todayMissionClaims: response.todayMissionClaims,
   });
   if (options?.notify !== false) {
@@ -182,7 +181,6 @@ export async function syncSignedInAccountToLocalState(options?: { notify?: boole
     applyPulledAccountProgress({
       ...response.progress,
       lastLocalSyncAt: response.lastLocalSyncAt,
-      todayDailyChallenge: response.todayDailyChallenge,
       todayMissionClaims: response.todayMissionClaims,
     });
     if (options?.notify !== false) {

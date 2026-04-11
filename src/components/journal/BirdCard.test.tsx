@@ -43,6 +43,8 @@ describe('Journal BirdCard', () => {
   });
 
   it('shows full stats for revealed birds', () => {
+    const onOpenDetails = vi.fn();
+
     render(
       <BirdCard
         entry={{
@@ -51,6 +53,7 @@ describe('Journal BirdCard', () => {
         isMaskedForCurrentRound={false}
         canAffordReveal
         onRevealForCurrentRound={vi.fn()}
+        onOpenDetails={onOpenDetails}
       />
     );
 
@@ -72,6 +75,7 @@ describe('Journal BirdCard', () => {
     expect(factsText.compareDocumentPosition(screen.getByText('Accuracy')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByText('bird species')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Read more on Wikipedia' })).not.toBeInTheDocument();
+    expect(onOpenDetails).toHaveBeenCalledWith('real:blue-jay');
   });
 
   it('auto-expands the linked journal target', () => {
