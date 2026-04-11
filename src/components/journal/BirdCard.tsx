@@ -11,6 +11,7 @@ interface JournalBirdCardProps {
   isMaskedForCurrentRound: boolean;
   canAffordReveal: boolean;
   onRevealForCurrentRound: (birdKey: string) => void;
+  onOpenDetails?: (birdKey: string) => void;
   isLinkedTarget?: boolean;
 }
 
@@ -64,7 +65,7 @@ function JournalBirdImage({ birdName, imageUrl }: JournalBirdImageProps) {
   );
 }
 
-export default function BirdCard({ entry, isMaskedForCurrentRound, canAffordReveal, onRevealForCurrentRound, isLinkedTarget = false }: JournalBirdCardProps) {
+export default function BirdCard({ entry, isMaskedForCurrentRound, canAffordReveal, onRevealForCurrentRound, onOpenDetails, isLinkedTarget = false }: JournalBirdCardProps) {
   const [isExpanded, setIsExpanded] = useState(isLinkedTarget);
   const accuracy = entry.seenCount > 0
     ? Math.floor((entry.correctCount / entry.seenCount) * 100)
@@ -89,7 +90,13 @@ export default function BirdCard({ entry, isMaskedForCurrentRound, canAffordReve
   }, [isLinkedTarget]);
 
   const handleToggleExpanded = () => {
-    setIsExpanded((current) => !current);
+    setIsExpanded((current) => {
+      const nextExpanded = !current;
+      if (!current && nextExpanded && !isMaskedForCurrentRound) {
+        onOpenDetails?.(entry.birdKey);
+      }
+      return nextExpanded;
+    });
   };
 
   return (

@@ -13,9 +13,8 @@ import {
   syncDailyMissionStreaksToBirdScore,
 } from '@/lib/utils/daily-mission-history';
 import {
-  createMissionRewardSummary,
+  buildMissionRewardGrantEvents,
   createSessionMissionsStateForDate,
-  getMissionRewardEventId,
   getMissionDefinitionsForState,
   readSessionMissions,
   writeSessionMissions,
@@ -87,9 +86,12 @@ export function useSessionMissions() {
       return;
     }
 
-    pendingMissionRewards.forEach((missionReward) => {
+    buildMissionRewardGrantEvents(storedState.date, {
+      missionRewards: missions.filter((mission) => mission.completed && !mission.claimed),
+      missionSetBonusSeedsEarned: shouldGrantBonus ? DAILY_MISSION_BONUS_SEEDS : 0,
+    }).forEach((missionReward) => {
       queueProgressEvent({
-        eventId: getMissionRewardEventId(storedState.date, missionReward.missionId),
+        eventId: missionReward.eventId,
         eventType: 'mission-reward-granted',
         occurredAt: new Date().toISOString(),
         payload: {
@@ -99,22 +101,6 @@ export function useSessionMissions() {
         },
       });
     });
-
-    if (shouldGrantBonus) {
-      const bonusSummary = createMissionRewardSummary('mission-set-bonus');
-      if (bonusSummary) {
-        queueProgressEvent({
-          eventId: getMissionRewardEventId(storedState.date, bonusSummary.missionId),
-          eventType: 'mission-reward-granted',
-          occurredAt: new Date().toISOString(),
-          payload: {
-            missionDate: storedState.date,
-            missionId: bonusSummary.missionId,
-            rewardSeeds: bonusSummary.rewardSeeds,
-          },
-        });
-      }
-    }
 
     void flushQueuedProgressEventsForSignedInUser();
   }, [allCompleted, isSignedIn, missions, storedState]);

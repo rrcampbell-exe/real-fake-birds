@@ -23,7 +23,7 @@ import {
 } from '@/lib/constants/hints';
 import { getTodayChallengeDate } from '@/lib/utils/daily-challenge';
 import { getTodayMissionDate } from '@/lib/utils/daily-mission-date';
-import { getMissionRewardEventId } from '@/lib/utils/missions';
+import { buildMissionRewardGrantEvents } from '@/lib/utils/missions';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { hasSupabaseEnv } from '@/lib/supabase/env';
 import { createProgressEventId, queueProgressEvent } from '@/lib/progress/progress-event-outbox';
@@ -91,6 +91,8 @@ export function useGameState(options?: UseGameStateOptions) {
   const [isStreak, setIsStreak] = useState(false);
   const [isMilestone, setIsMilestone] = useState(false);
   const [seedsEarned, setSeedsEarned] = useState(0);
+  const [firstGameOfDayBonusSeedsEarned, setFirstGameOfDayBonusSeedsEarned] = useState(0);
+  const [milestoneRewardSeedsEarned, setMilestoneRewardSeedsEarned] = useState(0);
   const [newThemeUnlockName, setNewThemeUnlockName] = useState<string | null>(null);
   const [earnedBadgeName, setEarnedBadgeName] = useState<string | null>(null);
   const [isNewBirdEncounter, setIsNewBirdEncounter] = useState(false);
@@ -126,6 +128,8 @@ export function useGameState(options?: UseGameStateOptions) {
     setIsStreak(false);
     setIsMilestone(false);
     setSeedsEarned(0);
+    setFirstGameOfDayBonusSeedsEarned(0);
+    setMilestoneRewardSeedsEarned(0);
     setNewThemeUnlockName(null);
     setEarnedBadgeName(null);
     setIsNewBirdEncounter(false);
@@ -342,10 +346,13 @@ export function useGameState(options?: UseGameStateOptions) {
         setEarnedBadgeName,
         {
           mode,
+          isNewBirdEncounter: !currentJournalEntry,
           usedHintTypes,
           onRoundResolved: options?.onRoundResolved,
         }
       );
+      setFirstGameOfDayBonusSeedsEarned(result.firstGameOfDayBonusSeedsEarned ?? 0);
+      setMilestoneRewardSeedsEarned(result.milestoneRewardSeedsEarned ?? 0);
 
       const journalEntry = recordBirdEncounter({
         birdName: birdData,
@@ -377,14 +384,17 @@ export function useGameState(options?: UseGameStateOptions) {
             isRealBird: isReal,
             isNewBirdEncounter: journalEntry.seenCount === 1,
             currentStreak: result.currentStreak,
-            seedsEarned: result.roundSeedsEarned,
+            seedsEarned: result.roundSeedsEarned + result.personalBestRewardSeeds,
           },
         });
 
         const missionDate = getTodayMissionDate();
-        result.missionRewards.forEach((missionReward) => {
+        buildMissionRewardGrantEvents(missionDate, {
+          missionRewards: result.missionRewards,
+          missionSetBonusSeedsEarned: result.missionSetBonusSeedsEarned,
+        }).forEach((missionReward) => {
           queueProgressEvent({
-            eventId: getMissionRewardEventId(missionDate, missionReward.missionId),
+            eventId: missionReward.eventId,
             eventType: 'mission-reward-granted',
             occurredAt: new Date().toISOString(),
             payload: {
@@ -395,19 +405,6 @@ export function useGameState(options?: UseGameStateOptions) {
           });
         });
 
-        if (result.missionSetBonusSeedsEarned > 0) {
-          queueProgressEvent({
-            eventId: getMissionRewardEventId(missionDate, 'mission-set-bonus'),
-            eventType: 'mission-reward-granted',
-            occurredAt: new Date().toISOString(),
-            payload: {
-              missionDate,
-              missionId: 'mission-set-bonus',
-              rewardSeeds: result.missionSetBonusSeedsEarned,
-            },
-          });
-        }
-
         scheduleProgressFlush();
       }
 
@@ -416,7 +413,7 @@ export function useGameState(options?: UseGameStateOptions) {
       localStorage.removeItem(hintsKey);
       setHasAnswered(true);
     },
-    [articleUrl, birdData, birdDataKey, description, fact, hints, hintsKey, imageUrl, isReal, isSignedIn, mode, options, regionLabel, scheduleProgressFlush, sciName, summary]
+    [articleUrl, birdData, birdDataKey, currentJournalEntry, description, fact, hints, hintsKey, imageUrl, isReal, isSignedIn, mode, options, regionLabel, scheduleProgressFlush, sciName, summary]
   );
 
   const requestHint = useCallback(
@@ -560,6 +557,8 @@ export function useGameState(options?: UseGameStateOptions) {
     isStreak,
     isMilestone,
     seedsEarned,
+    firstGameOfDayBonusSeedsEarned,
+    milestoneRewardSeedsEarned,
     newThemeUnlockName,
     earnedBadgeName,
     isNewBirdEncounter,

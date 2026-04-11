@@ -360,7 +360,6 @@ describe('account-session', () => {
     pullAccountProgressMock.mockResolvedValue({
       progress: { score: { seeds: 22 } },
       lastLocalSyncAt: '2026-04-07T10:00:00.000Z',
-      todayDailyChallenge: null,
       todayMissionClaims: null,
     });
 
@@ -375,7 +374,6 @@ describe('account-session', () => {
     expect(applyPulledAccountProgressMock).toHaveBeenCalledWith({
       score: { seeds: 22 },
       lastLocalSyncAt: '2026-04-07T10:00:00.000Z',
-      todayDailyChallenge: null,
       todayMissionClaims: null,
     });
     expect(listener).toHaveBeenCalledTimes(1);
@@ -397,7 +395,6 @@ describe('account-session', () => {
     resolvePull?.({
       progress: { score: { seeds: 30 } },
       lastLocalSyncAt: '2026-04-07T11:00:00.000Z',
-      todayDailyChallenge: null,
       todayMissionClaims: null,
     });
 
@@ -424,7 +421,6 @@ describe('account-session', () => {
     pullAccountProgressMock.mockResolvedValue({
       progress: { score: { seeds: 30 } },
       lastLocalSyncAt: '2026-04-07T11:00:00.000Z',
-      todayDailyChallenge: null,
       todayMissionClaims: null,
     });
 

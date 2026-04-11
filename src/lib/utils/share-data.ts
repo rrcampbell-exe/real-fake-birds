@@ -1,5 +1,4 @@
-import { DAILY_CHALLENGE_CONFIG } from '@/lib/constants/daily-challenge';
-import type { DailyChallengeState, SharePayload } from '@/types';
+import type { SharePayload } from '@/types';
 
 const APP_NAME = 'Real Fake Birds';
 
@@ -42,13 +41,6 @@ export function buildStatsSharePayload(options: {
   return {
     title: `${APP_NAME} stats`,
     text: `My ${APP_NAME} stats: best guess streak ${options.bestStreak}, current guess streak ${options.currentStreak}, ${options.birdsIdentified} birds identified, ${options.accuracy}% accuracy.`,
-  };
-}
-
-export function buildDailyChallengeSharePayload(state: DailyChallengeState): SharePayload {
-  return {
-    title: `${APP_NAME} daily challenge`,
-    text: `I scored ${state.correctAnswers}/${DAILY_CHALLENGE_CONFIG.roundCount} on today's ${APP_NAME} Daily Challenge.`,
   };
 }
 

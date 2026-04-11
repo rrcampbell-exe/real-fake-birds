@@ -1,8 +1,10 @@
 import { localStorageCheck } from './local-storage-check';
+import { isBadgeMilestone } from '../constants/milestones';
 import { getStreakReward, isStreakCheckpoint } from '../constants/streaks';
 import { getThemeUnlockByMilestoneValue } from '../constants/theme-unlocks';
 import { track } from '@/lib/analytics';
 import { applyRoundToSessionMissions } from './missions';
+import { getTodayMissionDate } from './daily-mission-date';
 import { consumeStreakInsurance, expireStreakInsuranceAfterGuess } from './streak-insurance';
 import {
   BIRD_MILESTONES_STORAGE_KEY,
@@ -19,6 +21,8 @@ import {
 import type { GameMode, GameRoundResult, HintType } from '@/types';
 
 const BASE_CORRECT_SEED_REWARD = 1;
+const FIRST_GAME_OF_DAY_BONUS_SEEDS = 5;
+const FIRST_GAME_OF_DAY_BONUS_STORAGE_KEY = 'lastFirstGameBonusDate';
 const PERSONAL_BEST_MIN_STREAK = 10;
 
 function isEligiblePersonalBestTarget(target: number | null): target is number {
@@ -27,6 +31,18 @@ function isEligiblePersonalBestTarget(target: number | null): target is number {
 
 function calculateStreakSeedReward(currentStreak: number): number {
   return getStreakReward(currentStreak);
+}
+
+function claimFirstGameOfDayBonus(now = new Date()): number {
+  const today = getTodayMissionDate(now);
+  const lastClaimedDate = localStorage.getItem(FIRST_GAME_OF_DAY_BONUS_STORAGE_KEY);
+
+  if (lastClaimedDate === today) {
+    return 0;
+  }
+
+  localStorage.setItem(FIRST_GAME_OF_DAY_BONUS_STORAGE_KEY, today);
+  return FIRST_GAME_OF_DAY_BONUS_SEEDS;
 }
 
 const streakEval = (currentStreak: number, setIsStreak: (val: boolean) => void): number => {
@@ -41,35 +57,44 @@ const milestoneEval = (
   birdsIdentified: number,
   existingUnlockedThemeNames: Set<string>,
   setIsMilestone: (val: boolean) => void
-): { unlockedThemeName: string | null; earnedBadgeName: string | null } => {
+): {
+  unlockedThemeName: string | null;
+  earnedBadgeName: string | null;
+  milestoneRewardSeedsEarned: number;
+} => {
   const earnedMilestones = getEarnedMilestonesForBirds(birdsIdentified);
 
   const stored = localStorage.getItem(BIRD_MILESTONES_STORAGE_KEY);
   const previousCount = stored ? (JSON.parse(stored) as unknown[]).length : 0;
   let unlockedThemeName: string | null = null;
   let earnedBadgeName: string | null = null;
+  let milestoneRewardSeedsEarned = 0;
 
   if (earnedMilestones.length > previousCount) {
     setIsMilestone(true);
     localStorage.setItem('birdMilestoneAchieved', 'true');
-    setStoredBoolean(UNSEEN_BADGES_STORAGE_KEY, true);
 
     const latestMilestone = earnedMilestones[earnedMilestones.length - 1];
-    earnedBadgeName = latestMilestone.badge;
-    const themeUnlock = getThemeUnlockByMilestoneValue(latestMilestone.value);
-    if (themeUnlock && !themeUnlock.comingSoon) {
-      if (!existingUnlockedThemeNames.has(themeUnlock.themeName)) {
-        unlockThemeName(themeUnlock.themeName);
-        unlockedThemeName = themeUnlock.themeName;
-        setStoredBoolean(NEW_THEME_UNLOCK_STORAGE_KEY, true);
+    if (isBadgeMilestone(latestMilestone)) {
+      setStoredBoolean(UNSEEN_BADGES_STORAGE_KEY, true);
+      earnedBadgeName = latestMilestone.badge;
+      const themeUnlock = getThemeUnlockByMilestoneValue(latestMilestone.value);
+      if (themeUnlock && !themeUnlock.comingSoon) {
+        if (!existingUnlockedThemeNames.has(themeUnlock.themeName)) {
+          unlockThemeName(themeUnlock.themeName);
+          unlockedThemeName = themeUnlock.themeName;
+          setStoredBoolean(NEW_THEME_UNLOCK_STORAGE_KEY, true);
+        }
       }
+    } else {
+      milestoneRewardSeedsEarned = latestMilestone.rewardSeeds;
     }
   } else {
     setIsMilestone(false);
   }
 
   localStorage.setItem(BIRD_MILESTONES_STORAGE_KEY, JSON.stringify(earnedMilestones));
-  return { unlockedThemeName, earnedBadgeName };
+  return { unlockedThemeName, earnedBadgeName, milestoneRewardSeedsEarned };
 };
 
 const responseEval = (
@@ -84,6 +109,7 @@ const responseEval = (
   setEarnedBadgeName: (val: string | null) => void,
   options?: {
     mode?: GameMode;
+    isNewBirdEncounter?: boolean;
     usedHintTypes?: HintType[];
     onRoundResolved?: (result: GameRoundResult) => void;
   }
@@ -121,7 +147,17 @@ const responseEval = (
     bestStreak = currentStreak > bestStreak ? currentStreak : bestStreak;
 
     const streakSeedsEarned = streakEval(currentStreak, setIsStreak);
-    const roundSeedsEarned = BASE_CORRECT_SEED_REWARD + streakSeedsEarned;
+    const firstGameOfDayBonusSeedsEarned = claimFirstGameOfDayBonus();
+
+    const milestoneResult = milestoneEval(
+      birdsIdentified,
+      existingUnlockedThemeNames,
+      setIsMilestone
+    );
+    const roundSeedsEarned = BASE_CORRECT_SEED_REWARD
+      + streakSeedsEarned
+      + firstGameOfDayBonusSeedsEarned
+      + milestoneResult.milestoneRewardSeedsEarned;
     seeds = seeds + roundSeedsEarned;
 
     const updatedBirdScore = {
@@ -136,12 +172,6 @@ const responseEval = (
     };
 
     writeBirdScore(updatedBirdScore);
-
-    const milestoneResult = milestoneEval(
-      updatedBirdScore.birdsIdentified,
-      existingUnlockedThemeNames,
-      setIsMilestone
-    );
     setUnlockedThemeName(milestoneResult.unlockedThemeName);
     setEarnedBadgeName(milestoneResult.earnedBadgeName);
 
@@ -151,6 +181,8 @@ const responseEval = (
       chosenResponse,
       roundSeedsEarned,
       seedsEarned: roundSeedsEarned,
+      firstGameOfDayBonusSeedsEarned,
+      milestoneRewardSeedsEarned: milestoneResult.milestoneRewardSeedsEarned,
       currentStreak,
       bestStreak,
       birdsSeen,
@@ -183,11 +215,12 @@ const responseEval = (
       track('streak_achieved', { mode, current_streak: currentStreak, seeds_earned: roundSeedsEarned });
     }
 
-    if (milestoneResult.earnedBadgeName) {
+    if (milestoneResult.earnedBadgeName || milestoneResult.milestoneRewardSeedsEarned > 0) {
       track('milestone_reached', {
         mode,
         badge_name: milestoneResult.earnedBadgeName,
         birds_identified: birdsIdentified,
+        reward_seeds: milestoneResult.milestoneRewardSeedsEarned || undefined,
       });
     }
 
@@ -199,7 +232,9 @@ const responseEval = (
       });
     }
 
-    const missionUpdate = applyRoundToSessionMissions(result);
+    const missionUpdate = applyRoundToSessionMissions(result, {
+      isNewBirdEncounter: options?.isNewBirdEncounter ?? false,
+    });
     const { newlyCompletedMissionIds } = missionUpdate;
     newlyCompletedMissionIds.forEach((missionId) => {
       track('mission_completed', { mission_id: missionId, mode });
@@ -259,6 +294,8 @@ const responseEval = (
     chosenResponse,
     roundSeedsEarned: 0,
     seedsEarned: 0,
+    firstGameOfDayBonusSeedsEarned: 0,
+    milestoneRewardSeedsEarned: 0,
     currentStreak: updatedBirdScore.currentStreak,
     bestStreak,
     birdsSeen,

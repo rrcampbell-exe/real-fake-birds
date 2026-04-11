@@ -2,6 +2,12 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import JournalPage from './page';
 
+vi.mock('@/components/account/AccountStateProvider', () => ({
+  useAccountState: vi.fn(() => ({
+    isSignedIn: false,
+  })),
+}));
+
 vi.mock('@/hooks/usePageProgressSync', () => ({
   usePageProgressSync: vi.fn(),
 }));

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { DAILY_CHALLENGE_CONFIG } from '@/lib/constants/daily-challenge';
 import { milestones } from '@/lib/constants/milestones';
 import { missionDefinitions } from '@/lib/constants/missions';
 import { getWeeklyChallengeForWeek } from '@/lib/constants/weekly-challenges';
@@ -32,7 +31,7 @@ import type {
 } from '@/types';
 
 type AuthAction = 'validate-username' | 'register-account' | 'get-account-state' | 'get-leaderboard' | 'resolve-sign-in-identifier' | 'save-profile' | 'save-avatar-palette' | 'sync-local-progress' | 'sync-bird-journal' | 'pull-account-progress' | 'purchase-theme' | 'apply-progress-events' | 'sync-daily-mission-completion';
-type RewardAuthAction = 'claim-daily-challenge-bonuses' | 'claim-mission-reward' | 'claim-mission-set-bonus' | 'purchase-streak-insurance';
+type RewardAuthAction = 'claim-mission-reward' | 'claim-mission-set-bonus' | 'purchase-streak-insurance';
 
 interface ValidateUsernameRequest {
   action: AuthAction;
@@ -72,14 +71,6 @@ interface PurchaseThemeRequest {
 interface ApplyProgressEventsRequest {
   action: AuthAction;
   events: ProgressEvent[];
-}
-
-interface ClaimDailyChallengeBonusesRequest {
-  action: RewardAuthAction;
-  date: string;
-  rewardSeeds: number;
-  correctAnswers: number;
-  roundsPlayed: number;
 }
 
 interface ClaimMissionRewardRequest {
@@ -260,19 +251,6 @@ function isApplyProgressEventsRequest(value: unknown): value is ApplyProgressEve
   return candidate.action === 'apply-progress-events'
     && Array.isArray(candidate.events)
     && candidate.events.every(isProgressEvent);
-}
-
-function isClaimDailyChallengeBonusesRequest(value: unknown): value is ClaimDailyChallengeBonusesRequest {
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-
-  const candidate = value as Partial<ClaimDailyChallengeBonusesRequest>;
-  return candidate.action === 'claim-daily-challenge-bonuses'
-    && typeof candidate.date === 'string'
-    && typeof candidate.rewardSeeds === 'number'
-    && typeof candidate.correctAnswers === 'number'
-    && typeof candidate.roundsPlayed === 'number';
 }
 
 function isClaimMissionRewardRequest(value: unknown): value is ClaimMissionRewardRequest {
@@ -1647,59 +1625,6 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  if (isClaimDailyChallengeBonusesRequest(body)) {
-    const context = await getAuthenticatedRequestContext();
-    if (!context) {
-      return hasSupabaseEnv()
-        ? NextResponse.json({ error: 'not_authenticated' }, { status: 401 })
-        : configErrorResponse();
-    }
-
-    try {
-      const admin = createSupabaseAdminClient();
-      await finalizeExpiredWeeklyLeaderboards(admin);
-      const eventId = `daily-reward:${body.date}`;
-      const alreadyRecorded = await eventAlreadyRecorded(admin, context.userId, eventId);
-
-      if (!alreadyRecorded) {
-        const progressSummary = await readProgressSummary(admin, context.userId);
-        await admin
-          .from('player_progress')
-          .update({
-            seeds: progressSummary.seeds + body.rewardSeeds,
-          })
-          .eq('user_id', context.userId);
-
-        await admin
-          .from('daily_challenge_history')
-          .upsert(
-            {
-              user_id: context.userId,
-              challenge_date: body.date,
-              correct_answers: body.correctAnswers,
-              rounds_played: body.roundsPlayed,
-              completed: true,
-              bonus_seeds_awarded: body.rewardSeeds,
-              claimed_at: new Date().toISOString(),
-            },
-            { onConflict: 'user_id,challenge_date' }
-          );
-
-        await recordProgressEvent(admin, context.userId, eventId, 'claim-daily-challenge-bonuses');
-        await incrementWeeklySeedsEarned(admin, context.userId, body.rewardSeeds);
-      }
-
-      return NextResponse.json({
-        action: 'claim-daily-challenge-bonuses',
-        date: body.date,
-        rewardSeeds: body.rewardSeeds,
-        progressSummary: await readProgressSummary(admin, context.userId),
-      });
-    } catch {
-      return NextResponse.json({ error: 'daily_reward_claim_failed' }, { status: 500 });
-    }
-  }
-
   if (isClaimMissionRewardRequest(body)) {
     const context = await getAuthenticatedRequestContext();
     if (!context) {
@@ -1749,7 +1674,6 @@ export async function POST(request: NextRequest) {
     try {
       const admin = createSupabaseAdminClient();
       await finalizeExpiredWeeklyLeaderboards(admin);
-      const today = getTodayChallengeDate();
       const missionDate = body.missionDate;
       const todayMissionIds = getDailyMissionIdsForDate(missionDate);
       const todayMissionClaimIds = todayMissionIds.map((missionId) => `${missionDate}:${missionId}`);
@@ -1791,7 +1715,6 @@ export async function POST(request: NextRequest) {
           .limit(BIRD_JOURNAL_PULL_LIMIT),
       ]);
 
-      const todayDailyChallenge = (dailyHistory ?? []).find((entry) => entry.challenge_date === today) ?? null;
       const todayEventIds = new Set((todayMissionEvents ?? []).map((event) => event.event_id as string));
 
       return NextResponse.json({
@@ -1829,22 +1752,6 @@ export async function POST(request: NextRequest) {
           })),
         },
         lastLocalSyncAt: progress?.last_local_sync_at ?? null,
-        todayDailyChallenge: todayDailyChallenge
-          ? {
-              date: todayDailyChallenge.challenge_date,
-              roundsPlayed: todayDailyChallenge.rounds_played,
-              correctAnswers: todayDailyChallenge.correct_answers,
-              bonusSeedsAwarded: (todayDailyChallenge.bonus_seeds_awarded ?? 0) > 0
-                ? (todayDailyChallenge.bonus_seeds_awarded ?? 0)
-                : todayDailyChallenge.completed
-                  ? DAILY_CHALLENGE_CONFIG.completionBonusSeeds
-                    + (todayDailyChallenge.correct_answers === DAILY_CHALLENGE_CONFIG.roundCount
-                      ? DAILY_CHALLENGE_CONFIG.perfectBonusSeeds
-                      : 0)
-                  : 0,
-              claimed: Boolean(todayDailyChallenge.claimed_at),
-            }
-          : null,
         todayMissionClaims: {
           date: missionDate,
           claimedMissionIds: todayMissionIds.filter((missionId) => todayEventIds.has(`${missionDate}:${missionId}`)),

@@ -1,6 +1,6 @@
-import type { BirdScore, Milestone } from '@/types';
+import type { BirdScore } from '@/types';
 import { notifyStoredValueChanged } from '@/hooks/useStoredValue';
-import { milestones } from '@/lib/constants/milestones';
+import { progressMilestones, type ProgressMilestone } from '@/lib/constants/milestones';
 import {
   getThemeUnlockByThemeName,
   themeUnlocks,
@@ -137,8 +137,8 @@ export function setStoredBoolean(key: string, value: boolean, notify = true): vo
   }
 }
 
-export function getEarnedMilestonesForBirds(birdsIdentified: number): Milestone[] {
-  return milestones.filter((milestone) => milestone.value <= birdsIdentified);
+export function getEarnedMilestonesForBirds(birdsIdentified: number): ProgressMilestone[] {
+  return progressMilestones.filter((milestone) => milestone.value <= birdsIdentified);
 }
 
 export function getPurchasedThemeNames(): string[] {

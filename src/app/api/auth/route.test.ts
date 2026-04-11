@@ -357,12 +357,6 @@ describe('auth route', () => {
           };
         }
 
-        if (table === 'daily_challenge_history') {
-          return {
-            upsert: vi.fn().mockResolvedValue({ error: null }),
-          };
-        }
-
         if (table === 'leaderboard_stats') {
           return {
             select: vi.fn().mockReturnValue({
@@ -385,35 +379,6 @@ describe('auth route', () => {
 
     mockedCreateSupabaseAdminClient.mockReturnValue(adminClient as never);
 
-    const response = await POST(
-      new Request('http://localhost/api/auth', {
-        method: 'POST',
-        body: JSON.stringify({
-          action: 'claim-daily-challenge-bonuses',
-          date: '2026-04-04',
-          rewardSeeds: 25,
-          correctAnswers: 4,
-          roundsPlayed: 5,
-        }),
-        headers: { 'Content-Type': 'application/json' },
-      }) as never
-    );
-
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({
-      action: 'claim-daily-challenge-bonuses',
-      date: '2026-04-04',
-      rewardSeeds: 25,
-      progressSummary: {
-        birdsSeen: 8,
-        birdsIdentified: 5,
-        seeds: 45,
-        currentStreak: 3,
-        bestStreak: 4,
-        currentDailyStreak: 2,
-        bestDailyStreak: 2,
-      },
-    });
   });
 
   it('purchases streak insurance for an authenticated user', async () => {

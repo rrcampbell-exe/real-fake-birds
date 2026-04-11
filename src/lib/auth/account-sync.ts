@@ -80,13 +80,6 @@ export interface PullAccountProgressResponse {
   action: 'pull-account-progress';
   progress: LocalProgressPayload;
   lastLocalSyncAt: string | null;
-  todayDailyChallenge: {
-    date: string;
-    roundsPlayed: number;
-    correctAnswers: number;
-    bonusSeedsAwarded: number;
-    claimed: boolean;
-  } | null;
   todayMissionClaims: {
     date: string;
     claimedMissionIds: string[];
@@ -138,12 +131,6 @@ export interface PurchaseStreakInsuranceResponse extends DirectProgressMutationR
     cost: number;
     purchasedAtStreak: number;
   };
-}
-
-export interface ClaimDailyRewardResponse extends DirectProgressMutationResponse {
-  action: 'claim-daily-challenge-bonuses';
-  date: string;
-  rewardSeeds: number;
 }
 
 export interface ClaimMissionRewardResponse extends DirectProgressMutationResponse {
@@ -307,18 +294,6 @@ export function applyProgressEvents(events: ProgressEvent[]): Promise<ApplyProgr
 export function purchaseStreakInsuranceDirect(): Promise<PurchaseStreakInsuranceResponse> {
   return postAuthAction<PurchaseStreakInsuranceResponse>({
     action: 'purchase-streak-insurance',
-  });
-}
-
-export function claimDailyChallengeBonusesDirect(options: {
-  date: string;
-  rewardSeeds: number;
-  correctAnswers: number;
-  roundsPlayed: number;
-}): Promise<ClaimDailyRewardResponse> {
-  return postAuthAction<ClaimDailyRewardResponse>({
-    action: 'claim-daily-challenge-bonuses',
-    ...options,
   });
 }
 

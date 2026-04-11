@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildDailyChallengeSharePayload,
   buildMilestoneSharePayload,
   buildRoundSharePayload,
   buildStatsSharePayload,
@@ -42,23 +41,6 @@ describe('share-data', () => {
     });
   });
 
-  it('builds daily challenge share copy without route-specific metadata', () => {
-    expect(
-      buildDailyChallengeSharePayload({
-        date: '2026-04-03',
-        roundsPlayed: 5,
-        correctAnswers: 4,
-        completed: true,
-        completionBonusAwarded: true,
-        perfectBonusAwarded: false,
-        bonusSeedsAwarded: 25,
-        roundResults: [true, true, true, true, false],
-      })
-    ).toEqual({
-      title: 'Real Fake Birds daily challenge',
-      text: "I scored 4/5 on today's Real Fake Birds Daily Challenge.",
-    });
-  });
 });
 describe('buildWeeklyLeaderboardSharePayload', () => {
   it('uses "am currently sitting" and "this week\'s" when not final', () => {

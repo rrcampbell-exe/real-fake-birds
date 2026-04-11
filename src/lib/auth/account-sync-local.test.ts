@@ -2,11 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   notifyStoredValueChangedMock,
-  getTodayChallengeDateMock,
   readDailyChallengeHistoryMock,
-  resetDailyChallengeStateMock,
   writeDailyChallengeHistoryMock,
-  writeDailyChallengeStateMock,
   getTodayMissionDateMock,
   readDailyMissionHistoryMock,
   writeDailyMissionHistoryMock,
@@ -23,11 +20,8 @@ const {
   writeSessionMissionsMock,
 } = vi.hoisted(() => ({
   notifyStoredValueChangedMock: vi.fn(),
-  getTodayChallengeDateMock: vi.fn(),
   readDailyChallengeHistoryMock: vi.fn(),
-  resetDailyChallengeStateMock: vi.fn(),
   writeDailyChallengeHistoryMock: vi.fn(),
-  writeDailyChallengeStateMock: vi.fn(),
   getTodayMissionDateMock: vi.fn(),
   readDailyMissionHistoryMock: vi.fn(),
   writeDailyMissionHistoryMock: vi.fn(),
@@ -49,11 +43,8 @@ vi.mock('@/hooks/useStoredValue', () => ({
 }));
 
 vi.mock('@/lib/utils/daily-challenge', () => ({
-  getTodayChallengeDate: getTodayChallengeDateMock,
   readDailyChallengeHistory: readDailyChallengeHistoryMock,
-  resetDailyChallengeState: resetDailyChallengeStateMock,
   writeDailyChallengeHistory: writeDailyChallengeHistoryMock,
-  writeDailyChallengeState: writeDailyChallengeStateMock,
 }));
 
 vi.mock('@/lib/utils/daily-mission-date', () => ({
@@ -100,13 +91,9 @@ describe('account-sync-local', () => {
   beforeEach(() => {
     localStorage.clear();
     notifyStoredValueChangedMock.mockReset();
-    getTodayChallengeDateMock.mockReset();
-    getTodayChallengeDateMock.mockReturnValue('2026-04-07');
     readDailyChallengeHistoryMock.mockReset();
     readDailyChallengeHistoryMock.mockReturnValue([{ date: '2026-04-05', correctAnswers: 2, roundsPlayed: 5, completed: true }]);
-    resetDailyChallengeStateMock.mockReset();
     writeDailyChallengeHistoryMock.mockReset();
-    writeDailyChallengeStateMock.mockReset();
     getTodayMissionDateMock.mockReset();
     getTodayMissionDateMock.mockReturnValue('2026-04-07');
     readDailyMissionHistoryMock.mockReset();
@@ -191,13 +178,6 @@ describe('account-sync-local', () => {
       milestones: [10],
       journalEntries: [{ birdKey: 'bird-a' }],
       lastLocalSyncAt: '2026-04-07T10:00:00.000Z',
-      todayDailyChallenge: {
-        date: '2026-04-07',
-        roundsPlayed: 5,
-        correctAnswers: 5,
-        bonusSeedsAwarded: 25,
-        claimed: true,
-      },
       todayMissionClaims: {
         date: '2026-04-07',
         claimedMissionIds: ['m1'],
@@ -211,16 +191,6 @@ describe('account-sync-local', () => {
     expect(writeDailyMissionHistoryMock).toHaveBeenCalled();
     expect(mergeBirdJournalStoresMock).toHaveBeenCalledWith({ local: true }, { 'bird-a': { birdKey: 'bird-a' } });
     expect(writeBirdJournalMock).toHaveBeenCalledWith({ merged: true });
-    expect(writeDailyChallengeStateMock).toHaveBeenCalledWith({
-      date: '2026-04-07',
-      roundsPlayed: 5,
-      correctAnswers: 5,
-      completed: true,
-      completionBonusAwarded: true,
-      perfectBonusAwarded: true,
-      bonusSeedsAwarded: 25,
-      roundResults: [],
-    });
     expect(writeSessionMissionsMock).toHaveBeenCalledWith({
       date: '2026-04-07',
       missions: [
@@ -250,13 +220,6 @@ describe('account-sync-local', () => {
       milestones: [],
       journalEntries: [],
       lastLocalSyncAt: null,
-      todayDailyChallenge: {
-        date: '2026-04-06',
-        roundsPlayed: 5,
-        correctAnswers: 4,
-        bonusSeedsAwarded: 25,
-        claimed: false,
-      },
       todayMissionClaims: {
         date: '2026-04-07',
         claimedMissionIds: [],
@@ -264,7 +227,6 @@ describe('account-sync-local', () => {
       },
     } as never);
 
-    expect(resetDailyChallengeStateMock).toHaveBeenCalledWith('2026-04-07');
     expect(writeSessionMissionsMock).toHaveBeenCalledWith({
       date: '2026-04-07',
       missions: [
@@ -285,11 +247,9 @@ describe('account-sync-local', () => {
       milestones: [],
       journalEntries: [],
       lastLocalSyncAt: null,
-      todayDailyChallenge: null,
       todayMissionClaims: null,
     } as never);
 
-    expect(resetDailyChallengeStateMock).toHaveBeenCalledWith('2026-04-07');
     expect(resetSessionMissionsMock).toHaveBeenCalledWith('2026-04-07');
   });
 });

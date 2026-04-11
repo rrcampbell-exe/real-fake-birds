@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { AccountStateProvider } from '@/components/account/AccountStateProvider';
+import WeeklyChallengeRecapModal from '@/components/account/WeeklyChallengeRecapModal';
 import { finch } from '@/lib/themes';
 import { useSound } from '@/hooks/useSound';
 import { useStoredJson } from '@/hooks/useStoredValue';
@@ -43,6 +44,7 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
     <AccountStateProvider>
       <IosWebAudioNotice />
       {children}
+      <WeeklyChallengeRecapModal />
     </AccountStateProvider>
   );
 }

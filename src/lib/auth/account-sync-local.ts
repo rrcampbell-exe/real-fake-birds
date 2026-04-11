@@ -1,11 +1,8 @@
 import { notifyStoredValueChanged } from '@/hooks/useStoredValue';
-import { DAILY_CHALLENGE_CONFIG, DAILY_CHALLENGE_HISTORY_STORAGE_KEY } from '@/lib/constants/daily-challenge';
+import { DAILY_CHALLENGE_HISTORY_STORAGE_KEY } from '@/lib/constants/daily-challenge';
 import {
-  getTodayChallengeDate,
   readDailyChallengeHistory,
-  resetDailyChallengeState,
   writeDailyChallengeHistory,
-  writeDailyChallengeState,
 } from '@/lib/utils/daily-challenge';
 import { getTodayMissionDate } from '@/lib/utils/daily-mission-date';
 import {
@@ -46,13 +43,6 @@ export interface PulledAccountProgress {
   milestones: number[];
   journalEntries: BirdJournalEntry[];
   lastLocalSyncAt: string | null;
-  todayDailyChallenge: {
-    date: string;
-    roundsPlayed: number;
-    correctAnswers: number;
-    bonusSeedsAwarded: number;
-    claimed: boolean;
-  } | null;
   todayMissionClaims: {
     date: string;
     claimedMissionIds: string[];
@@ -155,24 +145,6 @@ export function applyPulledAccountProgress(progress: PulledAccountProgress): voi
   );
 
   const today = getTodayMissionDate();
-  const todayChallengeDate = getTodayChallengeDate();
-
-  if (progress.todayDailyChallenge?.date === todayChallengeDate) {
-    writeDailyChallengeState({
-      date: todayChallengeDate,
-      roundsPlayed: progress.todayDailyChallenge.roundsPlayed,
-      correctAnswers: progress.todayDailyChallenge.correctAnswers,
-      completed: true,
-      completionBonusAwarded: progress.todayDailyChallenge.claimed,
-      perfectBonusAwarded:
-        progress.todayDailyChallenge.claimed
-        && progress.todayDailyChallenge.correctAnswers === DAILY_CHALLENGE_CONFIG.roundCount,
-      bonusSeedsAwarded: progress.todayDailyChallenge.bonusSeedsAwarded,
-      roundResults: [],
-    });
-  } else {
-    resetDailyChallengeState(todayChallengeDate);
-  }
 
   if (progress.todayMissionClaims?.date === today) {
     const baseState = readSessionMissions(today);

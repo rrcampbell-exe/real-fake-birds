@@ -1,5 +1,9 @@
 import type { GetLeaderboardResponse } from '@/lib/auth/account-sync';
-import { milestones } from '@/lib/constants/milestones';
+import {
+  isBadgeMilestone,
+  milestones,
+  progressMilestones,
+} from '@/lib/constants/milestones';
 import { getThemeUnlockByMilestoneValue } from '@/lib/constants/theme-unlocks';
 import { formatNumber } from '@/lib/utils/number-format';
 
@@ -120,13 +124,17 @@ function buildAchievementLine(birdsIdentified: number, unlockedThemeNames: strin
 }
 
 function buildNextRewardLine(birdsIdentified: number): string | null {
-  const nextMilestone = milestones.find((milestone) => milestone.value > birdsIdentified);
+  const nextMilestone = progressMilestones.find((milestone) => milestone.value > birdsIdentified);
 
   if (!nextMilestone) {
     return 'You already have a deep collection. Create an account so it survives browser resets and device swaps.';
   }
 
   const remainingBirds = nextMilestone.value - birdsIdentified;
+  if (!isBadgeMilestone(nextMilestone)) {
+    return `${formatNumber(remainingBirds)} more correct ${remainingBirds === 1 ? 'bird' : 'birds'} to earn +${formatNumber(nextMilestone.rewardSeeds)} bonus seeds. Create an account to save your hard-earned progress.`;
+  }
+
   const nextThemeUnlock = getThemeUnlockByMilestoneValue(nextMilestone.value);
 
   if (nextThemeUnlock && !nextThemeUnlock.comingSoon) {

@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import responseEval from './response-eval';
 import { createSessionMissionsStateForDate, writeSessionMissions } from './missions';
 
+const FIRST_GAME_OF_DAY_BONUS_STORAGE_KEY = 'lastFirstGameBonusDate';
+
 function createEvent() {
   return {
     preventDefault: vi.fn(),
@@ -12,6 +14,7 @@ describe('responseEval', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.setSystemTime(new Date(2026, 3, 5, 12, 0, 0));
+    localStorage.setItem(FIRST_GAME_OF_DAY_BONUS_STORAGE_KEY, '2026-04-05');
     const state = createSessionMissionsStateForDate('2026-04-05');
     writeSessionMissions({
       ...state,
@@ -60,6 +63,95 @@ describe('responseEval', () => {
       bestDailyStreak: 0,
       seeds: 1,
     });
+  });
+
+  it('awards 5 bonus seeds on the first correct answer of the day', () => {
+    localStorage.removeItem(FIRST_GAME_OF_DAY_BONUS_STORAGE_KEY);
+
+    const setSeedsEarned = vi.fn();
+
+    const result = responseEval(
+      createEvent(),
+      true,
+      'real',
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      setSeedsEarned,
+      vi.fn(),
+      vi.fn()
+    );
+
+    expect(result.roundSeedsEarned).toBe(6);
+    expect(result.seedsEarned).toBe(6);
+    expect(setSeedsEarned).toHaveBeenCalledWith(6);
+    expect(JSON.parse(localStorage.getItem('birdScore')!)).toMatchObject({ seeds: 6 });
+    expect(localStorage.getItem(FIRST_GAME_OF_DAY_BONUS_STORAGE_KEY)).toBe('2026-04-05');
+  });
+
+  it('does not award the daily bonus twice on the same day', () => {
+    localStorage.removeItem(FIRST_GAME_OF_DAY_BONUS_STORAGE_KEY);
+
+    const firstResult = responseEval(
+      createEvent(),
+      true,
+      'real',
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn()
+    );
+
+    const secondResult = responseEval(
+      createEvent(),
+      true,
+      'real',
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn()
+    );
+
+    expect(firstResult.roundSeedsEarned).toBe(6);
+    expect(secondResult.roundSeedsEarned).toBe(1);
+    expect(JSON.parse(localStorage.getItem('birdScore')!)).toMatchObject({ seeds: 7 });
+  });
+
+  it('resets the first correct answer bonus on the next calendar day', () => {
+    localStorage.removeItem(FIRST_GAME_OF_DAY_BONUS_STORAGE_KEY);
+
+    responseEval(
+      createEvent(),
+      true,
+      'real',
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn()
+    );
+
+    vi.setSystemTime(new Date(2026, 3, 6, 12, 0, 0));
+
+    const nextDayResult = responseEval(
+      createEvent(),
+      true,
+      'real',
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn()
+    );
+
+    expect(nextDayResult.roundSeedsEarned).toBe(6);
+    expect(localStorage.getItem(FIRST_GAME_OF_DAY_BONUS_STORAGE_KEY)).toBe('2026-04-06');
   });
 
   it('marks streak achievements and awards seeds when a threshold is reached', () => {
@@ -141,6 +233,60 @@ describe('responseEval', () => {
     expect(localStorage.getItem('hasNewThemeUnlock')).toBe('true');
     expect(JSON.parse(localStorage.getItem('birdMilestonesArray')!)).toHaveLength(1);
     expect(JSON.parse(localStorage.getItem('unlockedThemes')!)).toContain('Raven');
+  });
+
+  it('awards bonus seeds for the new intermediate milestones without flagging a badge unlock', () => {
+    localStorage.setItem(
+      'birdScore',
+      JSON.stringify({
+        birdsSeen: 160,
+        birdsIdentified: 124,
+        currentStreak: 0,
+        justAchievedStreak: false,
+        bestStreak: 9,
+        seeds: 10,
+      })
+    );
+    localStorage.setItem(
+      'birdMilestonesArray',
+      JSON.stringify([
+        { value: 10 },
+        { value: 25 },
+        { value: 50 },
+        { value: 75 },
+        { value: 100 },
+      ])
+    );
+
+    const setIsMilestone = vi.fn();
+    const setSeedsEarned = vi.fn();
+    const setUnlockedThemeName = vi.fn();
+    const setEarnedBadgeName = vi.fn();
+
+    const result = responseEval(
+      createEvent(),
+      true,
+      'real',
+      vi.fn(),
+      vi.fn(),
+      setIsMilestone,
+      setSeedsEarned,
+      setUnlockedThemeName,
+      setEarnedBadgeName
+    );
+
+    expect(setIsMilestone).toHaveBeenCalledWith(true);
+    expect(setUnlockedThemeName).toHaveBeenCalledWith(null);
+    expect(setEarnedBadgeName).toHaveBeenCalledWith(null);
+    expect(result.roundSeedsEarned).toBe(26);
+    expect(result.milestoneRewardSeedsEarned).toBe(25);
+    expect(setSeedsEarned).toHaveBeenCalledWith(26);
+    expect(JSON.parse(localStorage.getItem('birdScore')!)).toMatchObject({
+      birdsIdentified: 125,
+      seeds: 36,
+    });
+    expect(localStorage.getItem('hasUnseenBadges')).not.toBe('true');
+    expect(localStorage.getItem('hasNewThemeUnlock')).not.toBe('true');
   });
 
   it('awards the configured major payout at the 10 streak checkpoint', () => {

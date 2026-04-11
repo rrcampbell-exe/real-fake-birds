@@ -10,6 +10,25 @@ import { getTodayMissionDate } from './daily-mission-date';
 import { recordDailyMissionCompletion, syncDailyMissionStreaksToBirdScore } from './daily-mission-history';
 import { readBirdScore, writeBirdScore } from './player-progress';
 
+type MissionProgressEvent =
+  | {
+      type: 'round';
+      roundResult: GameRoundResult;
+      isNewBirdEncounter: boolean;
+    }
+  | {
+      type: 'journal-classification-viewed';
+    }
+  | {
+      type: 'streak-insurance-used';
+    };
+
+export interface MissionRewardGrantEvent {
+  eventId: string;
+  missionId: string;
+  rewardSeeds: number;
+}
+
 function hashValue(value: string): number {
   let hash = 0;
   for (let index = 0; index < value.length; index += 1) {
@@ -141,28 +160,38 @@ export function createMissionRewardSummary(missionId: string): MissionRewardSumm
   };
 }
 
-function incrementForMission(definition: MissionDefinition, roundResult: GameRoundResult): number {
+function incrementForMission(definition: MissionDefinition, event: MissionProgressEvent): number {
   switch (definition.type) {
     case 'play_rounds':
-      return 1;
+      return event.type === 'round' ? 1 : 0;
     case 'correct_answers':
-      return roundResult.isCorrect ? 1 : 0;
+      return event.type === 'round' && event.roundResult.isCorrect ? 1 : 0;
     case 'correct_without_hints':
-      return roundResult.isCorrect && roundResult.usedHintTypes.length === 0 ? 1 : 0;
+      return event.type === 'round' && event.roundResult.isCorrect && event.roundResult.usedHintTypes.length === 0 ? 1 : 0;
     case 'use_hints':
-      return roundResult.usedHintTypes.length > 0 ? roundResult.usedHintTypes.length : 0;
+      return event.type === 'round' && event.roundResult.usedHintTypes.length > 0 ? event.roundResult.usedHintTypes.length : 0;
     case 'earn_seeds':
-      return roundResult.seedsEarned;
+      return event.type === 'round' ? event.roundResult.seedsEarned : 0;
     case 'identify_real_birds':
-      return roundResult.isCorrect && roundResult.isReal ? 1 : 0;
+      return event.type === 'round' && event.roundResult.isCorrect && event.roundResult.isReal ? 1 : 0;
     case 'identify_fake_birds':
-      return roundResult.isCorrect && !roundResult.isReal ? 1 : 0;
+      return event.type === 'round' && event.roundResult.isCorrect && !event.roundResult.isReal ? 1 : 0;
+    case 'identify_new_species':
+      return event.type === 'round' && event.isNewBirdEncounter ? 1 : 0;
+    case 'view_journal_classification':
+      return event.type === 'journal-classification-viewed' ? 1 : 0;
+    case 'reach_streak':
+      return event.type === 'round' && event.roundResult.isCorrect && event.roundResult.currentStreak >= definition.target
+        ? definition.target
+        : 0;
+    case 'use_streak_insurance':
+      return event.type === 'streak-insurance-used' ? 1 : 0;
     default:
       return 0;
   }
 }
 
-export function applyRoundToSessionMissions(roundResult: GameRoundResult): {
+function applyMissionProgressEvent(event: MissionProgressEvent, date = getTodayMissionDate()): {
   nextState: SessionMissionsState;
   newlyCompletedMissionIds: string[];
   missionRewards: MissionRewardSummary[];
@@ -171,7 +200,7 @@ export function applyRoundToSessionMissions(roundResult: GameRoundResult): {
   completedDailyMissionSet: boolean;
   dailyMissionStreak: number | null;
 } {
-  const current = readSessionMissions();
+  const current = readSessionMissions(date);
   const newlyCompletedMissionIds: string[] = [];
   const missionRewards: MissionRewardSummary[] = [];
   let missionSetBonusSeedsEarned = 0;
@@ -202,7 +231,7 @@ export function applyRoundToSessionMissions(roundResult: GameRoundResult): {
 
       const nextProgress = Math.min(
         definition.target,
-        missionState.progress + incrementForMission(definition, roundResult)
+        missionState.progress + incrementForMission(definition, event)
       );
       const completed = nextProgress >= definition.target;
       if (completed && !missionState.completed) {
@@ -261,6 +290,55 @@ export function applyRoundToSessionMissions(roundResult: GameRoundResult): {
     completedDailyMissionSet,
     dailyMissionStreak,
   };
+}
+
+export function applyRoundToSessionMissions(
+  roundResult: GameRoundResult,
+  options?: {
+    isNewBirdEncounter?: boolean;
+    date?: string;
+  }
+) {
+  return applyMissionProgressEvent(
+    {
+      type: 'round',
+      roundResult,
+      isNewBirdEncounter: options?.isNewBirdEncounter ?? false,
+    },
+    options?.date
+  );
+}
+
+export function applyJournalClassificationViewToSessionMissions(date = getTodayMissionDate()) {
+  return applyMissionProgressEvent({ type: 'journal-classification-viewed' }, date);
+}
+
+export function applyStreakInsuranceUseToSessionMissions(date = getTodayMissionDate()) {
+  return applyMissionProgressEvent({ type: 'streak-insurance-used' }, date);
+}
+
+export function buildMissionRewardGrantEvents(
+  date: string,
+  options: {
+    missionRewards: MissionRewardSummary[];
+    missionSetBonusSeedsEarned: number;
+  }
+): MissionRewardGrantEvent[] {
+  const rewardEvents = options.missionRewards.map((missionReward) => ({
+    eventId: getMissionRewardEventId(date, missionReward.missionId),
+    missionId: missionReward.missionId,
+    rewardSeeds: missionReward.rewardSeeds,
+  }));
+
+  if (options.missionSetBonusSeedsEarned > 0) {
+    rewardEvents.push({
+      eventId: getMissionRewardEventId(date, 'mission-set-bonus'),
+      missionId: 'mission-set-bonus',
+      rewardSeeds: options.missionSetBonusSeedsEarned,
+    });
+  }
+
+  return rewardEvents;
 }
 
 export function getMissionDefinitionsForState(state: SessionMissionsState = readSessionMissions()) {

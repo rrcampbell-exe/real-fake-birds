@@ -9,7 +9,10 @@ import {
   hasUnseenLeaderboardWeek,
   LEADERBOARD_LAST_SEEN_WEEK_STORAGE_KEY,
   markLeaderboardWeekSeen,
+  markWeeklyRecapWeekSeen,
   readLastSeenLeaderboardWeek,
+  readLastSeenWeeklyRecapWeek,
+  WEEKLY_RECAP_LAST_SEEN_WEEK_STORAGE_KEY,
 } from './weekly-leaderboard';
 
 vi.mock('@/hooks/useStoredValue', () => ({
@@ -149,6 +152,15 @@ describe('weekly-leaderboard', () => {
     it('returns true when a different week was last seen', () => {
       markLeaderboardWeekSeen('2026-03-30');
       expect(hasUnseenLeaderboardWeek('2026-04-06')).toBe(true);
+    });
+  });
+
+  describe('markWeeklyRecapWeekSeen', () => {
+    it('stores and reads the last seen recap week', () => {
+      markWeeklyRecapWeekSeen('2026-03-30');
+
+      expect(localStorage.getItem(WEEKLY_RECAP_LAST_SEEN_WEEK_STORAGE_KEY)).toBe(JSON.stringify('2026-03-30'));
+      expect(readLastSeenWeeklyRecapWeek()).toBe('2026-03-30');
     });
   });
 });

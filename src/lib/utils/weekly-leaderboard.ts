@@ -25,6 +25,7 @@ const CENTRAL_OFFSET_FORMATTER = new Intl.DateTimeFormat('en-US', {
 });
 
 export const LEADERBOARD_LAST_SEEN_WEEK_STORAGE_KEY = 'leaderboardLastSeenWeek';
+export const WEEKLY_RECAP_LAST_SEEN_WEEK_STORAGE_KEY = 'weeklyChallengeRecapLastSeenWeek';
 
 function getCentralParts(date: Date): { year: number; month: number; day: number; weekday: number } {
   const parts = CENTRAL_DATE_FORMATTER.formatToParts(date);
@@ -140,6 +141,33 @@ export function markLeaderboardWeekSeen(weekStart: string): void {
 
   window.localStorage.setItem(LEADERBOARD_LAST_SEEN_WEEK_STORAGE_KEY, JSON.stringify(weekStart));
   notifyStoredValueChanged(LEADERBOARD_LAST_SEEN_WEEK_STORAGE_KEY);
+}
+
+export function readLastSeenWeeklyRecapWeek(): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(WEEKLY_RECAP_LAST_SEEN_WEEK_STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return typeof parsed === 'string' ? parsed : raw;
+  } catch {
+    return raw;
+  }
+}
+
+export function markWeeklyRecapWeekSeen(weekStart: string): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.setItem(WEEKLY_RECAP_LAST_SEEN_WEEK_STORAGE_KEY, JSON.stringify(weekStart));
+  notifyStoredValueChanged(WEEKLY_RECAP_LAST_SEEN_WEEK_STORAGE_KEY);
 }
 
 export function hasUnseenLeaderboardWeek(currentWeekStart: string): boolean {

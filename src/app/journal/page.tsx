@@ -3,18 +3,23 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { Bird, BookOpen, Sparkles } from 'lucide-react';
+import { useAccountState } from '@/components/account/AccountStateProvider';
 import BirdCard from '@/components/journal/BirdCard';
 import JournalControls, { type JournalFilter, type JournalSort } from '@/components/journal/JournalControls';
+import { flushQueuedProgressEventsForSignedInUser } from '@/lib/auth/account-session';
 import { useBirdJournal } from '@/hooks/useBirdJournal';
 import { usePageProgressSync } from '@/hooks/usePageProgressSync';
 import { useStoredJson } from '@/hooks/useStoredValue';
 import { REVEAL_BIRD_COST } from '@/lib/constants/hints';
+import { queueProgressEvent } from '@/lib/progress/progress-event-outbox';
+import { getTodayMissionDate } from '@/lib/utils/daily-mission-date';
 import {
   CURRENT_ROUND_JOURNAL_BIRD_KEY,
   CURRENT_ROUND_JOURNAL_REVEAL_KEY,
   isJournalEntryMaskedForCurrentRound,
   writeCurrentRoundJournalRevealKey,
 } from '@/lib/utils/bird-journal';
+import { applyJournalClassificationViewToSessionMissions, buildMissionRewardGrantEvents } from '@/lib/utils/missions';
 import { defaultBirdScore, normalizeBirdScore } from '@/lib/utils/player-progress';
 import { spendSeeds } from '@/lib/utils/seed-spend';
 
@@ -43,6 +48,7 @@ function getLinkedBirdKeySnapshot() {
 
 export default function JournalPage() {
   const { isPageBackgroundRefreshing } = usePageProgressSync();
+  const { isSignedIn } = useAccountState();
   const [filter, setFilter] = useState<JournalFilter>('all');
   const [sort, setSort] = useState<JournalSort>('recent');
   const linkedBirdKey = useSyncExternalStore(subscribeToHashChanges, getLinkedBirdKeySnapshot, () => null);
@@ -64,6 +70,37 @@ export default function JournalPage() {
     }
 
     writeCurrentRoundJournalRevealKey(birdKey);
+  };
+
+  const handleOpenDetails = (birdKey: string) => {
+    const entry = journal.find((journalEntry) => journalEntry.birdKey === birdKey);
+    if (!entry?.metadata.sciName) {
+      return;
+    }
+
+    const missionDate = getTodayMissionDate();
+    const missionUpdate = applyJournalClassificationViewToSessionMissions(missionDate);
+    if (!isSignedIn) {
+      return;
+    }
+
+    buildMissionRewardGrantEvents(missionDate, {
+      missionRewards: missionUpdate.missionRewards,
+      missionSetBonusSeedsEarned: missionUpdate.missionSetBonusSeedsEarned,
+    }).forEach((missionReward) => {
+      queueProgressEvent({
+        eventId: missionReward.eventId,
+        eventType: 'mission-reward-granted',
+        occurredAt: new Date().toISOString(),
+        payload: {
+          missionDate,
+          missionId: missionReward.missionId,
+          rewardSeeds: missionReward.rewardSeeds,
+        },
+      });
+    });
+
+    void flushQueuedProgressEventsForSignedInUser();
   };
 
   const filteredJournal = useMemo(() => {
@@ -208,6 +245,7 @@ export default function JournalPage() {
             })}
             canAffordReveal={score.seeds >= REVEAL_BIRD_COST}
             onRevealForCurrentRound={handleRevealForCurrentRound}
+            onOpenDetails={handleOpenDetails}
           />
         ))}
       </section>

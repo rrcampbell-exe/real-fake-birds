@@ -15,7 +15,7 @@ const streakCheckpoints: StreakCheckpoint[] = [
 	{ value: 40, reward: 9, tier: 'minor' },
 	{ value: 45, reward: 10, tier: 'minor' },
 	{ value: 50, reward: 30, tier: 'major' },
-	{ value: 75, reward: 18, tier: 'minor' },
+	{ value: 75, reward: 35, tier: 'minor' },
 	{ value: 100, reward: 45, tier: 'major' },
 	{ value: 150, reward: 25, tier: 'minor' },
 	{ value: 200, reward: 70, tier: 'major' },

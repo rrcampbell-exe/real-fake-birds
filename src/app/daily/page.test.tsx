@@ -2,6 +2,8 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import DailyChallengePage from './page';
 
+const markDailyMissionDateSeenMock = vi.fn();
+
 vi.mock('@/hooks/useSessionMissions', () => ({
   useSessionMissions: vi.fn(),
 }));
@@ -12,6 +14,10 @@ vi.mock('@/hooks/useStoredValue', () => ({
 
 vi.mock('@/hooks/usePageProgressSync', () => ({
   usePageProgressSync: vi.fn(),
+}));
+
+vi.mock('@/lib/utils/daily-mission-notification', () => ({
+  markDailyMissionDateSeen: (...args: unknown[]) => markDailyMissionDateSeenMock(...args),
 }));
 
 vi.mock('@/components/game/MissionPanel', () => ({
@@ -27,7 +33,30 @@ const mockedUseStoredJson = vi.mocked(useStoredJson);
 const mockedUsePageProgressSync = vi.mocked(usePageProgressSync);
 
 describe('DailyChallengePage', () => {
+  it('marks today\'s daily missions as seen on render', () => {
+    markDailyMissionDateSeenMock.mockReset();
+    mockedUsePageProgressSync.mockReturnValue({
+      isPageSyncLoading: false,
+      isPageBackgroundRefreshing: false,
+      isSignedIn: true,
+    });
+    mockedUseSessionMissions.mockReturnValue({
+      state: { date: '2026-04-05', missions: [], bonusClaimed: false },
+      missions: [],
+      allCompleted: false,
+      allClaimed: false,
+      bonusClaimed: false,
+      missionSetBonusSeeds: 15,
+    });
+    mockedUseStoredJson.mockReturnValue([]);
+
+    render(<DailyChallengePage />);
+
+    expect(markDailyMissionDateSeenMock).toHaveBeenCalledWith('2026-04-05');
+  });
+
   it('shows a background refresh badge while signed-in progress is syncing', () => {
+    markDailyMissionDateSeenMock.mockReset();
     mockedUsePageProgressSync.mockReturnValue({
       isPageSyncLoading: false,
       isPageBackgroundRefreshing: true,
@@ -50,6 +79,7 @@ describe('DailyChallengePage', () => {
   });
 
   it('renders the mission hub copy and streak summary', () => {
+    markDailyMissionDateSeenMock.mockReset();
     mockedUsePageProgressSync.mockReturnValue({
       isPageSyncLoading: false,
       isPageBackgroundRefreshing: false,
@@ -91,6 +121,7 @@ describe('DailyChallengePage', () => {
   });
 
   it('shows the high flyer unlocked state once all missions are complete', () => {
+    markDailyMissionDateSeenMock.mockReset();
     mockedUsePageProgressSync.mockReturnValue({
       isPageSyncLoading: false,
       isPageBackgroundRefreshing: false,

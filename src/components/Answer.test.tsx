@@ -5,8 +5,9 @@ import Answer from './Answer';
 import type { HintState } from '@/types';
 import { CURRENT_ROUND_JOURNAL_REVEAL_KEY } from '@/lib/utils/bird-journal';
 
-const { confettiMock } = vi.hoisted(() => ({
+const { confettiMock, playMock } = vi.hoisted(() => ({
   confettiMock: vi.fn(),
+  playMock: vi.fn(),
 }));
 
 vi.mock('canvas-confetti', () => ({
@@ -14,7 +15,7 @@ vi.mock('canvas-confetti', () => ({
 }));
 
 vi.mock('@/hooks/useSound', () => ({
-  useSound: () => ({ play: vi.fn() }),
+  useSound: () => ({ play: playMock }),
 }));
 
 const emptyHints: HintState = {
@@ -46,6 +47,7 @@ const defaultProps: React.ComponentProps<typeof Answer> = {
 describe('Answer', () => {
   beforeEach(() => {
     confettiMock.mockClear();
+    playMock.mockClear();
     localStorage.clear();
   });
 
@@ -216,6 +218,18 @@ describe('Answer', () => {
     render(<Answer {...defaultProps} seedsEarned={1} />);
 
     expect(confettiMock).not.toHaveBeenCalled();
+  });
+
+  it('plays the milestone chime when the first bird bonus is awarded', () => {
+    vi.useFakeTimers();
+
+    render(<Answer {...defaultProps} firstGameOfDayBonusSeedsEarned={5} />);
+
+    expect(playMock).toHaveBeenCalledWith('milestone');
+
+    vi.runAllTimers();
+    expect(playMock).toHaveBeenCalledWith('correct');
+    vi.useRealTimers();
   });
 
   it('shows a themed fake field note without exposing fake bird metadata', () => {
