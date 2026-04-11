@@ -7,6 +7,7 @@ import ThemeProvider from "@/components/ThemeProvider";
 import TopNav from "@/components/nav/TopNav";
 import BottomNav from "@/components/nav/BottomNav";
 import AnalyticsProvider from '@/components/analytics/AnalyticsProvider';
+import ConsentModal from '@/components/analytics/ConsentModal';
 import { themeUnlocks } from '@/lib/constants/theme-unlocks';
 
 const liveThemeUnlockThresholds = themeUnlocks
@@ -79,6 +80,7 @@ export default function RootLayout({
       <body className="flex min-h-dvh flex-col font-[family-name:var(--font-body)]">
         <ThemeProvider>
           <AnalyticsProvider />
+          <ConsentModal />
           <TopNav />
           <main className="flex flex-1 flex-col pb-16 md:pb-0">
             {children}

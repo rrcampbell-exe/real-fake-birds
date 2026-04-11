@@ -1,4 +1,5 @@
 import { CURRENT_HINTS_STORAGE_KEY } from '@/lib/constants/hints';
+import { track } from '@/lib/analytics';
 import { applyProgressEvents, pullAccountProgress, syncBirdJournal, syncLocalProgress, type LocalProgressPayload } from '@/lib/auth/account-sync';
 import { applyPulledAccountProgress } from '@/lib/auth/account-sync-local';
 import type { ProgressEvent } from '@/lib/progress/progress-events';
@@ -116,10 +117,16 @@ export async function flushQueuedProgressEventsForSignedInUser(): Promise<void> 
   }
 
   progressFlushPromise = (async () => {
+    let syncStartTracked = false;
     while (true) {
       const queuedEvents = readProgressEventOutbox();
       if (queuedEvents.length === 0) {
         return;
+      }
+
+      if (!syncStartTracked) {
+        syncStartTracked = true;
+        track('account_sync_started', { event_count: queuedEvents.length });
       }
 
       const response = await applyProgressEvents(queuedEvents);

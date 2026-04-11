@@ -11,9 +11,10 @@ import { resolveTheme, setTheme } from '@/lib/utils/theme-handler';
 import { finch } from '@/lib/themes';
 import { useStoredJson } from '@/hooks/useStoredValue';
 import { useHasHydrated } from '@/hooks/useHasHydrated';
+import { useScreenViewed } from '@/hooks/useScreenViewed';
 import { useSound } from '@/hooks/useSound';
 import SeedIcon from '@/components/icons/SeedIcon';
-import { track } from '@/lib/analytics';
+import { track, trackFirstPurchase } from '@/lib/analytics';
 import { getThemeUnlockByThemeName } from '@/lib/constants/theme-unlocks';
 import {
   defaultBirdScore,
@@ -37,6 +38,7 @@ function shouldShowIosAudioNotice(): boolean {
 }
 
 export default function SettingsPage() {
+  useScreenViewed('settings');
   const isHydrated = useHasHydrated();
   const {
     accountEmail,
@@ -115,6 +117,7 @@ export default function SettingsPage() {
 
   const handleLockedThemeClick = (themeName: string) => {
     setPendingPurchaseThemeName(themeName);
+    track('theme_previewed', { theme_name: themeName });
     play('navTap');
   };
 
@@ -165,6 +168,7 @@ export default function SettingsPage() {
               theme_name: pendingPurchase.themeName,
               seed_cost: pendingPurchase.seedCost,
             });
+            trackFirstPurchase('theme');
           }
 
           setPendingPurchaseThemeName(null);
@@ -195,6 +199,7 @@ export default function SettingsPage() {
         theme_name: pendingPurchase.themeName,
         seed_cost: pendingPurchase.seedCost,
       });
+      trackFirstPurchase('theme');
       setPendingPurchaseThemeName(null);
     }
   };

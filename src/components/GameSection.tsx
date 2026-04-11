@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGameState } from '@/hooks/useGameState';
+import { useScreenViewed } from '@/hooks/useScreenViewed';
 import { useSignUpPrompt } from '@/hooks/useSignUpPrompt';
 import WeeklyChallengeBanner from '@/components/WeeklyChallengeBanner';
 import MilestoneBadgeSvg from '@/components/icons/MilestoneBadgeSvg';
@@ -137,6 +138,7 @@ function buildUnlockToasts(options: {
 }
 
 export default function GameSection() {
+  useScreenViewed('home');
   const [roundAnimation, setRoundAnimation] = useState<{ id: number; result: GameRoundResult } | null>(null);
   const [expiredToastRoundId, setExpiredToastRoundId] = useState<number | null>(null);
   const {

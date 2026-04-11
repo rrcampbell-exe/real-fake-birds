@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { AlertCircle } from 'lucide-react';
+import { track } from '@/lib/analytics';
 import { useSound } from '@/hooks/useSound';
 
 interface ErrorProps {
@@ -13,6 +14,7 @@ export default function Error({ onTryAgain }: ErrorProps) {
 
   useEffect(() => {
     play('wrong');
+    track('error_displayed');
   }, [play]);
 
   return (
@@ -28,6 +30,7 @@ export default function Error({ onTryAgain }: ErrorProps) {
         <button
           onClick={() => {
             play('whoosh');
+            track('retry_attempted');
             onTryAgain();
           }}
           className="py-2.5 px-6 rounded-xl font-[family-name:var(--font-display)] font-semibold text-sm

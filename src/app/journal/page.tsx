@@ -7,8 +7,10 @@ import { useAccountState } from '@/components/account/AccountStateProvider';
 import BirdCard from '@/components/journal/BirdCard';
 import JournalControls, { type JournalFilter, type JournalSort } from '@/components/journal/JournalControls';
 import { flushQueuedProgressEventsForSignedInUser } from '@/lib/auth/account-session';
+import { track } from '@/lib/analytics';
 import { useBirdJournal } from '@/hooks/useBirdJournal';
 import { usePageProgressSync } from '@/hooks/usePageProgressSync';
+import { useScreenViewed } from '@/hooks/useScreenViewed';
 import { useStoredJson } from '@/hooks/useStoredValue';
 import { REVEAL_BIRD_COST } from '@/lib/constants/hints';
 import { queueProgressEvent } from '@/lib/progress/progress-event-outbox';
@@ -48,6 +50,7 @@ function getLinkedBirdKeySnapshot() {
 
 export default function JournalPage() {
   const { isPageBackgroundRefreshing } = usePageProgressSync();
+  useScreenViewed('journal');
   const { isSignedIn } = useAccountState();
   const [filter, setFilter] = useState<JournalFilter>('all');
   const [sort, setSort] = useState<JournalSort>('recent');
@@ -78,8 +81,20 @@ export default function JournalPage() {
       return;
     }
 
+    track('journal_bird_viewed', { bird_key: birdKey });
+
     const missionDate = getTodayMissionDate();
     const missionUpdate = applyJournalClassificationViewToSessionMissions(missionDate);
+
+    if (missionUpdate.missionRewards.length > 0 || missionUpdate.missionSetBonusSeedsEarned > 0) {
+      track('mission_reward_granted', {
+        missions_granted: missionUpdate.missionRewards.length,
+        reward_seeds: missionUpdate.totalRewardSeeds,
+        all_missions_complete: missionUpdate.completedDailyMissionSet,
+        bonus_seeds: missionUpdate.missionSetBonusSeedsEarned,
+      });
+    }
+
     if (!isSignedIn) {
       return;
     }

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import { useStoredJson } from './useStoredValue';
 import { flushQueuedProgressEventsForSignedInUser } from '@/lib/auth/account-session';
+import { track } from '@/lib/analytics';
 import { DAILY_MISSION_BONUS_SEEDS, SESSION_MISSIONS_STORAGE_KEY } from '@/lib/constants/missions';
 import { syncDailyMissionCompletion } from '@/lib/auth/account-sync';
 import { queueProgressEvent } from '@/lib/progress/progress-event-outbox';
@@ -73,6 +74,13 @@ export function useSessionMissions() {
         seeds: score.seeds + totalRewardSeeds,
       });
     }
+
+    track('mission_reward_granted', {
+      missions_granted: pendingMissionRewards.length,
+      reward_seeds: totalRewardSeeds,
+      all_missions_complete: allCompleted,
+      bonus_seeds: shouldGrantBonus ? DAILY_MISSION_BONUS_SEEDS : 0,
+    });
 
     writeSessionMissions({
       ...storedState,

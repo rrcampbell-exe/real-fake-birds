@@ -324,6 +324,10 @@ const responseEval = (
     streak_protected: streakProtected,
   });
 
+  if (!streakProtected && currentStreak > 0) {
+    track('streak_lost', { previous_streak: currentStreak, mode });
+  }
+
   if (streakProtected) {
     track('streak_insurance_consumed', {
       mode,

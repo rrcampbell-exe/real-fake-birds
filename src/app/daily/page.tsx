@@ -7,8 +7,10 @@ import MissionPanel from '@/components/game/MissionPanel';
 import { usePageProgressSync } from '@/hooks/usePageProgressSync';
 import { useSessionMissions } from '@/hooks/useSessionMissions';
 import { useStoredJson } from '@/hooks/useStoredValue';
+import { track } from '@/lib/analytics';
 import { markDailyMissionDateSeen } from '@/lib/utils/daily-mission-notification';
 import { DAILY_MISSION_HISTORY_STORAGE_KEY, getDailyMissionStreaks } from '@/lib/utils/daily-mission-history';
+import { useScreenViewed } from '@/hooks/useScreenViewed';
 import type { DailyMissionHistoryEntry } from '@/types';
 
 export default function DailyChallengePage() {
@@ -18,6 +20,12 @@ export default function DailyChallengePage() {
   const { currentStreak } = getDailyMissionStreaks(missionHistory);
   const completedCount = missions.filter((mission) => mission.completed).length;
   const rewardedCount = missions.filter((mission) => mission.claimed).length + (bonusClaimed ? 1 : 0);
+
+  useScreenViewed('daily');
+
+  useEffect(() => {
+    track('daily_challenge_started');
+  }, []);
 
   useEffect(() => {
     markDailyMissionDateSeen(state.date);
