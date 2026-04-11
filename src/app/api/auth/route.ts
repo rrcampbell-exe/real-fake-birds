@@ -317,13 +317,6 @@ function calculateAccuracy(birdsSeen: number, birdsIdentified: number): number {
   return birdsSeen > 0 ? Number(((birdsIdentified / birdsSeen) * 100).toFixed(2)) : 0;
 }
 
-function getTodayChallengeDate(now = new Date()): string {
-  const year = now.getFullYear();
-  const month = `${now.getMonth() + 1}`.padStart(2, '0');
-  const day = `${now.getDate()}`.padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
 function hashValue(value: string): number {
   let hash = 0;
   for (let index = 0; index < value.length; index += 1) {
