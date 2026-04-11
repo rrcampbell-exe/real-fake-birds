@@ -21,14 +21,18 @@ export async function middleware(request: NextRequest) {
 
   // Only set the cookie once; skip if already present.
   if (!request.cookies.has(REGION_COOKIE)) {
-    const country = request.headers.get('x-vercel-ip-country') ?? '';
-    const region = GDPR_COUNTRY_CODES.has(country.toUpperCase()) ? 'EU' : 'OTHER';
-    response.cookies.set(REGION_COOKIE, region, {
-      path: '/',
-      maxAge: 60 * 60 * 24 * 365, // 1 year
-      sameSite: 'lax',
-      secure: true,
-    });
+    const country = request.headers.get('x-vercel-ip-country')?.trim();
+
+    // Treat missing/empty geo headers as unknown so consent is still required.
+    if (country) {
+      const region = GDPR_COUNTRY_CODES.has(country.toUpperCase()) ? 'EU' : 'OTHER';
+      response.cookies.set(REGION_COOKIE, region, {
+        path: '/',
+        maxAge: 60 * 60 * 24 * 365, // 1 year
+        sameSite: 'lax',
+        secure: true,
+      });
+    }
   }
 
   return response;
