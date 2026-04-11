@@ -13,25 +13,22 @@ import { useHasHydrated } from '@/hooks/useHasHydrated';
 
 export default function ConsentModal() {
   const hasHydrated = useHasHydrated();
-  const [isVisible, setIsVisible] = useState(false);
+  // `dismissed` tracks whether the user has responded via the modal UI.
+  // `isVisible` is fully derived so no setState call is needed inside an effect.
+  const [dismissed, setDismissed] = useState(false);
+  const isVisible =
+    hasHydrated && !dismissed && requiresAnalyticsConsent() && getAnalyticsConsent() === null;
 
+  // Side-effect only: auto-accept non-EU users. Does not call setState.
   useEffect(() => {
     if (!hasHydrated) return;
-
-    if (!requiresAnalyticsConsent()) {
-      // Non-EU user: silently accept if they haven't made a choice yet
-      if (getAnalyticsConsent() === null) {
-        setAnalyticsConsent('accepted');
-        if (typeof posthog.opt_in_capturing === 'function') {
-          posthog.opt_in_capturing();
-        }
-        window.dispatchEvent(new Event('analytics-consent-changed'));
+    if (!requiresAnalyticsConsent() && getAnalyticsConsent() === null) {
+      setAnalyticsConsent('accepted');
+      if (typeof posthog.opt_in_capturing === 'function') {
+        posthog.opt_in_capturing();
       }
-      return;
+      window.dispatchEvent(new Event('analytics-consent-changed'));
     }
-
-    // EU user or unknown region (fail-open): show modal if no prior choice
-    setIsVisible(getAnalyticsConsent() === null);
   }, [hasHydrated]);
 
   const handleAccept = useCallback(() => {
@@ -40,7 +37,7 @@ export default function ConsentModal() {
       posthog.opt_in_capturing();
     }
     window.dispatchEvent(new Event('analytics-consent-changed'));
-    setIsVisible(false);
+    setDismissed(true);
   }, []);
 
   const handleDecline = useCallback(() => {
@@ -49,7 +46,7 @@ export default function ConsentModal() {
       posthog.opt_out_capturing();
     }
     window.dispatchEvent(new Event('analytics-consent-changed'));
-    setIsVisible(false);
+    setDismissed(true);
   }, []);
 
   if (!hasHydrated) {

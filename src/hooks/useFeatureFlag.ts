@@ -34,8 +34,30 @@ function writeCachedFlag(flagKey: string, value: boolean | string): void {
  *   (signalled by the `analytics-feature-flags-loaded` DOM event).
  * - Returns `false` if PostHog is unavailable or consent has not been granted.
  */
+function readLiveFlag(flagKey: string): boolean | string | null {
+  const cached = readCachedFlag(flagKey);
+  if (cached !== null) return cached;
+
+  const flag = posthog.isFeatureEnabled(flagKey);
+  if (flag !== undefined) {
+    writeCachedFlag(flagKey, flag);
+    return flag;
+  }
+
+  const rawFlag = posthog.getFeatureFlag(flagKey);
+  if (rawFlag !== undefined && rawFlag !== null) {
+    const coerced = typeof rawFlag === 'string' ? rawFlag : Boolean(rawFlag);
+    writeCachedFlag(flagKey, coerced);
+    return coerced;
+  }
+
+  return null;
+}
+
 export function useFeatureFlag(flagKey: string): boolean | string | null {
-  const [value, setValue] = useState<boolean | string | null>(() => readCachedFlag(flagKey));
+  // Seed from cache + live PostHog synchronously on first render.
+  // This avoids calling setState inside the effect body.
+  const [value, setValue] = useState<boolean | string | null>(() => readLiveFlag(flagKey));
 
   const refreshFlag = useCallback(() => {
     const flag = posthog.isFeatureEnabled(flagKey);
@@ -55,9 +77,8 @@ export function useFeatureFlag(flagKey: string): boolean | string | null {
     }
   }, [flagKey]);
 
+  // Effect only subscribes to the feature-flags-loaded event; no setState in body.
   useEffect(() => {
-    refreshFlag();
-
     const handler = () => refreshFlag();
     window.addEventListener('analytics-feature-flags-loaded', handler);
     return () => window.removeEventListener('analytics-feature-flags-loaded', handler);
