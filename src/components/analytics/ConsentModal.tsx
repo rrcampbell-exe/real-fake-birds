@@ -22,6 +22,9 @@ export default function ConsentModal() {
       // Non-EU user: silently accept if they haven't made a choice yet
       if (getAnalyticsConsent() === null) {
         setAnalyticsConsent('accepted');
+        if (typeof posthog.opt_in_capturing === 'function') {
+          posthog.opt_in_capturing();
+        }
         window.dispatchEvent(new Event('analytics-consent-changed'));
       }
       return;
@@ -33,6 +36,9 @@ export default function ConsentModal() {
 
   const handleAccept = useCallback(() => {
     setAnalyticsConsent('accepted');
+    if (typeof posthog.opt_in_capturing === 'function') {
+      posthog.opt_in_capturing();
+    }
     window.dispatchEvent(new Event('analytics-consent-changed'));
     setIsVisible(false);
   }, []);

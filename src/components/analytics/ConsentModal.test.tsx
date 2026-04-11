@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('posthog-js', () => ({
   default: {
+    opt_in_capturing: vi.fn(),
     opt_out_capturing: vi.fn(),
   },
 }));
@@ -54,7 +55,7 @@ describe('ConsentModal', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('accepting saves consent and dispatches the consent-changed event', () => {
+  it('accepting saves consent, opts in to posthog, and dispatches the consent-changed event', () => {
     const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
     render(<ConsentModal />);
 
@@ -63,6 +64,7 @@ describe('ConsentModal', () => {
     });
 
     expect(setAnalyticsConsent).toHaveBeenCalledWith('accepted');
+    expect(posthog.opt_in_capturing).toHaveBeenCalled();
     expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'analytics-consent-changed' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
@@ -110,6 +112,7 @@ describe('ConsentModal', () => {
 
       expect(container).toBeEmptyDOMElement();
       expect(setAnalyticsConsent).toHaveBeenCalledWith('accepted');
+      expect(posthog.opt_in_capturing).toHaveBeenCalled();
       expect(dispatchSpy).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'analytics-consent-changed' }),
       );
