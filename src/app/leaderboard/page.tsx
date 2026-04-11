@@ -8,6 +8,7 @@ import { useAccountState } from '@/components/account/AccountStateProvider';
 import LeaderboardAvatar from '@/components/leaderboard/LeaderboardAvatar';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { useHasHydrated } from '@/hooks/useHasHydrated';
+import { useScreenViewed } from '@/hooks/useScreenViewed';
 import { buildWeeklyLeaderboardSharePayload } from '@/lib/utils/share-data';
 import { getTimeRemainingInWeek, markLeaderboardWeekSeen } from '@/lib/utils/weekly-leaderboard';
 import type { WeeklyChallengeIcon } from '@/types';
@@ -45,6 +46,7 @@ function useMinuteTimestamp(enabled: boolean) {
 
 export default function LeaderboardPage() {
   const { accountUsername } = useAccountState();
+  useScreenViewed('leaderboard');
   const { leaderboard, isLoading, error, reload } = useLeaderboard();
   const hasMounted = useHasHydrated();
   const now = useMinuteTimestamp(Boolean(leaderboard));

@@ -16,7 +16,7 @@ import {
   progressMilestones,
 } from '@/lib/constants/milestones';
 import { streakValues } from '@/lib/constants/streaks';
-import { track } from '@/lib/analytics';
+import { track, trackFirstPurchase } from '@/lib/analytics';
 import { getThemeUnlockByMilestoneValue } from '@/lib/constants/theme-unlocks';
 import { getTodayMissionDate } from '@/lib/utils/daily-mission-date';
 import { isNextMilestoneEval, isNextStreakEval } from '@/lib/utils/goals-evaluation';
@@ -369,6 +369,7 @@ export default function StatsBar({ refreshTrigger, roundAnimation }: StatsBarPro
                       cost: result.state.cost,
                       purchased_at_streak: result.state.purchasedAtStreak,
                     });
+                    trackFirstPurchase('streak_insurance');
                   } finally {
                     setIsPurchasingInsurance(false);
                   }

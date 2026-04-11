@@ -15,11 +15,18 @@ vi.mock('posthog-js', () => ({
   default: posthogMock,
 }));
 
+vi.mock('./consent', () => ({
+  getAnalyticsConsent: vi.fn(() => 'accepted'),
+}));
+
+import { getAnalyticsConsent } from './consent';
+
 import {
   clearAnalyticsUsername,
   readAnalyticsUsername,
   setAnalyticsUsername,
   track,
+  trackFirstPurchase,
   trackSessionStart,
 } from './index';
 
@@ -30,6 +37,7 @@ describe('analytics helpers', () => {
     vi.stubEnv('NEXT_PUBLIC_POSTHOG_KEY', 'posthog-key');
     Object.values(posthogMock).forEach((value) => value.mockReset());
     posthogMock.get_distinct_id.mockReturnValue('someone-else');
+    vi.mocked(getAnalyticsConsent).mockReturnValue('accepted');
   });
 
   afterEach(() => {
@@ -93,6 +101,74 @@ describe('analytics helpers', () => {
 
     track('session_start');
     trackSessionStart('classic');
+
+    expect(posthogMock.capture).not.toHaveBeenCalled();
+  });
+
+  it('does not track when consent is not accepted', () => {
+    vi.mocked(getAnalyticsConsent).mockReturnValue(null);
+
+    track('session_start');
+
+    expect(posthogMock.capture).not.toHaveBeenCalled();
+  });
+
+  it('does not track session start when consent is declined', () => {
+    vi.mocked(getAnalyticsConsent).mockReturnValue('declined');
+
+    trackSessionStart('classic');
+
+    expect(posthogMock.capture).not.toHaveBeenCalled();
+  });
+
+  it('records first session timestamp on first trackSessionStart call', () => {
+    expect(localStorage.getItem('analytics-first-session-ts')).toBeNull();
+
+    trackSessionStart('classic');
+
+    expect(localStorage.getItem('analytics-first-session-ts')).not.toBeNull();
+  });
+
+  it('does not overwrite existing first session timestamp', () => {
+    localStorage.setItem('analytics-first-session-ts', '12345');
+
+    trackSessionStart('classic');
+
+    expect(localStorage.getItem('analytics-first-session-ts')).toBe('12345');
+  });
+
+  it('includes seeds_balance from birdScore localStorage in session_start', () => {
+    localStorage.setItem('birdScore', JSON.stringify({ seeds: 42 }));
+
+    trackSessionStart('daily');
+
+    expect(posthogMock.capture).toHaveBeenCalledWith('session_start', { mode: 'daily', seeds_balance: 42 });
+  });
+
+  it('fires time_to_first_purchase once with purchase_type and seconds', () => {
+    localStorage.setItem('analytics-first-session-ts', (Date.now() - 10000).toString());
+
+    trackFirstPurchase('theme');
+
+    expect(posthogMock.capture).toHaveBeenCalledWith(
+      'time_to_first_purchase',
+      expect.objectContaining({ purchase_type: 'theme' })
+    );
+  });
+
+  it('does not fire time_to_first_purchase a second time', () => {
+    localStorage.setItem('analytics-first-session-ts', Date.now().toString());
+
+    trackFirstPurchase('hint_fact');
+    trackFirstPurchase('hint_image');
+
+    expect(posthogMock.capture).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not fire trackFirstPurchase when consent is missing', () => {
+    vi.mocked(getAnalyticsConsent).mockReturnValue(null);
+
+    trackFirstPurchase('streak_insurance');
 
     expect(posthogMock.capture).not.toHaveBeenCalled();
   });

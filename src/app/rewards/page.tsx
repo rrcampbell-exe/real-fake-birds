@@ -7,12 +7,14 @@ import DailyRewardsPanel from '@/components/rewards/DailyRewardsPanel';
 import TrophyCase from '@/components/rewards/TrophyCase';
 import PersonalBests from '@/components/rewards/PersonalBests';
 import { usePageProgressSync } from '@/hooks/usePageProgressSync';
+import { useScreenViewed } from '@/hooks/useScreenViewed';
 import { useStoredJson } from '@/hooks/useStoredValue';
 import { buildStatsSharePayload } from '@/lib/utils/share-data';
 import { defaultBirdScore, normalizeBirdScore, setStoredBoolean, UNSEEN_BADGES_STORAGE_KEY } from '@/lib/utils/player-progress';
 
 export default function RewardsPage() {
   const { isPageBackgroundRefreshing } = usePageProgressSync();
+  useScreenViewed('rewards');
 
   useEffect(() => {
     setStoredBoolean(UNSEEN_BADGES_STORAGE_KEY, false);

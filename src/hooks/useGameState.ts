@@ -32,7 +32,7 @@ import fetchHint from '@/lib/utils/fetch-hint';
 import responseEval from '@/lib/utils/response-eval';
 import { defaultBirdScore, BIRD_SCORE_STORAGE_KEY } from '@/lib/utils/player-progress';
 import { refundSeeds, spendSeeds } from '@/lib/utils/seed-spend';
-import { track, trackSessionStart } from '@/lib/analytics';
+import { track, trackFirstPurchase, trackSessionStart } from '@/lib/analytics';
 
 const PROGRESS_FLUSH_DELAY_MS = 5000;
 
@@ -460,7 +460,9 @@ export function useGameState(options?: UseGameStateOptions) {
           mode,
           type,
           is_real: isReal,
+          cost,
         });
+        trackFirstPurchase(type === 'fact' ? 'hint_fact' : 'hint_image');
       } catch {
         refundSeeds(cost);
         queueSeedRefund(cost);

@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertCircle, BookOpenText, ChevronDown, ImageIcon, LoaderCircle, SkipForward, Sparkles, WandSparkles } from 'lucide-react';
+import { track } from '@/lib/analytics';
 import type { HintState, HintType } from '@/types';
 import { FACT_HINT_COST, IMAGE_HINT_COST } from '@/lib/constants/hints';
 import { formatNumber } from '@/lib/utils/number-format';
@@ -210,7 +211,12 @@ export default function HintPanel({
       <button
         type="button"
         aria-expanded={isExpanded}
-        onClick={() => setIsManuallyExpanded((current) => !current)}
+        onClick={() => {
+          if (!isExpanded) {
+            track('hint_panel_opened');
+          }
+          setIsManuallyExpanded((current) => !current);
+        }}
         className="flex w-full items-center justify-between rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-primary-light)] px-4 py-3 text-left transition-colors hover:bg-[var(--color-surface-hover)]"
       >
         <span className="flex items-center gap-2 font-[family-name:var(--font-display)] text-sm font-semibold tracking-[0.02em]">
