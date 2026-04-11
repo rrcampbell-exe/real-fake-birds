@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import posthog from 'posthog-js';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import { clearAnalyticsUsername, setAnalyticsUsername } from '@/lib/analytics';
+import { getAnalyticsConsent } from '@/lib/analytics/consent';
 import { hasSupabaseEnv } from '@/lib/supabase/env';
 
 function clearEmailIdentityArtifacts(): void {
@@ -18,9 +19,20 @@ let hasInitializedPostHog = false;
 
 export default function AnalyticsProvider() {
   const { accountUsername } = useAccountState();
+  const [consentVersion, setConsentVersion] = useState(0);
+
+  useEffect(() => {
+    const handleConsentChange = () => setConsentVersion((v) => v + 1);
+    window.addEventListener('analytics-consent-changed', handleConsentChange);
+    return () => window.removeEventListener('analytics-consent-changed', handleConsentChange);
+  }, []);
 
   useEffect(() => {
     if (!postHogKey || typeof window === 'undefined') {
+      return;
+    }
+
+    if (getAnalyticsConsent() !== 'accepted') {
       return;
     }
 
@@ -38,11 +50,19 @@ export default function AnalyticsProvider() {
       person_profiles: 'identified_only',
     });
 
+    posthog.onFeatureFlags(() => {
+      window.dispatchEvent(new Event('analytics-feature-flags-loaded'));
+    });
+
     hasInitializedPostHog = true;
-  }, []);
+  }, [consentVersion]);
 
   useEffect(() => {
     if (!postHogKey || typeof window === 'undefined' || !hasSupabaseEnv()) {
+      return;
+    }
+
+    if (getAnalyticsConsent() !== 'accepted') {
       return;
     }
 
@@ -72,7 +92,7 @@ export default function AnalyticsProvider() {
 
     clearEmailIdentityArtifacts();
     posthog.register({ username: accountUsername });
-  }, [accountUsername]);
+  }, [accountUsername, consentVersion]);
 
   return null;
 }
