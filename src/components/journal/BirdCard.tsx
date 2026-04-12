@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, ChevronUp, MapPin } from 'lucide-react';
 import type { BirdJournalEntry } from '@/types';
 import { REVEAL_BIRD_COST } from '@/lib/constants/hints';
@@ -67,6 +67,7 @@ function JournalBirdImage({ birdName, imageUrl }: JournalBirdImageProps) {
 
 export default function BirdCard({ entry, isMaskedForCurrentRound, canAffordReveal, onRevealForCurrentRound, onOpenDetails, isLinkedTarget = false }: JournalBirdCardProps) {
   const [isExpanded, setIsExpanded] = useState(isLinkedTarget);
+  const hasAutoOpenedRef = useRef(false);
   const accuracy = entry.seenCount > 0
     ? Math.floor((entry.correctCount / entry.seenCount) * 100)
     : 0;
@@ -76,27 +77,29 @@ export default function BirdCard({ entry, isMaskedForCurrentRound, canAffordReve
   const showExpandedArticleHeader = expanded && !isMaskedForCurrentRound && hasImage;
 
   useEffect(() => {
-    if (!isLinkedTarget) {
+    if (!isLinkedTarget || hasAutoOpenedRef.current) {
       return;
     }
 
     const timerId = window.setTimeout(() => {
+      hasAutoOpenedRef.current = true;
       setIsExpanded(true);
+      if (!isMaskedForCurrentRound) {
+        onOpenDetails?.(entry.birdKey);
+      }
     }, 0);
 
     return () => {
       window.clearTimeout(timerId);
     };
-  }, [isLinkedTarget]);
+  }, [entry.birdKey, isMaskedForCurrentRound, isLinkedTarget, onOpenDetails]);
 
   const handleToggleExpanded = () => {
-    setIsExpanded((current) => {
-      const nextExpanded = !current;
-      if (!current && nextExpanded && !isMaskedForCurrentRound) {
-        onOpenDetails?.(entry.birdKey);
-      }
-      return nextExpanded;
-    });
+    const nextExpanded = !isExpanded;
+    setIsExpanded(nextExpanded);
+    if (nextExpanded && !isMaskedForCurrentRound) {
+      onOpenDetails?.(entry.birdKey);
+    }
   };
 
   return (
@@ -132,7 +135,7 @@ export default function BirdCard({ entry, isMaskedForCurrentRound, canAffordReve
             <p className="mt-2 text-sm text-[var(--color-muted)]">
               {isMaskedForCurrentRound
                 ? 'Seen ??? times'
-                : `Seen ${entry.seenCount} ${entry.seenCount === 1 ? 'time' : 'times'} • Last seen on ${formatLastSeen(entry.lastSeenAt)}`}
+                : `Seen ${entry.seenCount} ${entry.seenCount === 1 ? 'time' : 'times'} • Last seen ${formatLastSeen(entry.lastSeenAt)}`}
             </p>
           </div>
         ) : <div className="min-w-0" />}
@@ -176,7 +179,7 @@ export default function BirdCard({ entry, isMaskedForCurrentRound, canAffordReve
                 <p className="text-[0.95rem] italic leading-tight text-[var(--color-muted)]">{entry.metadata.sciName}</p>
               ) : null}
               <p className="text-sm leading-tight text-[var(--color-muted)]">
-                Seen {entry.seenCount} {entry.seenCount === 1 ? 'time' : 'times'} • Last seen on {formatLastSeen(entry.lastSeenAt)}
+                Seen {entry.seenCount} {entry.seenCount === 1 ? 'time' : 'times'} • Last seen {formatLastSeen(entry.lastSeenAt)}
               </p>
               {entry.metadata.regionLabel ? (
                 <p className="flex items-center gap-1.5 text-sm leading-tight text-[var(--color-text)]">

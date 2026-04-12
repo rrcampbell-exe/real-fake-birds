@@ -58,13 +58,13 @@ describe('Journal BirdCard', () => {
     );
 
     expect(screen.getByText('Real')).toBeInTheDocument();
-    expect(screen.getByText('Seen 3 times • Last seen on April 5, 2026')).toBeInTheDocument();
+    expect(screen.getByText('Seen 3 times • Last seen April 5, 2026')).toBeInTheDocument();
     expect(screen.getByText('66%')).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /details/i }));
     const image = screen.getByRole('img', { name: 'Blue Jay' });
     const expandedName = screen.getByText('Blue Jay');
-    const seenSummaryText = screen.getByText('Seen 3 times • Last seen on April 5, 2026');
+    const seenSummaryText = screen.getByText('Seen 3 times • Last seen April 5, 2026');
     const factsText = screen.getByText('A bright and noisy corvid found across much of North America.');
     expect(image).toBeInTheDocument();
     expect(image.compareDocumentPosition(expandedName) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
