@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { ArrowRight, GraduationCap } from 'lucide-react';
 import Link from 'next/link';
 import { useSound } from '@/hooks/useSound';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useStoredJson } from '@/hooks/useStoredValue';
 import ShareButton from '@/components/ShareButton';
 import { isMajorStreakCheckpoint } from '@/lib/constants/streaks';
@@ -60,17 +61,18 @@ interface AnswerImageProps {
   birdData: string;
   imageUrl: string;
   journalHref: string;
+  isNewBirdEncounter?: boolean;
   onLearnMore: () => void;
 }
 
-function AnswerImage({ birdData, imageUrl, journalHref, onLearnMore }: AnswerImageProps) {
+function AnswerImage({ birdData, imageUrl, journalHref, isNewBirdEncounter, onLearnMore }: AnswerImageProps) {
   const [imageStatus, setImageStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
 
   return (
     <Link
       href={journalHref}
       onClick={onLearnMore}
-      className="block w-[calc(50%-0.5rem)] max-w-[10rem] md:row-start-1 md:w-28 md:max-w-none"
+      className="relative block w-[calc(50%-0.5rem)] max-w-[10rem] md:row-start-1 md:w-28 md:max-w-none"
       aria-label="Learn more about this bird"
     >
       <div
@@ -100,6 +102,14 @@ function AnswerImage({ birdData, imageUrl, journalHref, onLearnMore }: AnswerIma
           onError={() => setImageStatus('error')}
         />
       </div>
+      {isNewBirdEncounter ? (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-2 right-2 z-10 inline-flex items-center justify-center rounded-full border border-[var(--color-secondary)] px-2 py-0.5 text-[0.6rem] font-bold leading-none text-[var(--color-on-secondary)] new-badge-shimmer"
+        >
+          NEW
+        </span>
+      ) : null}
     </Link>
   );
 }
@@ -143,10 +153,12 @@ export default function Answer({
   newThemeUnlockName,
   earnedBadgeName,
   justBrokeBestStreak = false,
+  isNewBirdEncounter = false,
   actionLabel = 'Next Bird',
   onAction,
 }: AnswerProps) {
   const { play } = useSound();
+  const prefersReducedMotion = usePrefersReducedMotion();
   const score = normalizeBirdScore(useStoredJson<typeof defaultBirdScore | null>('birdScore', defaultBirdScore));
   const isMajorStreak = isMajorStreakCheckpoint(score.currentStreak);
   const displayedFact = getAnswerFact(hints.fact?.content ?? fact);
@@ -157,6 +169,7 @@ export default function Answer({
   };
   const [fakeFieldNote] = useState(getRandomFakeFieldNote);
   const [isNextBirdVisible, setIsNextBirdVisible] = useState(false);
+  const [isWiggling, setIsWiggling] = useState(false);
   const sharePayload = isMilestone && earnedBadgeName
     ? buildMilestoneSharePayload({
         badgeName: earnedBadgeName,
@@ -192,6 +205,7 @@ export default function Answer({
   }, [firstGameOfDayBonusSeedsEarned, isMajorStreak, isStreak, isMilestone, play]);
 
   useEffect(() => {
+    if (prefersReducedMotion) return;
     if (isMilestone || earnedBadgeName || newThemeUnlockName || isMajorStreak || justBrokeBestStreak) {
       const duration = 800;
       const particleCount = 1;
@@ -205,17 +219,41 @@ export default function Answer({
       };
       frame();
     }
-  }, [earnedBadgeName, isMajorStreak, isMilestone, justBrokeBestStreak, newThemeUnlockName]);
+  }, [earnedBadgeName, isMajorStreak, isMilestone, justBrokeBestStreak, newThemeUnlockName, prefersReducedMotion]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setIsNextBirdVisible(true);
-    }, 350);
+    }, 200);
 
     return () => {
       window.clearTimeout(timer);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isNextBirdVisible || prefersReducedMotion || isWiggling) {
+      return;
+    }
+    const timerId = window.setTimeout(() => {
+      setIsWiggling(true);
+    }, 3000);
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [isNextBirdVisible, isWiggling, prefersReducedMotion]);
+
+  useEffect(() => {
+    if (!isWiggling) {
+      return;
+    }
+    const timerId = window.setTimeout(() => {
+      setIsWiggling(false);
+    }, 550);
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [isWiggling]);
 
   return (
     <div className="relative flex w-full flex-col items-center gap-4 md:gap-5">
@@ -227,7 +265,7 @@ export default function Answer({
         />
         <button
           onClick={() => { play('whoosh'); onAction(); }}
-          className={`inline-flex min-h-11 items-center gap-2 rounded-xl bg-[var(--color-secondary)] px-4 py-2.5 font-[family-name:var(--font-display)] text-sm font-semibold text-[var(--color-on-secondary)] shadow-[var(--shadow-button)] transition-[opacity,filter,transform] duration-200 hover:brightness-110 active:scale-[0.97] ${isNextBirdVisible ? 'opacity-100' : 'opacity-0'}`}
+          className={`inline-flex min-h-11 items-center gap-2 rounded-xl bg-[var(--color-secondary)] px-4 py-2.5 font-[family-name:var(--font-display)] text-sm font-semibold text-[var(--color-on-secondary)] shadow-[var(--shadow-button)] transition-[opacity,filter] duration-150 hover:brightness-110 active:scale-[0.97] ${isNextBirdVisible ? 'opacity-100' : 'opacity-0'} ${isWiggling ? 'wiggle-once' : ''}`}
         >
           {actionLabel}
           <ArrowRight size={16} strokeWidth={2.5} />
@@ -246,10 +284,19 @@ export default function Answer({
               birdData={birdData}
               imageUrl={imageUrl ?? ''}
               journalHref={journalHref}
+              isNewBirdEncounter={isNewBirdEncounter}
               onLearnMore={handleLearnMore}
             />
           ) : (
             <div className="min-w-0 space-y-1">
+              {isNewBirdEncounter ? (
+                <span
+                  aria-hidden="true"
+                  className="inline-flex items-center justify-center rounded-full border border-[var(--color-secondary)] px-2 py-0.5 text-[0.6rem] font-bold leading-none text-[var(--color-on-secondary)] new-badge-shimmer"
+                >
+                  NEW
+                </span>
+              ) : null}
               <h2 className="font-[family-name:var(--font-display)] text-xl font-bold leading-tight text-[var(--color-text)] md:text-2xl">
                 {birdData}
               </h2>
@@ -261,9 +308,9 @@ export default function Answer({
 
           <div className="flex shrink-0 self-stretch flex-col items-end gap-2 text-right md:col-start-3 md:row-start-1 md:self-auto">
             <motion.span
-              initial={{ opacity: 0, y: 8 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
+              transition={prefersReducedMotion ? { duration: 0 } : { delay: 0.1 }}
               className={`inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] ${
                 isCorrect
                   ? 'bg-[color-mix(in_srgb,var(--color-success)_18%,transparent)] text-[var(--color-success)]'
@@ -274,9 +321,9 @@ export default function Answer({
             </motion.span>
 
             <motion.span
-              initial={{ opacity: 0, y: 8 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.18 }}
+              transition={prefersReducedMotion ? { duration: 0 } : { delay: 0.18 }}
               className={`inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] ${
                 isReal
                   ? 'bg-[color-mix(in_srgb,var(--color-success)_18%,transparent)] text-[var(--color-success)]'
