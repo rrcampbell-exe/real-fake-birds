@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertCircle, WifiOff } from 'lucide-react';
 import { track } from '@/lib/analytics';
 import { useSound } from '@/hooks/useSound';
@@ -24,15 +24,11 @@ export default function Error({ onTryAgain }: ErrorProps) {
     };
   }, []);
 
-  const hasTrackedError = useRef(false);
-
   useEffect(() => {
     play('error');
   }, [play]);
 
   useEffect(() => {
-    if (hasTrackedError.current) return;
-    hasTrackedError.current = true;
     track('error_displayed', { error_type: isOffline ? 'offline' : 'server' });
   }, [isOffline]);
 
