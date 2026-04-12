@@ -199,9 +199,12 @@ export default function JournalPage() {
     if (journalToastBatchId === null) {
       return;
     }
-    window.setTimeout(() => {
+    const timerId = window.setTimeout(() => {
       setJournalToastIndex(0);
     }, 0);
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [journalToastBatchId]);
 
   useEffect(() => {
