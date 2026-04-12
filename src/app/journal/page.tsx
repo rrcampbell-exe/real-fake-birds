@@ -59,6 +59,7 @@ export default function JournalPage() {
   const { isPageBackgroundRefreshing } = usePageProgressSync();
   useScreenViewed('journal');
   const prefersReducedMotion = usePrefersReducedMotion();
+  const linkedBirdScrollBehavior: ScrollBehavior = prefersReducedMotion ? 'auto' : 'smooth';
   const { isSignedIn } = useAccountState();
   const [filter, setFilter] = useState<JournalFilter>('all');
   const [sort, setSort] = useState<JournalSort>('recent');
