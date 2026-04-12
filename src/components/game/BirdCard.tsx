@@ -4,6 +4,7 @@ import type { HintState, HintType } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import HintPanel from './HintPanel';
 import { useSound } from '@/hooks/useSound';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 
 interface BirdCardProps {
   birdName: string;
@@ -44,6 +45,7 @@ export default function BirdCard({
   answerContent,
 }: BirdCardProps) {
   const { play } = useSound();
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   const handleAnswer = (e: React.MouseEvent<HTMLButtonElement>) => {
     play('tap');
@@ -67,10 +69,10 @@ export default function BirdCard({
               <motion.div
                 key="loading"
                 layout
-                initial={{ opacity: 0, x: 40 }}
+                initial={prefersReducedMotion ? false : { opacity: 0, x: 40 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -40 }}
-                transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: -40 }}
+                transition={{ duration: prefersReducedMotion ? 0 : 0.25, ease: [0.4, 0, 0.2, 1] }}
               >
                 {loadingContent}
               </motion.div>
@@ -78,10 +80,10 @@ export default function BirdCard({
               <motion.div
                 key="question"
                 layout
-                initial={{ opacity: 0, x: 40 }}
+                initial={prefersReducedMotion ? false : { opacity: 0, x: 40 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -40 }}
-                transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: -40 }}
+                transition={{ duration: prefersReducedMotion ? 0 : 0.25, ease: [0.4, 0, 0.2, 1] }}
                 className="flex flex-col items-center gap-6"
               >
                 {/* Bird name */}
@@ -129,10 +131,10 @@ export default function BirdCard({
               <motion.div
                 key="answer"
                 layout
-                initial={{ opacity: 0, x: 40 }}
+                initial={prefersReducedMotion ? false : { opacity: 0, x: 40 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -40 }}
-                transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: -40 }}
+                transition={{ duration: prefersReducedMotion ? 0 : 0.25, ease: [0.4, 0, 0.2, 1] }}
               >
                 {answerContent}
               </motion.div>

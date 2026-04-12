@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { Award, Bird, Worm, Trophy } from 'lucide-react';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import { useStoredJson } from '@/hooks/useStoredValue';
@@ -97,6 +98,7 @@ export default function WeeklyChallengeRecapModal() {
   const { isBooting, isSignedIn, weeklyOverview } = useAccountState();
   const lastSeenRecapWeek = useStoredJson<string | null>(WEEKLY_RECAP_LAST_SEEN_WEEK_STORAGE_KEY, null);
   const [dismissedWeek, setDismissedWeek] = useState<string | null>(null);
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   const previousRecap = weeklyOverview?.previousRecap ?? null;
   const previousRecapWeek = previousRecap?.weekStart ?? null;
@@ -146,7 +148,7 @@ export default function WeeklyChallengeRecapModal() {
           initial={{ opacity: 0, y: 20, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.98 }}
-          transition={{ duration: 0.24, ease: 'easeOut' }}
+          transition={{ duration: prefersReducedMotion ? 0 : 0.24, ease: 'easeOut' }}
           className="w-full max-w-md rounded-[2rem] border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-card)]"
           role="dialog"
           aria-modal="true"

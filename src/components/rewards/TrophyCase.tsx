@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { Lock } from 'lucide-react';
 import ShareButton from '@/components/ShareButton';
 import { useAccountState } from '@/components/account/AccountStateProvider';
@@ -19,6 +20,7 @@ export default function TrophyCase() {
   const { textColor } = resolveTheme(useStoredJson('birdTheme', finch));
 
   const birdsIdentified = score?.birdsIdentified ?? 0;
+  const prefersReducedMotion = usePrefersReducedMotion();
   const earnedValues = new Set(
     milestones.filter((m) => m.value <= birdsIdentified).map((m) => m.value)
   );
@@ -35,7 +37,7 @@ export default function TrophyCase() {
               key={milestone.value}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.06 }}
+              transition={{ delay: prefersReducedMotion ? 0 : i * 0.06 }}
               className={`relative flex flex-col items-center gap-2 rounded-xl border p-4 transition-colors ${
                 isEarned
                   ? 'border-[var(--color-secondary)] bg-[var(--color-surface)]'

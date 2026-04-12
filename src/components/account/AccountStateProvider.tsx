@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import AppBootScreen from '@/components/account/AppBootScreen';
 import { fetchAccountState } from '@/lib/auth/account-sync';
 import {
@@ -187,6 +188,7 @@ function hasWarmProgressCache(): boolean {
 
 export function AccountStateProvider({ children }: { children: ReactNode }) {
   const supabaseReady = hasSupabaseEnv();
+  const prefersReducedMotion = usePrefersReducedMotion();
   const [isLoadingAccount, setIsLoadingAccount] = useState(true);
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [isBooting, setIsBooting] = useState(true);
@@ -520,7 +522,7 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
       <motion.div
         initial={false}
         animate={isContentVisible ? { opacity: 1 } : { opacity: 0 }}
-        transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.38, ease: [0.22, 1, 0.36, 1] }}
         className="flex min-h-dvh flex-1 flex-col"
       >
         {children}
@@ -532,7 +534,7 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
             initial={{ opacity: 1, x: 0, scale: 1 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: -72, scale: 0.985 }}
-            transition={{ duration: BOOT_EXIT_DURATION_MS / 1000, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: prefersReducedMotion ? 0 : BOOT_EXIT_DURATION_MS / 1000, ease: [0.22, 1, 0.36, 1] }}
             className="fixed inset-0 z-[100] overflow-hidden"
           >
             <AppBootScreen

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { ShieldCheck } from 'lucide-react';
 import posthog from 'posthog-js';
 import {
@@ -13,6 +14,7 @@ import { useHasHydrated } from '@/hooks/useHasHydrated';
 
 export default function ConsentModal() {
   const hasHydrated = useHasHydrated();
+  const prefersReducedMotion = usePrefersReducedMotion();
   // `dismissed` tracks whether the user has responded via the modal UI.
   // `isVisible` is fully derived so no setState call is needed inside an effect.
   const [dismissed, setDismissed] = useState(false);
@@ -67,8 +69,8 @@ export default function ConsentModal() {
           />
           <motion.div
             initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 260, damping: 24, delay: 1 } }}
-            exit={{ opacity: 0, y: 16, transition: { type: 'spring', stiffness: 260, damping: 24 } }}
+            animate={{ opacity: 1, y: 0, transition: prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 260, damping: 24, delay: 1 } }}
+            exit={{ opacity: 0, y: 16, transition: prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 260, damping: 24 } }}
             className="fixed bottom-0 left-0 right-0 z-[60] px-3 pb-[calc(env(safe-area-inset-bottom)+4.5rem)] sm:bottom-4 sm:flex sm:justify-center sm:pb-4"
           >
           <div
