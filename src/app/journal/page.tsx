@@ -211,20 +211,24 @@ export default function JournalPage() {
     if (journalToastBatchId === null || journalToasts.length === 0 || expiredJournalToastBatchId === journalToastBatchId) {
       return;
     }
+    let gapTimerId: number | null = null;
     const timerId = window.setTimeout(() => {
       const nextIndex = journalToastIndex + 1;
       if (nextIndex < journalToasts.length) {
-        window.setTimeout(() => {
+        gapTimerId = window.setTimeout(() => {
           setJournalToastIndex(nextIndex);
         }, TOAST_GAP_MS);
       } else {
-        window.setTimeout(() => {
+        gapTimerId = window.setTimeout(() => {
           setExpiredJournalToastBatchId(journalToastBatchId);
         }, TOAST_GAP_MS);
       }
     }, TOAST_LIFETIME_MS);
     return () => {
       window.clearTimeout(timerId);
+      if (gapTimerId !== null) {
+        window.clearTimeout(gapTimerId);
+      }
     };
   }, [expiredJournalToastBatchId, journalToastBatchId, journalToastIndex, journalToasts]);
 
