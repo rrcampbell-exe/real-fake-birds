@@ -18,10 +18,10 @@ const WEEKLY_CHALLENGE_DEFINITIONS: WeeklyChallengeDefinition[] = [
     icon: 'target',
     primaryLabel: 'Accuracy',
     tiebreakerLabel: 'Birds seen',
-    qualificationText: 'See at least 50 birds this week to qualify for the leaderboard.',
+    qualificationText: 'See at least 25 birds this week to qualify for the leaderboard.',
     metric: 'accuracy',
     tiebreakerMetric: 'weeklyBirdsSeen',
-    minimumBirdsSeen: 50,
+    minimumBirdsSeen: 25,
   },
   {
     id: 'on-fire',
