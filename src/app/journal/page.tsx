@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bird, BookOpen, Sparkles } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import BirdCard from '@/components/journal/BirdCard';
 import JournalControls, { type JournalFilter, type JournalSort } from '@/components/journal/JournalControls';
@@ -21,6 +22,8 @@ import {
   CURRENT_ROUND_JOURNAL_BIRD_KEY,
   CURRENT_ROUND_JOURNAL_REVEAL_KEY,
   isJournalEntryMaskedForCurrentRound,
+  readPendingJournalTargetKey,
+  writePendingJournalTargetKey,
   writeCurrentRoundJournalRevealKey,
 } from '@/lib/utils/bird-journal';
 import { applyJournalClassificationViewToSessionMissions, buildMissionRewardGrantEvents } from '@/lib/utils/missions';
@@ -55,7 +58,17 @@ function getLinkedBirdKeySnapshot() {
   return hash ? decodeURIComponent(hash) : null;
 }
 
+function getLinkedBirdQueryParamSnapshot() {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const bird = new URLSearchParams(window.location.search).get('bird');
+  return bird ? decodeURIComponent(bird) : null;
+}
+
 export default function JournalPage() {
+  const pathname = usePathname();
   const { isPageBackgroundRefreshing } = usePageProgressSync();
   useScreenViewed('journal');
   const prefersReducedMotion = usePrefersReducedMotion();
@@ -66,7 +79,7 @@ export default function JournalPage() {
   const [journalToastBatch, setJournalToastBatch] = useState<{ id: number; toasts: JournalToast[] } | null>(null);
   const [journalToastIndex, setJournalToastIndex] = useState(0);
   const [expiredJournalToastBatchId, setExpiredJournalToastBatchId] = useState<number | null>(null);
-  const linkedBirdKey = useSyncExternalStore(subscribeToHashChanges, getLinkedBirdKeySnapshot, () => null);
+  const [linkedBirdKey, setLinkedBirdKey] = useState<string | null>(null);
   const {
     journal,
     uniqueBirdCount,
@@ -234,6 +247,30 @@ export default function JournalPage() {
   }, [expiredJournalToastBatchId, journalToastBatchId, journalToastIndex, journalToasts]);
 
   useEffect(() => {
+    const updateLinkedBirdKey = () => {
+      const searchParamBirdKey = getLinkedBirdQueryParamSnapshot();
+      if (searchParamBirdKey) {
+        setLinkedBirdKey(searchParamBirdKey);
+        writePendingJournalTargetKey(null);
+        return;
+      }
+
+      const pendingBirdKey = readPendingJournalTargetKey();
+      if (pendingBirdKey) {
+        setLinkedBirdKey(pendingBirdKey);
+        writePendingJournalTargetKey(null);
+        return;
+      }
+
+      setLinkedBirdKey(getLinkedBirdKeySnapshot());
+    };
+
+    updateLinkedBirdKey();
+
+    return subscribeToHashChanges(updateLinkedBirdKey);
+  }, [pathname]);
+
+  useEffect(() => {
     if (!linkedBirdKey) {
       return;
     }
@@ -243,10 +280,18 @@ export default function JournalPage() {
       return;
     }
 
-    window.requestAnimationFrame(() => {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    let innerFrameId = 0;
+    const frameId = window.requestAnimationFrame(() => {
+      innerFrameId = window.requestAnimationFrame(() => {
+        target.scrollIntoView({ behavior: linkedBirdScrollBehavior, block: 'start' });
+      });
     });
-  }, [filteredJournal, linkedBirdKey]);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.cancelAnimationFrame(innerFrameId);
+    };
+  }, [filteredJournal, linkedBirdKey, linkedBirdScrollBehavior]);
 
   const refreshBadge = isPageBackgroundRefreshing ? (
     <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted)]">

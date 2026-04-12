@@ -26,7 +26,7 @@ describe('weekly challenges', () => {
       if (challenge.id === 'plumage-precision') {
         expect(challenge.name).toBe('Plumage Precision');
         expect(challenge.tiebreakerLabel).toBe('Birds seen');
-        expect(challenge.qualificationText).toContain('50 birds');
+        expect(challenge.qualificationText).toContain('25 birds');
         return;
       }
     }

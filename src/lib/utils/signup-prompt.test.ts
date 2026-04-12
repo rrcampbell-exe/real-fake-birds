@@ -172,10 +172,10 @@ describe('buildSignUpPromptContent', () => {
           icon: 'target',
           primaryLabel: 'Accuracy',
           tiebreakerLabel: 'Birds seen',
-          qualificationText: 'See at least 50 birds this week to qualify for the leaderboard.',
+          qualificationText: 'See at least 25 birds this week to qualify for the leaderboard.',
           metric: 'accuracy',
           tiebreakerMetric: 'weeklyBirdsSeen',
-          minimumBirdsSeen: 50,
+          minimumBirdsSeen: 25,
         },
         entries: Array.from({ length: 10 }, (_, index) => ({
           rank: index + 1,
@@ -191,7 +191,7 @@ describe('buildSignUpPromptContent', () => {
       }),
     });
 
-    expect(content.leaderboardLine).toContain('cleared the 50-bird qualification line');
+    expect(content.leaderboardLine).toContain('cleared the 25-bird qualification line');
     expect(content.leaderboardLine).toContain('Plumage Precision');
   });
 
@@ -228,10 +228,10 @@ describe('buildSignUpPromptContent', () => {
           icon: 'target',
           primaryLabel: 'Accuracy',
           tiebreakerLabel: 'Birds seen',
-          qualificationText: 'See at least 50 birds this week to qualify for the leaderboard.',
+          qualificationText: 'See at least 25 birds this week to qualify for the leaderboard.',
           metric: 'accuracy',
           tiebreakerMetric: 'weeklyBirdsSeen',
-          minimumBirdsSeen: 50,
+          minimumBirdsSeen: 25,
         },
         entries: [],
       }),

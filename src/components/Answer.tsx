@@ -6,12 +6,13 @@ import confetti from 'canvas-confetti';
 import Image from 'next/image';
 import { ArrowRight, GraduationCap } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useSound } from '@/hooks/useSound';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useStoredJson } from '@/hooks/useStoredValue';
 import ShareButton from '@/components/ShareButton';
 import { isMajorStreakCheckpoint } from '@/lib/constants/streaks';
-import { deriveBirdKey, writeCurrentRoundJournalRevealKey } from '@/lib/utils/bird-journal';
+import { deriveBirdKey, writeCurrentRoundJournalRevealKey, writePendingJournalTargetKey } from '@/lib/utils/bird-journal';
 import { defaultBirdScore, normalizeBirdScore } from '@/lib/utils/player-progress';
 import { buildMilestoneSharePayload, buildRoundSharePayload } from '@/lib/utils/share-data';
 import type { HintState } from '@/types';
@@ -62,7 +63,7 @@ interface AnswerImageProps {
   imageUrl: string;
   journalHref: string;
   isNewBirdEncounter?: boolean;
-  onLearnMore: () => void;
+  onLearnMore: (event: React.MouseEvent<HTMLAnchorElement>) => void;
 }
 
 function AnswerImage({ birdData, imageUrl, journalHref, isNewBirdEncounter, onLearnMore }: AnswerImageProps) {
@@ -71,6 +72,7 @@ function AnswerImage({ birdData, imageUrl, journalHref, isNewBirdEncounter, onLe
   return (
     <Link
       href={journalHref}
+      scroll={false}
       onClick={onLearnMore}
       className="relative block w-[calc(50%-0.5rem)] max-w-[10rem] md:row-start-1 md:w-28 md:max-w-none"
       aria-label="Learn more about this bird"
@@ -158,14 +160,19 @@ export default function Answer({
   onAction,
 }: AnswerProps) {
   const { play } = useSound();
+  const router = useRouter();
   const prefersReducedMotion = usePrefersReducedMotion();
   const score = normalizeBirdScore(useStoredJson<typeof defaultBirdScore | null>('birdScore', defaultBirdScore));
   const isMajorStreak = isMajorStreakCheckpoint(score.currentStreak);
   const displayedFact = getAnswerFact(hints.fact?.content ?? fact);
-  const journalHref = `/journal#${encodeURIComponent(deriveBirdKey(birdData, isReal))}`;
+  const journalBirdKey = deriveBirdKey(birdData, isReal);
+  const journalHref = `/journal?bird=${encodeURIComponent(journalBirdKey)}`;
   const hasImage = isReal && Boolean(imageUrl);
-  const handleLearnMore = () => {
-    writeCurrentRoundJournalRevealKey(deriveBirdKey(birdData, isReal));
+  const handleLearnMore = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    writeCurrentRoundJournalRevealKey(journalBirdKey);
+    writePendingJournalTargetKey(journalBirdKey);
+    void router.push(journalHref, { scroll: false });
   };
   const [fakeFieldNote] = useState(getRandomFakeFieldNote);
   const [isNextBirdVisible, setIsNextBirdVisible] = useState(false);
@@ -337,6 +344,7 @@ export default function Answer({
             {isReal && (
               <Link
                 href={journalHref}
+                scroll={false}
                 onClick={handleLearnMore}
                 className="mt-auto inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-surface-hover)]"
               >
