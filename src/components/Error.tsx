@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, WifiOff } from 'lucide-react';
 import { track } from '@/lib/analytics';
 import { useSound } from '@/hooks/useSound';
@@ -24,11 +24,17 @@ export default function Error({ onTryAgain }: ErrorProps) {
     };
   }, []);
 
+  const hasTrackedError = useRef(false);
+
   useEffect(() => {
     play('error');
+  }, [play]);
+
+  useEffect(() => {
+    if (hasTrackedError.current) return;
+    hasTrackedError.current = true;
     track('error_displayed', { error_type: isOffline ? 'offline' : 'server' });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isOffline]);
 
   return (
     <div className="w-full max-w-md mx-auto px-4">
