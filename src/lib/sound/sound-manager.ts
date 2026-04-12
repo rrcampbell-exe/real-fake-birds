@@ -21,6 +21,7 @@ const SOUND_DEFS: Record<SoundKey, SoundDef> = {
   tap: { type: 'synth', synthFn: synthTap },
   correct: { type: 'file', url: '/sounds/fx/correct.mp3' },
   wrong: { type: 'file', url: '/sounds/fx/wrong.mp3' },
+  error: { type: 'file', url: '/sounds/fx/error.mp3' },
   streak: { type: 'file', url: '/sounds/fx/streak.mp3', gain: 0.45 },
   milestone: { type: 'file', url: '/sounds/fx/milestone.mp3' },
   whoosh: { type: 'synth', synthFn: synthWhoosh },

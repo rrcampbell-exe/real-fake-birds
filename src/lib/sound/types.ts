@@ -4,6 +4,7 @@ export type SoundKey =
   | 'tap'
   | 'correct'
   | 'wrong'
+  | 'error'
   | 'streak'
   | 'milestone'
   | 'whoosh'
