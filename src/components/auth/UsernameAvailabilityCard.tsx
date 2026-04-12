@@ -337,9 +337,9 @@ export default function UsernameAvailabilityCard({
         <div className={contentContainerClassName}>
           {effectiveAccountEmail && effectiveSavedUsername ? (
             <div className="flex items-center justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-semibold">{effectiveSavedUsername}</p>
-                <p className="mt-1 text-xs text-[var(--color-muted)]">{effectiveAccountEmail}</p>
+                <p className="mt-1 truncate text-xs text-[var(--color-muted)]">{effectiveAccountEmail}</p>
               </div>
               <button
                 type="button"

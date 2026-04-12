@@ -3,11 +3,12 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Answer from './Answer';
 import type { HintState } from '@/types';
-import { CURRENT_ROUND_JOURNAL_REVEAL_KEY } from '@/lib/utils/bird-journal';
+import { CURRENT_ROUND_JOURNAL_REVEAL_KEY, PENDING_JOURNAL_TARGET_KEY } from '@/lib/utils/bird-journal';
 
-const { confettiMock, playMock } = vi.hoisted(() => ({
+const { confettiMock, playMock, pushMock } = vi.hoisted(() => ({
   confettiMock: vi.fn(),
   playMock: vi.fn(),
+  pushMock: vi.fn(),
 }));
 
 vi.mock('canvas-confetti', () => ({
@@ -16,6 +17,10 @@ vi.mock('canvas-confetti', () => ({
 
 vi.mock('@/hooks/useSound', () => ({
   useSound: () => ({ play: playMock }),
+}));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: pushMock }),
 }));
 
 const emptyHints: HintState = {
@@ -48,6 +53,7 @@ describe('Answer', () => {
   beforeEach(() => {
     confettiMock.mockClear();
     playMock.mockClear();
+    pushMock.mockClear();
     localStorage.clear();
   });
 
@@ -72,7 +78,7 @@ describe('Answer', () => {
     expect(screen.getByText('Recently seen in Algeria')).toBeInTheDocument();
     expect(screen.getByText('Field Notes')).toBeInTheDocument();
     expect(screen.getByText('Blue Robin is known for its vivid plumage.')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Learn More' })).toHaveAttribute('href', '/journal#real%3Ablue-robin');
+    expect(screen.getByRole('link', { name: 'Learn More' })).toHaveAttribute('href', '/journal?bird=real%3Ablue-robin');
 
     fireEvent.click(screen.getByRole('button', { name: 'Next Bird' }));
     expect(onAction).toHaveBeenCalled();
@@ -311,7 +317,7 @@ describe('Answer', () => {
   it('shows a learn-more journal link for the specific bird', () => {
     render(<Answer {...defaultProps} isNewBirdEncounter />);
 
-    expect(screen.getByRole('link', { name: 'Learn More' })).toHaveAttribute('href', '/journal#real%3Ablue-robin');
+    expect(screen.getByRole('link', { name: 'Learn More' })).toHaveAttribute('href', '/journal?bird=real%3Ablue-robin');
   });
 
   it('marks the current bird as revealed before opening the journal link', () => {
@@ -320,6 +326,8 @@ describe('Answer', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Learn More' }));
 
     expect(localStorage.getItem(CURRENT_ROUND_JOURNAL_REVEAL_KEY)).toBe(JSON.stringify('real:blue-robin'));
+    expect(localStorage.getItem(PENDING_JOURNAL_TARGET_KEY)).toBe(JSON.stringify('real:blue-robin'));
+    expect(pushMock).toHaveBeenCalledWith('/journal?bird=real%3Ablue-robin', { scroll: false });
   });
 
   it('marks the current bird as revealed when the image link is clicked', () => {
@@ -328,5 +336,7 @@ describe('Answer', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Learn more about this bird' }));
 
     expect(localStorage.getItem(CURRENT_ROUND_JOURNAL_REVEAL_KEY)).toBe(JSON.stringify('real:blue-robin'));
+    expect(localStorage.getItem(PENDING_JOURNAL_TARGET_KEY)).toBe(JSON.stringify('real:blue-robin'));
+    expect(pushMock).toHaveBeenCalledWith('/journal?bird=real%3Ablue-robin', { scroll: false });
   });
 });

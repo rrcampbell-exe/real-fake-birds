@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { AlertCircle, BookOpenText, ChevronDown, ImageIcon, LoaderCircle, SkipForward, Sparkles, WandSparkles } from 'lucide-react';
 import { track } from '@/lib/analytics';
 import type { HintState, HintType } from '@/types';
@@ -202,6 +203,7 @@ export default function HintPanel({
   seedsBalance,
   specialAction,
 }: HintPanelProps) {
+  const prefersReducedMotion = usePrefersReducedMotion();
   const [isManuallyExpanded, setIsManuallyExpanded] = useState(false);
   const isExpanded = isManuallyExpanded
     || Boolean(hints.fact || hintLoading.fact || hintErrorType === 'fact' || specialAction?.previewContent);
@@ -237,7 +239,7 @@ export default function HintPanel({
             initial={{ opacity: 0, height: 0, y: -8 }}
             animate={{ opacity: 1, height: 'auto', y: 0 }}
             exit={{ opacity: 0, height: 0, y: -8 }}
-            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: [0.4, 0, 0.2, 1] }}
             className="overflow-hidden"
           >
             <div className="mt-3 grid gap-3">

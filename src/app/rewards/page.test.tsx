@@ -52,7 +52,7 @@ describe('RewardsPage', () => {
         bonusClaimed: true,
       },
       missions: [
-        { id: 'warmup-rounds', missionId: 'warmup-rounds', description: 'Warmup', target: 3, rewardSeeds: 8, progress: 3, completed: true, claimed: false, type: 'play_rounds' },
+        { id: 'warmup-rounds', missionId: 'warmup-rounds', description: 'Warmup', toastDescription: 'You warmed up.', target: 3, rewardSeeds: 8, progress: 3, completed: true, claimed: false, type: 'play_rounds' },
       ],
       allCompleted: false,
       allClaimed: false,
@@ -81,7 +81,7 @@ describe('RewardsPage', () => {
         bonusClaimed: true,
       },
       missions: [
-        { id: 'warmup-rounds', missionId: 'warmup-rounds', description: 'Warmup', target: 3, rewardSeeds: 8, progress: 3, completed: true, claimed: true, type: 'play_rounds' },
+        { id: 'warmup-rounds', missionId: 'warmup-rounds', description: 'Warmup', toastDescription: 'You warmed up.', target: 3, rewardSeeds: 8, progress: 3, completed: true, claimed: true, type: 'play_rounds' },
       ],
       allCompleted: false,
       allClaimed: true,
@@ -112,9 +112,9 @@ describe('RewardsPage', () => {
         bonusClaimed: false,
       },
       missions: [
-        { id: 'warmup-rounds', missionId: 'warmup-rounds', description: 'Warmup', target: 3, rewardSeeds: 8, progress: 3, completed: true, claimed: false, type: 'play_rounds' },
-        { id: 'real-deal', missionId: 'real-deal', description: 'Real Deal', target: 2, rewardSeeds: 10, progress: 2, completed: true, claimed: false, type: 'identify_real_birds' },
-        { id: 'deep-focus', missionId: 'deep-focus', description: 'Deep Focus', target: 4, rewardSeeds: 20, progress: 4, completed: true, claimed: false, type: 'correct_without_hints' },
+        { id: 'warmup-rounds', missionId: 'warmup-rounds', description: 'Warmup', toastDescription: 'You warmed up.', target: 3, rewardSeeds: 8, progress: 3, completed: true, claimed: false, type: 'play_rounds' },
+        { id: 'real-deal', missionId: 'real-deal', description: 'Real Deal', toastDescription: 'You identified real birds.', target: 2, rewardSeeds: 10, progress: 2, completed: true, claimed: false, type: 'identify_real_birds' },
+        { id: 'deep-focus', missionId: 'deep-focus', description: 'Deep Focus', toastDescription: 'You answered without hints.', target: 4, rewardSeeds: 20, progress: 4, completed: true, claimed: false, type: 'correct_without_hints' },
       ],
       allCompleted: true,
       allClaimed: true,

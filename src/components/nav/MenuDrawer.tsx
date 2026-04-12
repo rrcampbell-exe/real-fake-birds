@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { X } from 'lucide-react';
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useSound } from '@/hooks/useSound';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { secondaryNavLinks } from './nav-links';
 
 interface RouteNotification {
@@ -21,6 +23,7 @@ interface MenuDrawerProps {
 export default function MenuDrawer({ isOpen, onClose, notifications }: MenuDrawerProps) {
   const pathname = usePathname();
   const { play } = useSound();
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
     if (!isOpen) {
@@ -42,19 +45,34 @@ export default function MenuDrawer({ isOpen, onClose, notifications }: MenuDrawe
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) {
-    return null;
-  }
+  const slideVariants = {
+    initial: { x: '100%' },
+    animate: { x: 0 },
+    exit: { x: '100%' },
+  };
 
   return (
-    <div className="fixed inset-0 z-[60]">
-      <button
-        type="button"
-        aria-label="Close menu"
-        className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
-        onClick={onClose}
-      />
-      <aside className="absolute inset-y-0 right-0 flex w-full max-w-xs flex-col border-l border-[var(--color-surface-border)] bg-[color-mix(in_srgb,var(--color-primary)_72%,black)] px-4 pb-6 pt-5 shadow-2xl">
+    <AnimatePresence>
+      {isOpen ? (
+        <div className="fixed inset-0 z-[60]">
+          <motion.button
+            type="button"
+            aria-label="Close menu"
+            className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
+            onClick={onClose}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
+          />
+          <motion.aside
+            className="absolute inset-y-0 right-0 flex w-full max-w-xs flex-col overflow-y-auto border-l border-[var(--color-surface-border)] bg-[color-mix(in_srgb,var(--color-primary)_72%,black)] px-4 pb-6 pt-5 shadow-2xl"
+            variants={slideVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: [0.32, 0.72, 0, 1] }}
+          >
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
@@ -135,7 +153,9 @@ export default function MenuDrawer({ isOpen, onClose, notifications }: MenuDrawe
             );
           })}
         </nav>
-      </aside>
-    </div>
+          </motion.aside>
+        </div>
+      ) : null}
+    </AnimatePresence>
   );
 }

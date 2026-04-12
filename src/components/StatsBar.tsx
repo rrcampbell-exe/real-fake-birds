@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { usePathname } from 'next/navigation';
 import { Flame, LoaderCircle, Target, Trophy, Zap } from 'lucide-react';
 import SeedIcon from '@/components/icons/SeedIcon';
@@ -63,6 +64,7 @@ export default function StatsBar({ refreshTrigger, roundAnimation }: StatsBarPro
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [floatingSeeds, setFloatingSeeds] = useState<{ id: number; amount: number } | null>(null);
   const handledRoundAnimationIdRef = useRef<number | null>(null);
+  const prefersReducedMotion = usePrefersReducedMotion();
   const { birdsSeen, birdsIdentified, currentStreak, bestStreak, seeds, activePersonalBestTarget } = normalizeBirdScore(storedStats);
   const accuracy = birdsSeen > 0 ? Math.floor((birdsIdentified / birdsSeen) * 100) : 0;
   const nextStreak = isNextStreakEval(streakValues, currentStreak);
@@ -238,7 +240,7 @@ export default function StatsBar({ refreshTrigger, roundAnimation }: StatsBarPro
                   initial={{ opacity: 0, y: 8, scale: 0.92 }}
                   animate={{ opacity: 1, y: -24, scale: 1 }}
                   exit={{ opacity: 0, y: -34, scale: 0.96 }}
-                  transition={{ duration: 1.15, ease: 'easeOut' }}
+                  transition={{ duration: prefersReducedMotion ? 0 : 1.15, ease: 'easeOut' }}
                   className="pointer-events-none absolute -right-1 -top-1 flex h-8 min-w-8 items-center justify-center rounded-full border border-[var(--color-surface-border)] bg-[var(--color-secondary)] px-2 text-[0.68rem] font-bold text-[var(--color-on-secondary)] shadow-[var(--shadow-button)] md:right-0"
                 >
                   +{formatNumber(floatingSeeds.amount)}

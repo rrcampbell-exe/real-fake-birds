@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { Bird, ShieldCheck, Sparkles, Trophy, X } from 'lucide-react';
 import UsernameAvailabilityCard from '@/components/auth/UsernameAvailabilityCard';
 import { fetchWeeklyLeaderboard, type GetLeaderboardResponse } from '@/lib/auth/account-sync';
@@ -29,6 +30,7 @@ export default function SignUpPromptModal({
   onAuthenticated,
 }: SignUpPromptModalProps) {
   const unlockedThemeNames = useStoredJson<string[]>(UNLOCKED_THEMES_STORAGE_KEY, []);
+  const prefersReducedMotion = usePrefersReducedMotion();
   const shouldLoadLeaderboard = birdsSeen >= 50 && hasSupabaseEnv();
   const [leaderboard, setLeaderboard] = useState<GetLeaderboardResponse['leaderboard'] | null>(null);
   const [leaderboardStatus, setLeaderboardStatus] = useState<'idle' | 'ready' | 'error'>('idle');
@@ -144,7 +146,7 @@ export default function SignUpPromptModal({
           initial={{ opacity: 0, y: 24, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 16, scale: 0.98 }}
-          transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+          transition={prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 260, damping: 24 }}
           className="relative max-h-[calc(100dvh-1.5rem)] w-full max-w-xl overflow-y-auto rounded-[1.75rem] border border-[var(--color-surface-border)] bg-[var(--color-surface)] shadow-2xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden sm:max-h-[calc(100dvh-2rem)]"
           onClick={(event) => event.stopPropagation()}
         >
@@ -165,7 +167,7 @@ export default function SignUpPromptModal({
               animate="visible"
               variants={{
                 hidden: {},
-                visible: { transition: { staggerChildren: 0.05 } },
+                visible: { transition: prefersReducedMotion ? {} : { staggerChildren: 0.05 } },
               }}
             >
                 <motion.div

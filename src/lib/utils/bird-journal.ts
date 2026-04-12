@@ -5,6 +5,7 @@ export const BIRD_JOURNAL_STORAGE_KEY = 'birdJournal';
 export const BIRD_JOURNAL_DIRTY_KEYS_STORAGE_KEY = 'birdJournalDirtyKeys';
 export const CURRENT_ROUND_JOURNAL_BIRD_KEY = 'currentRoundJournalBirdKey';
 export const CURRENT_ROUND_JOURNAL_REVEAL_KEY = 'currentRoundJournalRevealKey';
+export const PENDING_JOURNAL_TARGET_KEY = 'pendingJournalTargetKey';
 
 const defaultBirdJournal: BirdJournalStore = {};
 
@@ -191,6 +192,14 @@ export function readCurrentRoundJournalRevealKey(): string | null {
 
 export function writeCurrentRoundJournalRevealKey(birdKey: string | null): void {
   writeStoredStringValue(CURRENT_ROUND_JOURNAL_REVEAL_KEY, birdKey);
+}
+
+export function readPendingJournalTargetKey(): string | null {
+  return readStoredStringValue(PENDING_JOURNAL_TARGET_KEY);
+}
+
+export function writePendingJournalTargetKey(birdKey: string | null): void {
+  writeStoredStringValue(PENDING_JOURNAL_TARGET_KEY, birdKey);
 }
 
 export function readDirtyBirdJournalKeys(): string[] {

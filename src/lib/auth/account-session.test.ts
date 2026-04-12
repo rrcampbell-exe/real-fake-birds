@@ -206,6 +206,7 @@ describe('account-session', () => {
         currentStreak: 6,
         justAchievedStreak: false,
         bestStreak: 6,
+        activePersonalBestTarget: 5,
         currentDailyStreak: 0,
         bestDailyStreak: 0,
         seeds: 18,
@@ -227,6 +228,7 @@ describe('account-session', () => {
       birdsIdentified: 12,
       currentStreak: 6,
       bestStreak: 6,
+      activePersonalBestTarget: 5,
     });
   });
 

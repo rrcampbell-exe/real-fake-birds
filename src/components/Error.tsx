@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { AlertCircle, WifiOff } from 'lucide-react';
 import { track } from '@/lib/analytics';
 import { useSound } from '@/hooks/useSound';
 
@@ -11,11 +11,26 @@ interface ErrorProps {
 
 export default function Error({ onTryAgain }: ErrorProps) {
   const { play } = useSound();
+  const [isOffline, setIsOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
 
   useEffect(() => {
-    play('wrong');
-    track('error_displayed');
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    play('error');
   }, [play]);
+
+  useEffect(() => {
+    track('error_displayed', { error_type: isOffline ? 'offline' : 'server' });
+  }, [isOffline]);
 
   return (
     <div className="w-full max-w-md mx-auto px-4">
@@ -23,9 +38,13 @@ export default function Error({ onTryAgain }: ErrorProps) {
         className="rounded-2xl bg-[var(--color-surface)] border border-[var(--color-surface-border)] backdrop-blur-sm p-8 flex flex-col items-center gap-4"
         style={{ boxShadow: 'var(--shadow-card)' }}
       >
-        <AlertCircle size={40} className="text-[var(--color-error)]" />
-        <p className="font-[family-name:var(--font-display)] text-lg font-medium">
-          No birds found
+        {isOffline ? (
+          <WifiOff size={40} className="text-[var(--color-error)]" />
+        ) : (
+          <AlertCircle size={40} className="text-[var(--color-error)]" />
+        )}
+        <p className="font-[family-name:var(--font-display)] text-lg font-medium text-center">
+          {isOffline ? "You're offline. Check your connection." : 'No birds found'}
         </p>
         <button
           onClick={() => {
@@ -38,7 +57,7 @@ export default function Error({ onTryAgain }: ErrorProps) {
             shadow-[var(--shadow-button)] hover:brightness-110 active:scale-[0.97]
             transition-all duration-150 cursor-pointer"
         >
-          Look Again
+          {isOffline ? 'Try Again' : 'Look Again'}
         </button>
       </div>
     </div>

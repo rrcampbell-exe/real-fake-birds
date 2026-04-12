@@ -103,6 +103,7 @@ export function mergeFlushedProgressScore(
         : Math.max(localScore.currentStreak, remoteScore.currentStreak),
       justAchievedStreak: localScore.justAchievedStreak || remoteScore.justAchievedStreak,
       bestStreak: Math.max(localScore.bestStreak, remoteScore.bestStreak),
+      activePersonalBestTarget: localScore.activePersonalBestTarget,
       currentDailyStreak: Math.max(localScore.currentDailyStreak, remoteScore.currentDailyStreak),
       bestDailyStreak: Math.max(localScore.bestDailyStreak, remoteScore.bestDailyStreak),
     },

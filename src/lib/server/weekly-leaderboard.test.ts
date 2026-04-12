@@ -51,7 +51,7 @@ describe('weekly leaderboard ranking', () => {
     expect(ranked.currentUserEntry?.rank).toBe(1);
   });
 
-  it('requires 50 birds for Plumage Precision qualification', () => {
+  it('requires 25 birds for Plumage Precision qualification', () => {
     let plumagePrecision = getWeeklyChallengeForWeek('2026-01-05');
 
     for (let week = 0; week < 40 && plumagePrecision.id !== 'plumage-precision'; week += 1) {
@@ -60,8 +60,8 @@ describe('weekly leaderboard ranking', () => {
     }
 
     expect(plumagePrecision.id).toBe('plumage-precision');
-    expect(qualifiesForWeeklyChallenge(createRow({ weeklyBirdsSeen: 49, weeklyBirdsIdentified: 48 }), plumagePrecision)).toBe(false);
-    expect(qualifiesForWeeklyChallenge(createRow({ weeklyBirdsSeen: 50, weeklyBirdsIdentified: 48 }), plumagePrecision)).toBe(true);
+    expect(qualifiesForWeeklyChallenge(createRow({ weeklyBirdsSeen: 24, weeklyBirdsIdentified: 23 }), plumagePrecision)).toBe(false);
+    expect(qualifiesForWeeklyChallenge(createRow({ weeklyBirdsSeen: 25, weeklyBirdsIdentified: 23 }), plumagePrecision)).toBe(true);
   });
 
   it('covers the remaining leaderboard helpers and branches', () => {

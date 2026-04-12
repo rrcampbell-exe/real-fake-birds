@@ -1,8 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Bird, BookOpen, Sparkles } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import BirdCard from '@/components/journal/BirdCard';
 import JournalControls, { type JournalFilter, type JournalSort } from '@/components/journal/JournalControls';
@@ -10,6 +12,7 @@ import { flushQueuedProgressEventsForSignedInUser } from '@/lib/auth/account-ses
 import { track } from '@/lib/analytics';
 import { useBirdJournal } from '@/hooks/useBirdJournal';
 import { usePageProgressSync } from '@/hooks/usePageProgressSync';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useScreenViewed } from '@/hooks/useScreenViewed';
 import { useStoredJson } from '@/hooks/useStoredValue';
 import { REVEAL_BIRD_COST } from '@/lib/constants/hints';
@@ -19,11 +22,18 @@ import {
   CURRENT_ROUND_JOURNAL_BIRD_KEY,
   CURRENT_ROUND_JOURNAL_REVEAL_KEY,
   isJournalEntryMaskedForCurrentRound,
+  readPendingJournalTargetKey,
+  writePendingJournalTargetKey,
   writeCurrentRoundJournalRevealKey,
 } from '@/lib/utils/bird-journal';
 import { applyJournalClassificationViewToSessionMissions, buildMissionRewardGrantEvents } from '@/lib/utils/missions';
 import { defaultBirdScore, normalizeBirdScore } from '@/lib/utils/player-progress';
 import { spendSeeds } from '@/lib/utils/seed-spend';
+
+type JournalToast = { id: number; title: string; detail: string };
+
+const TOAST_LIFETIME_MS = 4500;
+const TOAST_GAP_MS = 300;
 
 function subscribeToHashChanges(onStoreChange: () => void) {
   if (typeof window === 'undefined') {
@@ -48,13 +58,28 @@ function getLinkedBirdKeySnapshot() {
   return hash ? decodeURIComponent(hash) : null;
 }
 
+function getLinkedBirdQueryParamSnapshot() {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const bird = new URLSearchParams(window.location.search).get('bird');
+  return bird ? decodeURIComponent(bird) : null;
+}
+
 export default function JournalPage() {
+  const pathname = usePathname();
   const { isPageBackgroundRefreshing } = usePageProgressSync();
   useScreenViewed('journal');
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const linkedBirdScrollBehavior: ScrollBehavior = prefersReducedMotion ? 'auto' : 'smooth';
   const { isSignedIn } = useAccountState();
   const [filter, setFilter] = useState<JournalFilter>('all');
   const [sort, setSort] = useState<JournalSort>('recent');
-  const linkedBirdKey = useSyncExternalStore(subscribeToHashChanges, getLinkedBirdKeySnapshot, () => null);
+  const [journalToastBatch, setJournalToastBatch] = useState<{ id: number; toasts: JournalToast[] } | null>(null);
+  const [journalToastIndex, setJournalToastIndex] = useState(0);
+  const [expiredJournalToastBatchId, setExpiredJournalToastBatchId] = useState<number | null>(null);
+  const [linkedBirdKey, setLinkedBirdKey] = useState<string | null>(null);
   const {
     journal,
     uniqueBirdCount,
@@ -93,6 +118,25 @@ export default function JournalPage() {
         all_missions_complete: missionUpdate.completedDailyMissionSet,
         bonus_seeds: missionUpdate.missionSetBonusSeedsEarned,
       });
+
+      const newToasts: JournalToast[] = [];
+      missionUpdate.missionRewards.forEach((reward, index) => {
+        newToasts.push({
+          id: index,
+          title: 'Mission Complete!',
+          detail: `${reward.toastDescription} You've earned an extra ${reward.rewardSeeds} seeds for your efforts!`,
+        });
+      });
+      if (missionUpdate.completedDailyMissionSet) {
+        newToasts.push({
+          id: missionUpdate.missionRewards.length,
+          title: 'Daily Streak Extended!',
+          detail: missionUpdate.dailyMissionStreak
+            ? `Your daily streak is now ${missionUpdate.dailyMissionStreak} day${missionUpdate.dailyMissionStreak > 1 ? 's' : ''}. Have +${missionUpdate.missionSetBonusSeedsEarned} bonus seeds as a treat.`
+            : `+${missionUpdate.missionSetBonusSeedsEarned} bonus seeds.`,
+        });
+      }
+      setJournalToastBatch({ id: Date.now(), toasts: newToasts });
     }
 
     if (!isSignedIn) {
@@ -156,6 +200,76 @@ export default function JournalPage() {
     });
   }, [currentRoundBirdKey, currentRoundRevealKey, filter, journal, sort]);
 
+  const journalToastBatchId = journalToastBatch?.id ?? null;
+  const journalToasts = useMemo(() => journalToastBatch?.toasts ?? [], [journalToastBatch]);
+  const activeJournalToast = useMemo(() => {
+    if (journalToastBatchId === null || expiredJournalToastBatchId === journalToastBatchId) {
+      return null;
+    }
+    return journalToasts[journalToastIndex] ?? null;
+  }, [expiredJournalToastBatchId, journalToastBatchId, journalToastIndex, journalToasts]);
+
+  useEffect(() => {
+    if (journalToastBatchId === null) {
+      return;
+    }
+    const timerId = window.setTimeout(() => {
+      setJournalToastIndex(0);
+    }, 0);
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [journalToastBatchId]);
+
+  useEffect(() => {
+    if (journalToastBatchId === null || journalToasts.length === 0 || expiredJournalToastBatchId === journalToastBatchId) {
+      return;
+    }
+    let gapTimerId: number | null = null;
+    const timerId = window.setTimeout(() => {
+      const nextIndex = journalToastIndex + 1;
+      if (nextIndex < journalToasts.length) {
+        gapTimerId = window.setTimeout(() => {
+          setJournalToastIndex(nextIndex);
+        }, TOAST_GAP_MS);
+      } else {
+        gapTimerId = window.setTimeout(() => {
+          setExpiredJournalToastBatchId(journalToastBatchId);
+        }, TOAST_GAP_MS);
+      }
+    }, TOAST_LIFETIME_MS);
+    return () => {
+      window.clearTimeout(timerId);
+      if (gapTimerId !== null) {
+        window.clearTimeout(gapTimerId);
+      }
+    };
+  }, [expiredJournalToastBatchId, journalToastBatchId, journalToastIndex, journalToasts]);
+
+  useEffect(() => {
+    const updateLinkedBirdKey = () => {
+      const searchParamBirdKey = getLinkedBirdQueryParamSnapshot();
+      if (searchParamBirdKey) {
+        setLinkedBirdKey(searchParamBirdKey);
+        writePendingJournalTargetKey(null);
+        return;
+      }
+
+      const pendingBirdKey = readPendingJournalTargetKey();
+      if (pendingBirdKey) {
+        setLinkedBirdKey(pendingBirdKey);
+        writePendingJournalTargetKey(null);
+        return;
+      }
+
+      setLinkedBirdKey(getLinkedBirdKeySnapshot());
+    };
+
+    updateLinkedBirdKey();
+
+    return subscribeToHashChanges(updateLinkedBirdKey);
+  }, [pathname]);
+
   useEffect(() => {
     if (!linkedBirdKey) {
       return;
@@ -166,10 +280,18 @@ export default function JournalPage() {
       return;
     }
 
-    window.requestAnimationFrame(() => {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    let innerFrameId = 0;
+    const frameId = window.requestAnimationFrame(() => {
+      innerFrameId = window.requestAnimationFrame(() => {
+        target.scrollIntoView({ behavior: linkedBirdScrollBehavior, block: 'start' });
+      });
     });
-  }, [filteredJournal, linkedBirdKey]);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.cancelAnimationFrame(innerFrameId);
+    };
+  }, [filteredJournal, linkedBirdKey, linkedBirdScrollBehavior]);
 
   const refreshBadge = isPageBackgroundRefreshing ? (
     <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted)]">
@@ -264,6 +386,32 @@ export default function JournalPage() {
           />
         ))}
       </section>
+
+      <div className="pointer-events-none fixed inset-x-0 top-20 z-40 flex justify-center px-4">
+        <div className="flex w-full max-w-sm flex-col gap-2">
+          <AnimatePresence>
+            {activeJournalToast ? (
+              <motion.div
+                key={activeJournalToast.id}
+                initial={{ opacity: 0, y: -12, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                transition={{ duration: prefersReducedMotion ? 0 : 0.24, ease: 'easeOut' }}
+                className="rounded-2xl border border-[var(--color-surface-border)] bg-[color-mix(in_srgb,var(--color-surface)_92%,white_8%)] px-4 py-3 shadow-[var(--shadow-card)] backdrop-blur-sm"
+                role="status"
+                aria-live="polite"
+              >
+                <div className="min-w-0">
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-secondary)]">
+                    {activeJournalToast.title}
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-[var(--color-text)]">{activeJournalToast.detail}</p>
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </div>
+      </div>
     </div>
   );
 }

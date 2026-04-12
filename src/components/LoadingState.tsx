@@ -3,10 +3,12 @@
 import { motion } from 'framer-motion';
 import { useEffect } from 'react';
 import { useSound } from '@/hooks/useSound';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import LoadingBirdAnimation from '@/components/LoadingBirdAnimation';
 
 export default function LoadingState() {
   const { startLoop, stopLoop } = useSound();
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
     startLoop('loadingLoop');
@@ -23,12 +25,19 @@ export default function LoadingState() {
         </p>
         <div className="flex gap-1">
           {[0, 1, 2].map((i) => (
-            <motion.span
-              key={i}
-              className="w-2 h-2 rounded-full bg-[var(--color-secondary)]"
-              animate={{ opacity: [0.3, 1, 0.3] }}
-              transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
-            />
+            prefersReducedMotion ? (
+              <span
+                key={i}
+                className="w-2 h-2 rounded-full bg-[var(--color-secondary)] opacity-60"
+              />
+            ) : (
+              <motion.span
+                key={i}
+                className="w-2 h-2 rounded-full bg-[var(--color-secondary)]"
+                animate={{ opacity: [0.3, 1, 0.3] }}
+                transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
+              />
+            )
           ))}
         </div>
       </div>

@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from 'react';
 import { motion } from 'framer-motion';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import LoadingBirdAnimation from '@/components/LoadingBirdAnimation';
 import { finch } from '@/lib/themes';
 
@@ -34,6 +35,7 @@ const finchBootStyles: CSSProperties = {
 
 export default function AppBootScreen({ progress, status }: AppBootScreenProps) {
   const safeProgress = Math.max(8, Math.min(progress, 100));
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   return (
     <div
@@ -60,7 +62,7 @@ export default function AppBootScreen({ progress, status }: AppBootScreenProps) 
                 initial={false}
                 style={{ width: `${safeProgress}%` }}
                 animate={{ width: `${safeProgress}%` }}
-                transition={{ duration: 0.35, ease: 'easeOut' }}
+                transition={{ duration: prefersReducedMotion ? 0 : 0.35, ease: 'easeOut' }}
               />
             </div>
             <p className="text-sm font-medium text-[var(--boot-text)]">{status}</p>

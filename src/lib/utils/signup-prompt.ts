@@ -178,7 +178,7 @@ function buildChallengeSpecificLeaderboardLine(
 
   switch (leaderboard.challenge.id) {
     case 'plumage-precision': {
-      if (birdsSeen < (leaderboard.challenge.minimumBirdsSeen ?? 50)) {
+      if (birdsSeen < (leaderboard.challenge.minimumBirdsSeen ?? 25)) {
         return qualificationLine
           ? `${qualificationLine} Create an account to soar up onto the leaderboard.`
           : 'This week rewards sharp accuracy over a real sample size. Create an account to soar up onto the leaderboard.';
@@ -188,7 +188,7 @@ function buildChallengeSpecificLeaderboardLine(
         return 'You already cleared this week\'s qualification line. Create an account to compete on this week\'s leaderboard!';
       }
 
-      return `You already cleared the ${leaderboard.challenge.minimumBirdsSeen ?? 50}-bird qualification line for ${leaderboard.challenge.name}. Top 10 is sitting at ${cutoffEntry.primaryDisplayValue}, with ${cutoffEntry.tiebreakerDisplayValue} deciding ties.`;
+      return `You already cleared the ${leaderboard.challenge.minimumBirdsSeen ?? 25}-bird qualification line for ${leaderboard.challenge.name}. Top 10 is sitting at ${cutoffEntry.primaryDisplayValue}, with ${cutoffEntry.tiebreakerDisplayValue} deciding ties.`;
     }
     case 'seed-collector':
       return cutoffEntry
