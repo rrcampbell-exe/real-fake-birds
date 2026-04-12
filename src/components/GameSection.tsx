@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useGameState } from '@/hooks/useGameState';
 import { useScreenViewed } from '@/hooks/useScreenViewed';
 import { useSignUpPrompt } from '@/hooks/useSignUpPrompt';
@@ -23,7 +24,9 @@ interface UnlockToast {
   badgeName?: string;
 }
 
-const TOAST_LIFETIME_MS = 3600;
+const TOAST_LIFETIME_IMPORTANT_MS = 4500;
+const TOAST_LIFETIME_ROUTINE_MS = 3000;
+const TOAST_GAP_MS = 300;
 
 function buildUnlockToasts(options: {
   isMilestone: boolean;
@@ -141,6 +144,8 @@ export default function GameSection() {
   useScreenViewed('home');
   const [roundAnimation, setRoundAnimation] = useState<{ id: number; result: GameRoundResult } | null>(null);
   const [expiredToastRoundId, setExpiredToastRoundId] = useState<number | null>(null);
+  const [currentToastIndex, setCurrentToastIndex] = useState(0);
+  const prefersReducedMotion = usePrefersReducedMotion();
   const {
     birdData,
     isReal,
@@ -186,7 +191,7 @@ export default function GameSection() {
 
   const cardState = isLoading ? 'loading' : showQuestion ? 'question' : 'answer';
   const activeToastRoundId = hasAnswered ? (roundAnimation?.id ?? 0) : null;
-  const unlockToastDefinitions = useMemo(() => {
+  const sortedToasts = useMemo(() => {
     if (!hasAnswered) {
       return [];
     }
@@ -198,25 +203,21 @@ export default function GameSection() {
       firstGameOfDayBonusSeedsEarned,
       milestoneRewardSeedsEarned,
       roundResult: roundAnimation?.result ?? null,
-    });
+    }).sort((left, right) => right.priority - left.priority || left.id - right.id);
   }, [earnedBadgeName, firstGameOfDayBonusSeedsEarned, hasAnswered, isMilestone, milestoneRewardSeedsEarned, newThemeUnlockName, roundAnimation]);
-  const activeUnlockToasts = useMemo(() => {
+  const activeUnlockToast = useMemo(() => {
     if (activeToastRoundId === null || expiredToastRoundId === activeToastRoundId) {
-      return [];
+      return null;
     }
 
-    const highestPriorityToast = [...unlockToastDefinitions]
-      .sort((left, right) => right.priority - left.priority || left.id - right.id)[0];
+    const toast = sortedToasts[currentToastIndex];
+    if (!toast) return null;
 
-    if (!highestPriorityToast) {
-      return [];
-    }
-
-    return [{
-      ...highestPriorityToast,
-      id: activeToastRoundId * 100 + highestPriorityToast.id,
-    }];
-  }, [activeToastRoundId, expiredToastRoundId, unlockToastDefinitions]);
+    return {
+      ...toast,
+      id: activeToastRoundId * 100 + toast.id,
+    };
+  }, [activeToastRoundId, currentToastIndex, expiredToastRoundId, sortedToasts]);
 
   const handleAdvanceRound = useCallback(() => {
     if (signUpPrompt.shouldPrompt && signUpPrompt.activeThreshold !== null) {
@@ -240,18 +241,39 @@ export default function GameSection() {
   }, [signUpPrompt, tryAgain]);
 
   useEffect(() => {
-    if (activeToastRoundId === null || unlockToastDefinitions.length === 0 || expiredToastRoundId === activeToastRoundId) {
+    const timerId = window.setTimeout(() => {
+      setCurrentToastIndex(0);
+    }, 0);
+    return () => window.clearTimeout(timerId);
+  }, [activeToastRoundId]);
+
+  useEffect(() => {
+    if (activeToastRoundId === null || sortedToasts.length === 0 || expiredToastRoundId === activeToastRoundId) {
       return;
     }
 
+    const currentToast = sortedToasts[currentToastIndex];
+    if (!currentToast) return;
+
+    const lifetime = currentToast.priority >= 70 ? TOAST_LIFETIME_IMPORTANT_MS : TOAST_LIFETIME_ROUTINE_MS;
+    let gapTimerId: number | undefined;
+
     const timerId = window.setTimeout(() => {
-      setExpiredToastRoundId(activeToastRoundId);
-    }, TOAST_LIFETIME_MS);
+      const nextIndex = currentToastIndex + 1;
+      if (nextIndex < sortedToasts.length) {
+        gapTimerId = window.setTimeout(() => {
+          setCurrentToastIndex(nextIndex);
+        }, TOAST_GAP_MS);
+      } else {
+        setExpiredToastRoundId(activeToastRoundId);
+      }
+    }, lifetime);
 
     return () => {
       window.clearTimeout(timerId);
+      window.clearTimeout(gapTimerId);
     };
-  }, [activeToastRoundId, expiredToastRoundId, unlockToastDefinitions.length]);
+  }, [activeToastRoundId, currentToastIndex, expiredToastRoundId, sortedToasts]);
 
   return (
     <div className="box-border flex min-h-[calc(100dvh-7rem)] flex-1 flex-col items-center justify-center gap-6 py-6 md:min-h-0 md:py-4">
@@ -270,34 +292,34 @@ export default function GameSection() {
       <div className="pointer-events-none fixed inset-x-0 top-20 z-40 flex justify-center px-4">
         <div className="flex w-full max-w-sm flex-col gap-2">
           <AnimatePresence>
-            {activeUnlockToasts.map((toast) => (
+            {activeUnlockToast ? (
               <motion.div
-                key={toast.id}
+                key={activeUnlockToast.id}
                 initial={{ opacity: 0, y: -12, scale: 0.96 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -10, scale: 0.98 }}
-                transition={{ duration: 0.24, ease: 'easeOut' }}
+                transition={{ duration: prefersReducedMotion ? 0 : 0.24, ease: 'easeOut' }}
                 className="rounded-2xl border border-[var(--color-surface-border)] bg-[color-mix(in_srgb,var(--color-surface)_92%,white_8%)] px-4 py-3 shadow-[var(--shadow-card)] backdrop-blur-sm"
                 role="status"
                 aria-live="polite"
               >
                 <div className="flex items-start gap-3">
-                  {toast.badgeName ? (
+                  {activeUnlockToast.badgeName ? (
                     <MilestoneBadgeSvg
-                      badgeName={toast.badgeName}
+                      badgeName={activeUnlockToast.badgeName}
                       size="3.25rem"
                       containerClassName="shrink-0"
                     />
                   ) : null}
                   <div className="min-w-0">
                     <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-secondary)]">
-                      {toast.title}
+                      {activeUnlockToast.title}
                     </p>
-                    <p className="mt-1 text-sm font-medium text-[var(--color-text)]">{toast.detail}</p>
+                    <p className="mt-1 text-sm font-medium text-[var(--color-text)]">{activeUnlockToast.detail}</p>
                   </div>
                 </div>
               </motion.div>
-            ))}
+            ) : null}
           </AnimatePresence>
         </div>
       </div>
