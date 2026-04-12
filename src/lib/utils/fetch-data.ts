@@ -3,6 +3,7 @@ import type { BirdErrorResponse, BirdResponse, GameMode } from '@/types';
 const BIRD_DATA_STORAGE_KEY = 'birdData';
 
 const BIRD_REVEAL_DELAY_MS = 1000;
+const CACHED_BIRD_REVEAL_DELAY_MS = 300;
 
 function getBirdDataStorageKey(mode: GameMode): string {
   return `${BIRD_DATA_STORAGE_KEY}:${mode}`;
@@ -65,7 +66,7 @@ const fetchData = async (
     setArticleUrl(articleUrl ?? null);
     setImageUrl(imageUrl ?? null);
     setDescription(description ?? null);
-    const delayCompleted = await waitForRevealDelay(BIRD_REVEAL_DELAY_MS, signal);
+    const delayCompleted = await waitForRevealDelay(CACHED_BIRD_REVEAL_DELAY_MS, signal);
     if (!delayCompleted || signal?.aborted) {
       return;
     }
