@@ -66,7 +66,7 @@ export default function MenuDrawer({ isOpen, onClose, notifications }: MenuDrawe
             transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
           />
           <motion.aside
-            className="absolute inset-y-0 right-0 flex w-full max-w-xs flex-col border-l border-[var(--color-surface-border)] bg-[color-mix(in_srgb,var(--color-primary)_72%,black)] px-4 pb-6 pt-5 shadow-2xl"
+            className="absolute inset-y-0 right-0 flex w-full max-w-xs flex-col overflow-y-auto border-l border-[var(--color-surface-border)] bg-[color-mix(in_srgb,var(--color-primary)_72%,black)] px-4 pb-6 pt-5 shadow-2xl"
             variants={slideVariants}
             initial="initial"
             animate="animate"
