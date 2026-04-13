@@ -4,6 +4,8 @@ import ErrorBoundary from './ErrorBoundary';
 
 function BrokenBird() {
   throw new Error('birds broke');
+
+  return null;
 }
 
 describe('ErrorBoundary', () => {

@@ -3,13 +3,15 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bird, BookOpen, Sparkles } from 'lucide-react';
+import { Bird, Birdhouse, BookOpen, Sparkles } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useAccountState } from '@/components/account/AccountStateProvider';
+import BirdhouseSwapSheet from '@/components/birdhouse/BirdhouseSwapSheet';
 import BirdCard from '@/components/journal/BirdCard';
 import JournalControls, { type JournalFilter, type JournalSort } from '@/components/journal/JournalControls';
 import { flushQueuedProgressEventsForSignedInUser } from '@/lib/auth/account-session';
 import { track } from '@/lib/analytics';
+import { useBirdhouse } from '@/hooks/useBirdhouse';
 import { useBirdJournal } from '@/hooks/useBirdJournal';
 import { usePageProgressSync } from '@/hooks/usePageProgressSync';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
@@ -80,6 +82,9 @@ export default function JournalPage() {
   const [journalToastIndex, setJournalToastIndex] = useState(0);
   const [expiredJournalToastBatchId, setExpiredJournalToastBatchId] = useState<number | null>(null);
   const [linkedBirdKey, setLinkedBirdKey] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [birdhouseSwapTarget, setBirdhouseSwapTarget] = useState<{ birdKey: string; birdName: string; isReal: boolean } | null>(null);
   const {
     journal,
     uniqueBirdCount,
@@ -87,6 +92,7 @@ export default function JournalPage() {
     fakeBirdCount,
     accuracy,
   } = useBirdJournal();
+  const { isInBirdhouse } = useBirdhouse();
   const storedScore = useStoredJson<typeof defaultBirdScore | null>('birdScore', defaultBirdScore);
   const currentRoundBirdKey = useStoredJson<string | null>(CURRENT_ROUND_JOURNAL_BIRD_KEY, null);
   const currentRoundRevealKey = useStoredJson<string | null>(CURRENT_ROUND_JOURNAL_REVEAL_KEY, null);
@@ -178,10 +184,32 @@ export default function JournalPage() {
         return !isMasked && !entry.isReal;
       }
 
+      if (filter === 'birdhouse') {
+        return !isMasked && isInBirdhouse(entry.birdKey);
+      }
+
       return true;
     });
 
-    return nextJournal.sort((left, right) => {
+    const normalizedSearch = debouncedSearchQuery.trim().toLowerCase();
+    const searchFilteredJournal = normalizedSearch
+      ? nextJournal.filter((entry) => {
+        const haystack = [
+          entry.birdName,
+          entry.metadata.regionLabel,
+          entry.metadata.sciName,
+          entry.metadata.fact,
+          entry.metadata.summary,
+        ]
+          .filter((value): value is string => Boolean(value))
+          .join(' ')
+          .toLowerCase();
+
+        return haystack.includes(normalizedSearch);
+      })
+      : nextJournal;
+
+    return searchFilteredJournal.sort((left, right) => {
       if (sort === 'name') {
         return left.birdName.localeCompare(right.birdName);
       }
@@ -198,7 +226,17 @@ export default function JournalPage() {
 
       return right.lastSeenAt.localeCompare(left.lastSeenAt);
     });
-  }, [currentRoundBirdKey, currentRoundRevealKey, filter, journal, sort]);
+  }, [currentRoundBirdKey, currentRoundRevealKey, debouncedSearchQuery, filter, isInBirdhouse, journal, sort]);
+
+  useEffect(() => {
+    const timerId = window.setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [searchQuery]);
 
   const journalToastBatchId = journalToastBatch?.id ?? null;
   const journalToasts = useMemo(() => journalToastBatch?.toasts ?? [], [journalToastBatch]);
@@ -284,6 +322,7 @@ export default function JournalPage() {
     const frameId = window.requestAnimationFrame(() => {
       innerFrameId = window.requestAnimationFrame(() => {
         target.scrollIntoView({ behavior: linkedBirdScrollBehavior, block: 'start' });
+        setLinkedBirdKey(null);
       });
     });
 
@@ -364,10 +403,34 @@ export default function JournalPage() {
 
       <JournalControls
         filter={filter}
+        searchQuery={searchQuery}
         sort={sort}
         onFilterChange={setFilter}
+        onSearchChange={setSearchQuery}
         onSortChange={setSort}
       />
+
+      {filteredJournal.length === 0 ? (
+        <section className="rounded-3xl border border-[var(--color-surface-border)] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_55%),var(--color-surface)] p-8 text-center shadow-[var(--shadow-card)]">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--color-surface-hover)] text-[var(--color-secondary)]">
+            {filter === 'birdhouse' ? <Birdhouse size={28} /> : <BookOpen size={28} />}
+          </div>
+          <h2 className="mt-5 font-[family-name:var(--font-display)] text-2xl font-bold text-[var(--color-text)]">
+            {searchQuery.trim()
+              ? 'No birds match your search'
+              : filter === 'birdhouse'
+                ? 'Your Birdhouse is empty'
+                : 'No birds match this filter'}
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-[var(--color-muted)]">
+            {searchQuery.trim()
+              ? 'Try another bird name, place, or field note phrase.'
+              : filter === 'birdhouse'
+                ? 'Tap the birdhouse icon on any bird to add it to your curated collection.'
+                : 'Try a different filter or search phrase.'}
+          </p>
+        </section>
+      ) : null}
 
       <section className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
         {filteredJournal.map((entry) => (
@@ -383,9 +446,16 @@ export default function JournalPage() {
             canAffordReveal={score.seeds >= REVEAL_BIRD_COST}
             onRevealForCurrentRound={handleRevealForCurrentRound}
             onOpenDetails={handleOpenDetails}
+            onRequestBirdhouseSwap={setBirdhouseSwapTarget}
           />
         ))}
       </section>
+
+      <BirdhouseSwapSheet
+        incomingBird={birdhouseSwapTarget}
+        isOpen={birdhouseSwapTarget !== null}
+        onClose={() => setBirdhouseSwapTarget(null)}
+      />
 
       <div className="pointer-events-none fixed inset-x-0 top-20 z-40 flex justify-center px-4">
         <div className="flex w-full max-w-sm flex-col gap-2">

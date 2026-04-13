@@ -19,6 +19,14 @@ vi.mock('@/hooks/useSound', () => ({
   useSound: () => ({ play: playMock }),
 }));
 
+vi.mock('@/components/birdhouse/BirdhouseToggleButton', () => ({
+  default: ({ birdName }: { birdName: string }) => <button type="button">Add {birdName} to Birdhouse</button>,
+}));
+
+vi.mock('@/components/birdhouse/BirdhouseSwapSheet', () => ({
+  default: () => null,
+}));
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: pushMock }),
 }));
@@ -78,7 +86,8 @@ describe('Answer', () => {
     expect(screen.getByText('Recently seen in Algeria')).toBeInTheDocument();
     expect(screen.getByText('Field Notes')).toBeInTheDocument();
     expect(screen.getByText('Blue Robin is known for its vivid plumage.')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Learn More' })).toHaveAttribute('href', '/journal?bird=real%3Ablue-robin');
+    expect(screen.getByRole('link', { name: 'Learn more about this bird' })).toHaveAttribute('href', '/journal?bird=real%3Ablue-robin');
+    expect(screen.getByRole('button', { name: 'Add Blue Robin to Birdhouse' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Next Bird' }));
     expect(onAction).toHaveBeenCalled();
@@ -258,7 +267,8 @@ describe('Answer', () => {
 
     expect(screen.getByText('Fake Field Notes')).toBeInTheDocument();
     expect(screen.getByText('This bird was made up. We still love it, though!')).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Learn More' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Learn more about this bird' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /add campbell's striped algerian blue-bellied robin to birdhouse/i })).toBeInTheDocument();
     expect(screen.queryByText(/Surname:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Color:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Type:/)).not.toBeInTheDocument();
@@ -317,13 +327,13 @@ describe('Answer', () => {
   it('shows a learn-more journal link for the specific bird', () => {
     render(<Answer {...defaultProps} isNewBirdEncounter />);
 
-    expect(screen.getByRole('link', { name: 'Learn More' })).toHaveAttribute('href', '/journal?bird=real%3Ablue-robin');
+    expect(screen.getByRole('link', { name: 'Learn more about this bird' })).toHaveAttribute('href', '/journal?bird=real%3Ablue-robin');
   });
 
   it('marks the current bird as revealed before opening the journal link', () => {
     render(<Answer {...defaultProps} isNewBirdEncounter />);
 
-    fireEvent.click(screen.getByRole('link', { name: 'Learn More' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Learn more about this bird' }));
 
     expect(localStorage.getItem(CURRENT_ROUND_JOURNAL_REVEAL_KEY)).toBe(JSON.stringify('real:blue-robin'));
     expect(localStorage.getItem(PENDING_JOURNAL_TARGET_KEY)).toBe(JSON.stringify('real:blue-robin'));

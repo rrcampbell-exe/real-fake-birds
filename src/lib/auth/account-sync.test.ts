@@ -12,6 +12,7 @@ import {
   resolveSignInIdentifier,
   saveAvatarPalette,
   saveProfile,
+  syncBirdhouse,
   syncBirdJournal,
   syncDailyMissionCompletion,
   syncLocalProgress,
@@ -36,6 +37,7 @@ describe('account-sync', () => {
       dailyMissionHistory: [],
       milestones: [10],
       journalEntries: [],
+      birdhouse: { real: [], fake: [], updatedAt: '2026-04-07T00:00:00.000Z' },
     } as never;
     const events = [{ eventId: 'e1' }] as never;
 
@@ -47,6 +49,7 @@ describe('account-sync', () => {
     await saveAvatarPalette('Robin');
     await syncLocalProgress(progress);
     await syncBirdJournal([{ birdKey: 'real:blue-jay' }] as never);
+    await syncBirdhouse({ real: ['real:blue-jay'], fake: [], updatedAt: '2026-04-07T00:00:00.000Z' } as never);
     await syncDailyMissionCompletion('2026-04-07');
     await pullAccountProgress('2026-04-07');
     await purchaseTheme('Robin');
@@ -83,24 +86,27 @@ describe('account-sync', () => {
       body: JSON.stringify({ action: 'sync-bird-journal', journalEntries: [{ birdKey: 'real:blue-jay' }] }),
     }));
     expect(fetchMock).toHaveBeenNthCalledWith(9, '/api/auth', expect.objectContaining({
-      body: JSON.stringify({ action: 'sync-daily-mission-completion', date: '2026-04-07' }),
+      body: JSON.stringify({ action: 'sync-birdhouse', birdhouse: { real: ['real:blue-jay'], fake: [], updatedAt: '2026-04-07T00:00:00.000Z' } }),
     }));
     expect(fetchMock).toHaveBeenNthCalledWith(10, '/api/auth', expect.objectContaining({
-      body: JSON.stringify({ action: 'pull-account-progress', missionDate: '2026-04-07' }),
+      body: JSON.stringify({ action: 'sync-daily-mission-completion', date: '2026-04-07' }),
     }));
     expect(fetchMock).toHaveBeenNthCalledWith(11, '/api/auth', expect.objectContaining({
-      body: JSON.stringify({ action: 'purchase-theme', themeName: 'Robin' }),
+      body: JSON.stringify({ action: 'pull-account-progress', missionDate: '2026-04-07' }),
     }));
     expect(fetchMock).toHaveBeenNthCalledWith(12, '/api/auth', expect.objectContaining({
-      body: JSON.stringify({ action: 'apply-progress-events', events }),
+      body: JSON.stringify({ action: 'purchase-theme', themeName: 'Robin' }),
     }));
     expect(fetchMock).toHaveBeenNthCalledWith(13, '/api/auth', expect.objectContaining({
-      body: JSON.stringify({ action: 'purchase-streak-insurance' }),
+      body: JSON.stringify({ action: 'apply-progress-events', events }),
     }));
     expect(fetchMock).toHaveBeenNthCalledWith(14, '/api/auth', expect.objectContaining({
-      body: JSON.stringify({ action: 'claim-mission-reward', claimId: 'm1', rewardSeeds: 8 }),
+      body: JSON.stringify({ action: 'purchase-streak-insurance' }),
     }));
     expect(fetchMock).toHaveBeenNthCalledWith(15, '/api/auth', expect.objectContaining({
+      body: JSON.stringify({ action: 'claim-mission-reward', claimId: 'm1', rewardSeeds: 8 }),
+    }));
+    expect(fetchMock).toHaveBeenNthCalledWith(16, '/api/auth', expect.objectContaining({
       body: JSON.stringify({ action: 'claim-mission-set-bonus', claimId: 'bonus', rewardSeeds: 15 }),
     }));
   });

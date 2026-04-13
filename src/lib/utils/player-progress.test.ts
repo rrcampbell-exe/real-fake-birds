@@ -114,6 +114,7 @@ describe('player-progress', () => {
         currentStreak: 6,
         justAchievedStreak: false,
         bestStreak: 6,
+        activePersonalBestTarget: null,
         currentDailyStreak: 1,
         bestDailyStreak: 1,
         seeds: 20,

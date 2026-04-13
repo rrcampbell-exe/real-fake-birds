@@ -6,6 +6,7 @@ vi.mock('@/lib/auth/account-sync', () => ({
 }));
 
 import { fetchWeeklyLeaderboard } from '@/lib/auth/account-sync';
+import type { GetLeaderboardResponse } from '@/lib/auth/account-sync';
 import { useLeaderboard } from './useLeaderboard';
 
 describe('useLeaderboard', () => {
@@ -14,7 +15,7 @@ describe('useLeaderboard', () => {
   });
 
   it('loads leaderboard data on mount and exposes reload', async () => {
-    const leaderboard = {
+    const leaderboard: GetLeaderboardResponse['leaderboard'] = {
       weekStart: '2026-04-06',
       endsAt: '2026-04-13T05:00:00.000Z',
       challenge: {
@@ -31,7 +32,7 @@ describe('useLeaderboard', () => {
       currentUserEntry: null,
     };
 
-    vi.mocked(fetchWeeklyLeaderboard).mockResolvedValue({ leaderboard } as Awaited<ReturnType<typeof fetchWeeklyLeaderboard>>);
+    vi.mocked(fetchWeeklyLeaderboard).mockResolvedValue({ action: 'get-leaderboard', leaderboard });
 
     const { result } = renderHook(() => useLeaderboard());
 

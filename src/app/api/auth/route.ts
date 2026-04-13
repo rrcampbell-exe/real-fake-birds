@@ -22,6 +22,7 @@ import { getCurrentWeekStart, getWeekEndTimestamp } from '@/lib/utils/weekly-lea
 import { hasSupabaseEnv } from '@/lib/supabase/env';
 import { createSupabaseAdminClient, createSupabaseServerClient } from '@/lib/supabase/server';
 import type {
+  BirdhouseStore,
   BirdJournalEntry,
   BirdJournalMetadata,
   BirdScore,
@@ -30,7 +31,7 @@ import type {
   WeeklyPlacementSummary,
 } from '@/types';
 
-type AuthAction = 'validate-username' | 'register-account' | 'get-account-state' | 'get-leaderboard' | 'resolve-sign-in-identifier' | 'save-profile' | 'save-avatar-palette' | 'sync-local-progress' | 'sync-bird-journal' | 'pull-account-progress' | 'purchase-theme' | 'apply-progress-events' | 'sync-daily-mission-completion';
+type AuthAction = 'validate-username' | 'register-account' | 'get-account-state' | 'get-leaderboard' | 'resolve-sign-in-identifier' | 'save-profile' | 'save-avatar-palette' | 'sync-local-progress' | 'sync-bird-journal' | 'sync-birdhouse' | 'pull-account-progress' | 'purchase-theme' | 'apply-progress-events' | 'sync-daily-mission-completion';
 type RewardAuthAction = 'claim-mission-reward' | 'claim-mission-set-bonus' | 'purchase-streak-insurance';
 
 interface ValidateUsernameRequest {
@@ -103,12 +104,18 @@ interface SyncLocalProgressRequest {
     dailyMissionHistory: DailyMissionHistoryEntry[];
     milestones: number[];
     journalEntries: BirdJournalEntry[];
+    birdhouse: BirdhouseStore;
   };
 }
 
 interface SyncBirdJournalRequest {
   action: AuthAction;
   journalEntries: BirdJournalEntry[];
+}
+
+interface SyncBirdhouseRequest {
+  action: AuthAction;
+  birdhouse: BirdhouseStore;
 }
 
 const BIRD_JOURNAL_PULL_LIMIT = 10_000;
@@ -373,7 +380,8 @@ function isSyncLocalProgressRequest(value: unknown): value is SyncLocalProgressR
     && Array.isArray(candidate.progress.milestones)
     && isDailyChallengeHistoryEntryArray(candidate.progress.dailyChallengeHistory)
     && (candidate.progress.dailyMissionHistory === undefined || Array.isArray(candidate.progress.dailyMissionHistory))
-    && isBirdJournalEntryArray(candidate.progress.journalEntries);
+    && isBirdJournalEntryArray(candidate.progress.journalEntries)
+    && isBirdhouseStore(candidate.progress.birdhouse);
 }
 
 function isSyncBirdJournalRequest(value: unknown): value is SyncBirdJournalRequest {
@@ -384,6 +392,28 @@ function isSyncBirdJournalRequest(value: unknown): value is SyncBirdJournalReque
   const candidate = value as Partial<SyncBirdJournalRequest>;
   return candidate.action === 'sync-bird-journal'
     && isBirdJournalEntryArray(candidate.journalEntries);
+}
+
+function isBirdhouseStore(value: unknown): value is BirdhouseStore {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<BirdhouseStore>;
+  return Array.isArray(candidate.real)
+    && candidate.real.every((entry) => typeof entry === 'string')
+    && Array.isArray(candidate.fake)
+    && candidate.fake.every((entry) => typeof entry === 'string')
+    && typeof candidate.updatedAt === 'string';
+}
+
+function isSyncBirdhouseRequest(value: unknown): value is SyncBirdhouseRequest {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<SyncBirdhouseRequest>;
+  return candidate.action === 'sync-birdhouse' && isBirdhouseStore(candidate.birdhouse);
 }
 
 function isSyncDailyMissionCompletionRequest(value: unknown): value is SyncDailyMissionCompletionRequest {
@@ -413,6 +443,63 @@ function normalizeBirdJournalMetadata(metadata: BirdJournalMetadata | null | und
       ? metadata.classificationRevealed
       : undefined,
   };
+}
+
+function normalizeBirdhouseStore(storeLike: BirdhouseStore): BirdhouseStore {
+  return {
+    real: Array.from(new Set(storeLike.real.filter((entry) => typeof entry === 'string' && entry.length > 0))).slice(0, 10),
+    fake: Array.from(new Set(storeLike.fake.filter((entry) => typeof entry === 'string' && entry.length > 0))).slice(0, 10),
+    updatedAt: typeof storeLike.updatedAt === 'string' ? storeLike.updatedAt : new Date(0).toISOString(),
+  };
+}
+
+async function syncBirdhouseStore(options: {
+  admin: ReturnType<typeof createSupabaseAdminClient>;
+  userId: string;
+  birdhouse: BirdhouseStore;
+}): Promise<{ ok: true; birdhouse: BirdhouseStore } | { ok: false }> {
+  const { admin, userId } = options;
+  const incomingBirdhouse = normalizeBirdhouseStore(options.birdhouse);
+
+  const { data: existingBirdhouse, error: birdhouseReadError } = await admin
+    .from('birdhouse')
+    .select('real_birds, fake_birds, updated_at')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (birdhouseReadError) {
+    return { ok: false };
+  }
+
+  const existingStore: BirdhouseStore = existingBirdhouse
+    ? {
+        real: Array.isArray(existingBirdhouse.real_birds) ? existingBirdhouse.real_birds.filter((entry): entry is string => typeof entry === 'string').slice(0, 10) : [],
+        fake: Array.isArray(existingBirdhouse.fake_birds) ? existingBirdhouse.fake_birds.filter((entry): entry is string => typeof entry === 'string').slice(0, 10) : [],
+        updatedAt: typeof existingBirdhouse.updated_at === 'string' ? existingBirdhouse.updated_at : new Date(0).toISOString(),
+      }
+    : { real: [], fake: [], updatedAt: new Date(0).toISOString() };
+
+  const acceptedBirdhouse = incomingBirdhouse.updatedAt >= existingStore.updatedAt
+    ? incomingBirdhouse
+    : existingStore;
+
+  const { error: birdhouseUpsertError } = await admin
+    .from('birdhouse')
+    .upsert(
+      {
+        user_id: userId,
+        real_birds: acceptedBirdhouse.real,
+        fake_birds: acceptedBirdhouse.fake,
+        updated_at: acceptedBirdhouse.updatedAt,
+      },
+      { onConflict: 'user_id' }
+    );
+
+  if (birdhouseUpsertError) {
+    return { ok: false };
+  }
+
+  return { ok: true, birdhouse: acceptedBirdhouse };
 }
 
 function normalizeBirdJournalEntries(entries: BirdJournalEntry[]): BirdJournalEntry[] {
@@ -1670,7 +1757,7 @@ export async function POST(request: NextRequest) {
       const missionDate = body.missionDate;
       const todayMissionIds = getDailyMissionIdsForDate(missionDate);
       const todayMissionClaimIds = todayMissionIds.map((missionId) => `${missionDate}:${missionId}`);
-      const [{ data: progress }, { data: themes }, { data: dailyHistory }, { data: dailyMissionHistory }, { data: milestoneRows }, { data: todayMissionEvents }, { data: journalRows }] = await Promise.all([
+      const [{ data: progress }, { data: themes }, { data: dailyHistory }, { data: dailyMissionHistory }, { data: milestoneRows }, { data: todayMissionEvents }, { data: journalRows }, { data: birdhouseRow }] = await Promise.all([
         admin
           .from('player_progress')
           .select('birds_seen, birds_identified, current_streak, best_streak, current_daily_streak, best_daily_streak, seeds, last_local_sync_at')
@@ -1706,6 +1793,11 @@ export async function POST(request: NextRequest) {
           .eq('user_id', context.userId)
           .order('last_seen_at', { ascending: false })
           .limit(BIRD_JOURNAL_PULL_LIMIT),
+        admin
+          .from('birdhouse')
+          .select('real_birds, fake_birds, updated_at')
+          .eq('user_id', context.userId)
+          .maybeSingle(),
       ]);
 
       const todayEventIds = new Set((todayMissionEvents ?? []).map((event) => event.event_id as string));
@@ -1733,6 +1825,11 @@ export async function POST(request: NextRequest) {
             date: entry.mission_date,
           })),
           milestones: (milestoneRows ?? []).map((row) => row.milestone_value),
+          birdhouse: {
+            real: Array.isArray(birdhouseRow?.real_birds) ? birdhouseRow.real_birds.filter((entry): entry is string => typeof entry === 'string').slice(0, 10) : [],
+            fake: Array.isArray(birdhouseRow?.fake_birds) ? birdhouseRow.fake_birds.filter((entry): entry is string => typeof entry === 'string').slice(0, 10) : [],
+            updatedAt: typeof birdhouseRow?.updated_at === 'string' ? birdhouseRow.updated_at : new Date(0).toISOString(),
+          },
           journalEntries: (journalRows ?? []).map((entry) => ({
             birdKey: entry.bird_key,
             birdName: entry.bird_name,
@@ -1753,6 +1850,48 @@ export async function POST(request: NextRequest) {
       });
     } catch {
       return NextResponse.json({ error: 'pull_progress_failed' }, { status: 500 });
+    }
+  }
+
+  if (isSyncBirdhouseRequest(body)) {
+    const context = await getAuthenticatedRequestContext();
+
+    if (!context) {
+      return hasSupabaseEnv()
+        ? NextResponse.json({ error: 'not_authenticated' }, { status: 401 })
+        : configErrorResponse();
+    }
+
+    try {
+      const admin = createSupabaseAdminClient();
+      const syncedAt = new Date().toISOString();
+      const result = await syncBirdhouseStore({
+        admin,
+        userId: context.userId,
+        birdhouse: body.birdhouse,
+      });
+
+      if (!result.ok) {
+        return NextResponse.json({ error: 'progress_sync_failed' }, { status: 500 });
+      }
+
+      await admin
+        .from('player_progress')
+        .upsert(
+          {
+            user_id: context.userId,
+            last_local_sync_at: syncedAt,
+          },
+          { onConflict: 'user_id' }
+        );
+
+      return NextResponse.json({
+        action: 'sync-birdhouse',
+        syncedAt,
+        birdhouse: result.birdhouse,
+      });
+    } catch {
+      return NextResponse.json({ error: 'progress_sync_failed' }, { status: 500 });
     }
   }
 
@@ -1980,6 +2119,7 @@ export async function POST(request: NextRequest) {
       const dailyMissionHistory = normalizeDailyMissionHistory(body.progress.dailyMissionHistory ?? []);
       const milestoneValues = normalizeMilestoneValues(body.progress.milestones);
       const journalEntries = normalizeBirdJournalEntries(body.progress.journalEntries);
+      const birdhouse = normalizeBirdhouseStore(body.progress.birdhouse);
       const syncedAt = new Date().toISOString();
       const accuracy = normalizedScore.birdsSeen > 0
         ? Number(((normalizedScore.birdsIdentified / normalizedScore.birdsSeen) * 100).toFixed(2))
@@ -2093,6 +2233,16 @@ export async function POST(request: NextRequest) {
         if (!journalResult.ok) {
           return NextResponse.json({ error: 'progress_sync_failed' }, { status: 500 });
         }
+      }
+
+      const birdhouseResult = await syncBirdhouseStore({
+        admin,
+        userId: context.userId,
+        birdhouse,
+      });
+
+      if (!birdhouseResult.ok) {
+        return NextResponse.json({ error: 'progress_sync_failed' }, { status: 500 });
       }
 
       await admin

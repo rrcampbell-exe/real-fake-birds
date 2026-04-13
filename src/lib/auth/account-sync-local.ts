@@ -17,6 +17,12 @@ import {
   writeBirdJournal,
 } from '@/lib/utils/bird-journal';
 import {
+  BIRDHOUSE_STORAGE_KEY,
+  normalizeBirdhouseStore,
+  readBirdhouse,
+  writeBirdhouse,
+} from '@/lib/utils/birdhouse';
+import {
   BIRD_SCORE_STORAGE_KEY,
   mergeNonRoundRemoteScore,
   setUnlockedThemeNames,
@@ -26,6 +32,7 @@ import {
 } from '@/lib/utils/player-progress';
 import { getMissionDefinitionsForState, readSessionMissions, resetSessionMissions, writeSessionMissions } from '@/lib/utils/missions';
 import type { BirdJournalEntry, BirdScore, DailyChallengeHistoryEntry, DailyMissionHistoryEntry } from '@/types';
+import type { BirdhouseStore } from '@/types';
 
 export const ACCOUNT_SYNC_META_STORAGE_KEY = 'accountSyncMeta';
 
@@ -42,6 +49,7 @@ export interface PulledAccountProgress {
   dailyMissionHistory: DailyMissionHistoryEntry[];
   milestones: number[];
   journalEntries: BirdJournalEntry[];
+  birdhouse: BirdhouseStore;
   lastLocalSyncAt: string | null;
   todayMissionClaims: {
     date: string;
@@ -143,6 +151,11 @@ export function applyPulledAccountProgress(progress: PulledAccountProgress): voi
       Object.fromEntries(progress.journalEntries.map((entry) => [entry.birdKey, entry]))
     )
   );
+  const localBirdhouse = readBirdhouse();
+  const remoteBirdhouse = normalizeBirdhouseStore(progress.birdhouse);
+  writeBirdhouse(
+    localBirdhouse.updatedAt > remoteBirdhouse.updatedAt ? localBirdhouse : remoteBirdhouse
+  );
 
   const today = getTodayMissionDate();
 
@@ -175,6 +188,7 @@ export function applyPulledAccountProgress(progress: PulledAccountProgress): voi
 
   notifyStoredValueChanged(BIRD_SCORE_STORAGE_KEY);
   notifyStoredValueChanged(BIRD_JOURNAL_STORAGE_KEY);
+  notifyStoredValueChanged(BIRDHOUSE_STORAGE_KEY);
   notifyStoredValueChanged(UNLOCKED_THEMES_STORAGE_KEY);
   notifyStoredValueChanged(DAILY_CHALLENGE_HISTORY_STORAGE_KEY);
   notifyStoredValueChanged(DAILY_MISSION_HISTORY_STORAGE_KEY);

@@ -1,4 +1,5 @@
 import type {
+  BirdhouseStore,
   BirdJournalEntry,
   BirdScore,
   DailyChallengeHistoryEntry,
@@ -74,6 +75,12 @@ export interface SyncBirdJournalResponse {
   action: 'sync-bird-journal';
   syncedAt: string;
   journalCount: number;
+}
+
+export interface SyncBirdhouseResponse {
+  action: 'sync-birdhouse';
+  syncedAt: string;
+  birdhouse: BirdhouseStore;
 }
 
 export interface PullAccountProgressResponse {
@@ -156,6 +163,7 @@ export interface LocalProgressPayload {
   dailyMissionHistory: DailyMissionHistoryEntry[];
   milestones: number[];
   journalEntries: BirdJournalEntry[];
+  birdhouse: BirdhouseStore;
 }
 
 async function postAuthAction<T>(body: object, signal?: AbortSignal): Promise<T> {
@@ -260,6 +268,13 @@ export function syncBirdJournal(journalEntries: BirdJournalEntry[]): Promise<Syn
   return postAuthAction<SyncBirdJournalResponse>({
     action: 'sync-bird-journal',
     journalEntries,
+  });
+}
+
+export function syncBirdhouse(birdhouse: BirdhouseStore): Promise<SyncBirdhouseResponse> {
+  return postAuthAction<SyncBirdhouseResponse>({
+    action: 'sync-birdhouse',
+    birdhouse,
   });
 }
 

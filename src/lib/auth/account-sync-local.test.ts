@@ -8,7 +8,10 @@ const {
   readDailyMissionHistoryMock,
   writeDailyMissionHistoryMock,
   mergeBirdJournalStoresMock,
+  normalizeBirdhouseStoreMock,
+  readBirdhouseMock,
   readBirdJournalMock,
+  writeBirdhouseMock,
   writeBirdJournalMock,
   mergeNonRoundRemoteScoreMock,
   setUnlockedThemeNamesMock,
@@ -26,7 +29,10 @@ const {
   readDailyMissionHistoryMock: vi.fn(),
   writeDailyMissionHistoryMock: vi.fn(),
   mergeBirdJournalStoresMock: vi.fn(),
+  normalizeBirdhouseStoreMock: vi.fn(),
+  readBirdhouseMock: vi.fn(),
   readBirdJournalMock: vi.fn(),
+  writeBirdhouseMock: vi.fn(),
   writeBirdJournalMock: vi.fn(),
   mergeNonRoundRemoteScoreMock: vi.fn(),
   setUnlockedThemeNamesMock: vi.fn(),
@@ -62,6 +68,13 @@ vi.mock('@/lib/utils/bird-journal', () => ({
   mergeBirdJournalStores: mergeBirdJournalStoresMock,
   readBirdJournal: readBirdJournalMock,
   writeBirdJournal: writeBirdJournalMock,
+}));
+
+vi.mock('@/lib/utils/birdhouse', () => ({
+  BIRDHOUSE_STORAGE_KEY: 'birdhouse',
+  normalizeBirdhouseStore: normalizeBirdhouseStoreMock,
+  readBirdhouse: readBirdhouseMock,
+  writeBirdhouse: writeBirdhouseMock,
 }));
 
 vi.mock('@/lib/utils/player-progress', () => ({
@@ -101,8 +114,13 @@ describe('account-sync-local', () => {
     writeDailyMissionHistoryMock.mockReset();
     mergeBirdJournalStoresMock.mockReset();
     mergeBirdJournalStoresMock.mockReturnValue({ merged: true });
+    normalizeBirdhouseStoreMock.mockReset();
+    normalizeBirdhouseStoreMock.mockImplementation((value) => value);
+    readBirdhouseMock.mockReset();
+    readBirdhouseMock.mockReturnValue({ real: [], fake: [], updatedAt: '2026-04-06T00:00:00.000Z' });
     readBirdJournalMock.mockReset();
     readBirdJournalMock.mockReturnValue({ local: true });
+    writeBirdhouseMock.mockReset();
     writeBirdJournalMock.mockReset();
     mergeNonRoundRemoteScoreMock.mockReset();
     mergeNonRoundRemoteScoreMock.mockImplementation((score) => ({ ...score, merged: true }));
@@ -176,6 +194,7 @@ describe('account-sync-local', () => {
       dailyChallengeHistory: [{ date: '2026-04-06', correctAnswers: 4, roundsPlayed: 5, completed: true }],
       dailyMissionHistory: [{ date: '2026-04-06' }],
       milestones: [10],
+      birdhouse: { real: ['real:bird-a'], fake: [], updatedAt: '2026-04-07T10:00:00.000Z' },
       journalEntries: [{ birdKey: 'bird-a' }],
       lastLocalSyncAt: '2026-04-07T10:00:00.000Z',
       todayMissionClaims: {
@@ -191,6 +210,7 @@ describe('account-sync-local', () => {
     expect(writeDailyMissionHistoryMock).toHaveBeenCalled();
     expect(mergeBirdJournalStoresMock).toHaveBeenCalledWith({ local: true }, { 'bird-a': { birdKey: 'bird-a' } });
     expect(writeBirdJournalMock).toHaveBeenCalledWith({ merged: true });
+    expect(writeBirdhouseMock).toHaveBeenCalledWith({ real: ['real:bird-a'], fake: [], updatedAt: '2026-04-07T10:00:00.000Z' });
     expect(writeSessionMissionsMock).toHaveBeenCalledWith({
       date: '2026-04-07',
       missions: [
@@ -201,6 +221,7 @@ describe('account-sync-local', () => {
     });
     expect(notifyStoredValueChangedMock).toHaveBeenCalledWith('birdScore');
     expect(notifyStoredValueChangedMock).toHaveBeenCalledWith('birdJournal');
+    expect(notifyStoredValueChangedMock).toHaveBeenCalledWith('birdhouse');
     expect(notifyStoredValueChangedMock).toHaveBeenCalledWith('unlockedThemes');
     expect(notifyStoredValueChangedMock).toHaveBeenCalledWith('dailyChallengeHistory');
     expect(notifyStoredValueChangedMock).toHaveBeenCalledWith('dailyMissionHistory');
@@ -218,6 +239,7 @@ describe('account-sync-local', () => {
       dailyChallengeHistory: [],
       dailyMissionHistory: [{ date: '2026-04-07' }],
       milestones: [],
+      birdhouse: { real: [], fake: [], updatedAt: '2026-04-07T10:00:00.000Z' },
       journalEntries: [],
       lastLocalSyncAt: null,
       todayMissionClaims: {
@@ -245,6 +267,7 @@ describe('account-sync-local', () => {
       dailyChallengeHistory: [],
       dailyMissionHistory: [],
       milestones: [],
+      birdhouse: { real: [], fake: [], updatedAt: '2026-04-07T10:00:00.000Z' },
       journalEntries: [],
       lastLocalSyncAt: null,
       todayMissionClaims: null,

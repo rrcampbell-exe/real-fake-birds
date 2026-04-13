@@ -5,6 +5,8 @@ export type SoundKey =
   | 'correct'
   | 'wrong'
   | 'error'
+  | 'collect'
+  | 'release'
   | 'streak'
   | 'milestone'
   | 'whoosh'

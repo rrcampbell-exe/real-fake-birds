@@ -31,6 +31,24 @@ vi.mock('@/hooks/useSound', () => ({
 
 const mockedUseAccountState = vi.mocked(useAccountState);
 
+function createAccountState(overrides: Partial<ReturnType<typeof useAccountState>> = {}): ReturnType<typeof useAccountState> {
+  return {
+    isLoadingAccount: false,
+    isSignedIn: false,
+    isBooting: false,
+    isBackgroundSyncing: false,
+    isAppChromeVisible: true,
+    accountEmail: null,
+    accountUsername: null,
+    remoteSummary: null,
+    remoteUnlockedThemes: [],
+    weeklyOverview: null,
+    refreshAccountState: vi.fn().mockResolvedValue(undefined),
+    syncSignedInProgress: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
 describe('SettingsPage theme unlocking', () => {
   it('prompts for locked themes and explains missing seeds and birds', () => {
     const ravenUnlock = getThemeUnlockByThemeName('Raven');
@@ -94,8 +112,8 @@ describe('SettingsPage theme unlocking', () => {
     const gullUnlock = getThemeUnlockByThemeName('Gull');
     expect(gullUnlock).toBeDefined();
 
-    mockedUseAccountState.mockReturnValue({
-      isLoadingAccount: false,
+    mockedUseAccountState.mockReturnValue(createAccountState({
+      isSignedIn: true,
       accountEmail: 'bird@example.com',
       accountUsername: 'BirdFan_17',
       remoteSummary: {
@@ -103,10 +121,14 @@ describe('SettingsPage theme unlocking', () => {
         seeds: (gullUnlock?.seedCost ?? 0) - 10,
         bestStreak: 12,
         bestDailyStreak: 4,
+        bestWeeklyPlacement: null,
+        firstPlaceCount: 0,
+        secondPlaceCount: 0,
+        thirdPlaceCount: 0,
       },
       remoteUnlockedThemes: [],
-      refreshAccountState: vi.fn(),
-    });
+      refreshAccountState: vi.fn().mockResolvedValue(undefined),
+    }));
 
     localStorage.setItem(
       'birdScore',

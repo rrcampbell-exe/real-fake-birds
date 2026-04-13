@@ -45,7 +45,6 @@ describe('useBirdJournal', () => {
     expect(result.current.accuracy).toBe(66);
     expect(result.current.getEntry('real:blue-jay')?.birdName).toBe('Blue Jay');
   });
-});
 
   it('computes accuracy as 0 when no birds have been seen', () => {
     vi.mocked(useStoredJson).mockReturnValue({});
@@ -60,3 +59,4 @@ describe('useBirdJournal', () => {
     const { result } = renderHook(() => useBirdJournal());
     expect(result.current.getEntry('unknown:bird')).toBeNull();
   });
+});

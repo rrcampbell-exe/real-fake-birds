@@ -2,6 +2,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import BirdCard from './BirdCard';
 
+vi.mock('@/components/birdhouse/BirdhouseToggleButton', () => ({
+  default: ({ birdName }: { birdName: string }) => <button type="button">Birdhouse {birdName}</button>,
+}));
+
 describe('Journal BirdCard', () => {
   const concealedEntry = {
     birdKey: 'real:blue-jay',
@@ -61,6 +65,7 @@ describe('Journal BirdCard', () => {
     expect(screen.getByText('Seen 3 times • Last seen April 5, 2026')).toBeInTheDocument();
     expect(screen.getByText('66%')).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Birdhouse Blue Jay' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /details/i }));
     const image = screen.getByRole('img', { name: 'Blue Jay' });
     const expandedName = screen.getByText('Blue Jay');

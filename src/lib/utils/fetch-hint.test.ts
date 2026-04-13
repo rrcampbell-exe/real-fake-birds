@@ -39,13 +39,13 @@ describe('fetchHint', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    await fetchHint('Robin', true, 'sound');
+    await fetchHint('Robin', true, 'image');
 
     expect(fetchMock).toHaveBeenCalledWith('/api/bird', expect.objectContaining({
       body: JSON.stringify({
         birdName: 'Robin',
         isReal: true,
-        type: 'sound',
+        type: 'image',
       }),
     }));
   });

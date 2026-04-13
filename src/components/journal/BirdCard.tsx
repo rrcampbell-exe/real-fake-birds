@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, ChevronUp, MapPin } from 'lucide-react';
+import BirdhouseToggleButton from '@/components/birdhouse/BirdhouseToggleButton';
 import type { BirdJournalEntry } from '@/types';
 import { REVEAL_BIRD_COST } from '@/lib/constants/hints';
 
@@ -12,6 +13,7 @@ interface JournalBirdCardProps {
   canAffordReveal: boolean;
   onRevealForCurrentRound: (birdKey: string) => void;
   onOpenDetails?: (birdKey: string) => void;
+  onRequestBirdhouseSwap?: (payload: { birdKey: string; birdName: string; isReal: boolean }) => void;
   isLinkedTarget?: boolean;
 }
 
@@ -65,7 +67,7 @@ function JournalBirdImage({ birdName, imageUrl }: JournalBirdImageProps) {
   );
 }
 
-export default function BirdCard({ entry, isMaskedForCurrentRound, canAffordReveal, onRevealForCurrentRound, onOpenDetails, isLinkedTarget = false }: JournalBirdCardProps) {
+export default function BirdCard({ entry, isMaskedForCurrentRound, canAffordReveal, onRevealForCurrentRound, onOpenDetails, onRequestBirdhouseSwap, isLinkedTarget = false }: JournalBirdCardProps) {
   const [isExpanded, setIsExpanded] = useState(isLinkedTarget);
   const hasAutoOpenedRef = useRef(false);
   const accuracy = entry.seenCount > 0
@@ -141,15 +143,25 @@ export default function BirdCard({ entry, isMaskedForCurrentRound, canAffordReve
         ) : <div className="min-w-0" />}
 
         {!isMaskedForCurrentRound ? (
-          <button
-            type="button"
-            onClick={handleToggleExpanded}
-            className="inline-flex items-center gap-1 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-3 py-1 text-xs font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-surface)]"
-            aria-expanded={expanded}
-          >
-            Details
-            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
+          <div className="flex items-center gap-2">
+            <BirdhouseToggleButton
+              birdKey={entry.birdKey}
+              birdName={entry.birdName}
+              isReal={entry.isReal}
+              iconSize={16}
+              className="min-h-9 px-2.5 py-1.5"
+              onRequestSwap={onRequestBirdhouseSwap}
+            />
+            <button
+              type="button"
+              onClick={handleToggleExpanded}
+              className="inline-flex items-center gap-1 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-3 py-1 text-xs font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-surface)]"
+              aria-expanded={expanded}
+            >
+              Details
+              {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+          </div>
         ) : null}
       </div>
 

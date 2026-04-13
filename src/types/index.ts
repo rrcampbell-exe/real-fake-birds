@@ -42,6 +42,12 @@ export interface BirdJournalEntry {
 
 export type BirdJournalStore = Record<string, BirdJournalEntry>;
 
+export interface BirdhouseStore {
+  real: string[];
+  fake: string[];
+  updatedAt: string;
+}
+
 export type HintType = 'fact' | 'image';
 
 export interface HintResponse {

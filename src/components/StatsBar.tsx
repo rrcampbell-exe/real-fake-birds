@@ -296,7 +296,7 @@ export default function StatsBar({ refreshTrigger, roundAnimation }: StatsBarPro
         {canShowInsurance ? (
           <div className="mt-3 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-2.5">
             <div className="flex items-center justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
                   Streak Insurance
                 </p>
@@ -383,7 +383,7 @@ export default function StatsBar({ refreshTrigger, roundAnimation }: StatsBarPro
                     : 'bg-[var(--color-secondary)] text-[var(--color-on-secondary)]'
                 }`}
               >
-                <span className="inline-flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
                   {isPurchasingInsurance ? <LoaderCircle size={12} className="animate-spin" aria-hidden="true" /> : null}
                   {isPurchasingInsurance
                     ? 'Protecting...'

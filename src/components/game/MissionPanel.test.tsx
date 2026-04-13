@@ -15,8 +15,10 @@ describe('MissionPanel', () => {
 
   it('renders a loading skeleton when requested', () => {
     vi.mocked(useSessionMissions).mockReturnValue({
+      state: { date: '2026-04-05', missions: [], bonusClaimed: false },
       missions: [],
       allCompleted: false,
+      allClaimed: false,
       bonusClaimed: false,
       missionSetBonusSeeds: 15,
     } as ReturnType<typeof useSessionMissions>);
@@ -28,8 +30,10 @@ describe('MissionPanel', () => {
 
   it('renders nothing when there are no missions', () => {
     vi.mocked(useSessionMissions).mockReturnValue({
+      state: { date: '2026-04-05', missions: [], bonusClaimed: false },
       missions: [],
       allCompleted: false,
+      allClaimed: false,
       bonusClaimed: false,
       missionSetBonusSeeds: 15,
     } as ReturnType<typeof useSessionMissions>);

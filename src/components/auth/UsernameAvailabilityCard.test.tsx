@@ -63,6 +63,24 @@ const mockedResetLocalStateForGuestSession = vi.mocked(resetLocalStateForGuestSe
 const mockedUseUsernameValidation = vi.mocked(useUsernameValidation);
 const mockedGetSupabaseBrowserClient = vi.mocked(getSupabaseBrowserClient);
 
+function createAccountState(overrides: Partial<ReturnType<typeof useAccountState>> = {}): ReturnType<typeof useAccountState> {
+  return {
+    isLoadingAccount: false,
+    isSignedIn: false,
+    isBooting: false,
+    isBackgroundSyncing: false,
+    isAppChromeVisible: true,
+    accountEmail: null,
+    accountUsername: null,
+    remoteSummary: null,
+    remoteUnlockedThemes: [],
+    weeklyOverview: null,
+    refreshAccountState: vi.fn().mockResolvedValue(undefined),
+    syncSignedInProgress: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
 function createSupabaseClientMock(overrides?: {
   getUser?: () => Promise<unknown>;
   getSession?: () => Promise<unknown>;
@@ -95,15 +113,7 @@ describe('UsernameAvailabilityCard', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     mockedHasSupabaseEnv.mockReturnValue(false);
-    mockedUseAccountState.mockReturnValue({
-      isLoadingAccount: false,
-      accountEmail: null,
-      accountUsername: null,
-      remoteSummary: null,
-      remoteUnlockedThemes: [],
-      weeklyOverview: null,
-      refreshAccountState: vi.fn(),
-    });
+    mockedUseAccountState.mockReturnValue(createAccountState());
     mockedFetchAccountState.mockReset();
     mockedRegisterAccount.mockReset();
     mockedResolveSignInIdentifier.mockReset();
@@ -312,8 +322,8 @@ describe('UsernameAvailabilityCard', () => {
     const signOut = vi.fn().mockResolvedValue({ error: null });
     const refreshAccountState = vi.fn().mockResolvedValue(undefined);
     mockedHasSupabaseEnv.mockReturnValue(true);
-    mockedUseAccountState.mockReturnValue({
-      isLoadingAccount: false,
+    mockedUseAccountState.mockReturnValue(createAccountState({
+      isSignedIn: true,
       accountEmail: 'bird@example.com',
       accountUsername: 'BirdFan_17',
       remoteSummary: {
@@ -321,11 +331,15 @@ describe('UsernameAvailabilityCard', () => {
         seeds: 15,
         bestStreak: 4,
         bestDailyStreak: 2,
+        bestWeeklyPlacement: null,
+        firstPlaceCount: 0,
+        secondPlaceCount: 0,
+        thirdPlaceCount: 0,
       },
       remoteUnlockedThemes: [],
       weeklyOverview: null,
       refreshAccountState,
-    });
+    }));
     mockedGetSupabaseBrowserClient.mockReturnValue(
       createSupabaseClientMock({
         getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: 'user-1', email: 'bird@example.com' } } } }),
@@ -375,15 +389,11 @@ describe('UsernameAvailabilityCard', () => {
 
   it('keeps a legacy username repair path only for signed-in accounts missing a username', async () => {
     mockedHasSupabaseEnv.mockReturnValue(true);
-    mockedUseAccountState.mockReturnValue({
-      isLoadingAccount: false,
+    mockedUseAccountState.mockReturnValue(createAccountState({
+      isSignedIn: true,
       accountEmail: 'bird@example.com',
       accountUsername: null,
-      remoteSummary: null,
-      remoteUnlockedThemes: [],
-      weeklyOverview: null,
-      refreshAccountState: vi.fn(),
-    });
+    }));
     mockedSaveProfile.mockResolvedValue({
       action: 'save-profile',
       profile: {
@@ -401,8 +411,8 @@ describe('UsernameAvailabilityCard', () => {
 
   it('does not offer username updates once an account already has one', async () => {
     mockedHasSupabaseEnv.mockReturnValue(true);
-    mockedUseAccountState.mockReturnValue({
-      isLoadingAccount: false,
+    mockedUseAccountState.mockReturnValue(createAccountState({
+      isSignedIn: true,
       accountEmail: 'bird@example.com',
       accountUsername: 'BirdFan_17',
       remoteSummary: {
@@ -417,8 +427,8 @@ describe('UsernameAvailabilityCard', () => {
       },
       remoteUnlockedThemes: [],
       weeklyOverview: null,
-      refreshAccountState: vi.fn(),
-    });
+      refreshAccountState: vi.fn().mockResolvedValue(undefined),
+    }));
     const setValue = vi.fn();
     mockedUseUsernameValidation.mockReturnValue({
       value: 'BirdFan_17',
