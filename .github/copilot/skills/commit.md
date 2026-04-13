@@ -75,4 +75,4 @@ Each commit may include multiple files, but:
 A list or diff of changed files.
 
 ## Output
-A grouped set of semantic commits covering all files exactly once.
+A grouped set of semantic commits covering all files exactly once. Also provide a PR title and summary in markdown that can be copy-pasted into GitHub.
