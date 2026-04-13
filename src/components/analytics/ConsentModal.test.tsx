@@ -39,8 +39,10 @@ describe('ConsentModal', () => {
 
   it('renders the modal when consent has not been given', () => {
     render(<ConsentModal />);
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toBeInTheDocument();
     expect(screen.getByText('Help improve Real Fake Birds?')).toBeInTheDocument();
+    expect(dialog.className).toContain('bg-[var(--color-modal-bg)]');
   });
 
   it('renders nothing when consent is already accepted', () => {

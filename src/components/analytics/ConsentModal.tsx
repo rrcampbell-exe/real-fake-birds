@@ -77,7 +77,7 @@ export default function ConsentModal() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="consent-modal-title"
-            className="w-full max-w-lg rounded-[1.5rem] border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4 shadow-2xl sm:p-5"
+            className="w-full max-w-lg rounded-[1.5rem] border border-[var(--color-surface-border)] bg-[var(--color-modal-bg)] p-4 shadow-2xl sm:p-5"
           >
             <div className="flex items-start gap-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--color-secondary)]/35 bg-[color-mix(in_srgb,var(--color-secondary)_10%,var(--color-surface))]">

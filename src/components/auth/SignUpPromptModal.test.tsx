@@ -54,6 +54,7 @@ describe('SignUpPromptModal', () => {
     );
 
     expect(screen.getByText('UsernameAvailabilityCard')).toBeInTheDocument();
+    expect(screen.getByRole('dialog').className).toContain('bg-[var(--color-modal-bg)]');
 
     fireEvent.click(screen.getByRole('button', { name: 'Close sign up prompt' }));
 
