@@ -55,6 +55,7 @@ button:disabled {
   --color-secondary: #3F1212;
   --color-text: #FFFFFF;
   --color-on-secondary: #FFFFFF;
+  --color-modal-bg: var(--color-primary-light);
   --color-surface: rgba(255,255,255,0.08);
   --color-surface-hover: rgba(255,255,255,0.14);
   --color-surface-border: rgba(255,255,255,0.12);
@@ -346,6 +347,7 @@ button:disabled {
   --color-theme-primary-light: var(--color-primary-light);
   --color-theme-secondary: var(--color-secondary);
   --color-theme-text: var(--color-text);
+  --color-theme-modal-bg: var(--color-modal-bg);
   --color-theme-surface: var(--color-surface);
   --color-theme-surface-hover: var(--color-surface-hover);
   --color-theme-surface-border: var(--color-surface-border);

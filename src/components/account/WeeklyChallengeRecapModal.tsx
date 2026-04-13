@@ -149,7 +149,7 @@ export default function WeeklyChallengeRecapModal() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.98 }}
           transition={{ duration: prefersReducedMotion ? 0 : 0.24, ease: 'easeOut' }}
-          className="w-full max-w-md rounded-[2rem] border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-card)]"
+          className="w-full max-w-md rounded-[2rem] border border-[var(--color-surface-border)] bg-[var(--color-modal-bg)] p-6 shadow-[var(--shadow-card)]"
           role="dialog"
           aria-modal="true"
           aria-labelledby="weekly-recap-title"

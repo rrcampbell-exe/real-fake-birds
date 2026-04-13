@@ -76,6 +76,7 @@ describe('WeeklyChallengeRecapModal', () => {
     expect(screen.getByText('Weekly Challenge Recap')).toBeInTheDocument();
     expect(screen.getByText('Top 10 Finish!')).toBeInTheDocument();
     expect(screen.getByText(/You finished #7 last week\. You earned \+100 seeds\./i)).toBeInTheDocument();
+  expect(screen.getByRole('dialog').className).toContain('bg-[var(--color-modal-bg)]');
 
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
 
