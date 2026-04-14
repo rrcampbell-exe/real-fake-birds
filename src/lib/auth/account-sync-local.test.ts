@@ -210,7 +210,7 @@ describe('account-sync-local', () => {
     expect(writeDailyMissionHistoryMock).toHaveBeenCalled();
     expect(mergeBirdJournalStoresMock).toHaveBeenCalledWith({ local: true }, { 'bird-a': { birdKey: 'bird-a' } });
     expect(writeBirdJournalMock).toHaveBeenCalledWith({ merged: true });
-    expect(writeBirdhouseMock).toHaveBeenCalledWith({ real: ['real:bird-a'], fake: [], updatedAt: '2026-04-07T10:00:00.000Z' });
+    expect(writeBirdhouseMock).toHaveBeenCalledWith({ real: ['real:bird-a'], fake: [], updatedAt: '2026-04-07T10:00:00.000Z' }, false);
     expect(writeSessionMissionsMock).toHaveBeenCalledWith({
       date: '2026-04-07',
       missions: [
@@ -274,5 +274,65 @@ describe('account-sync-local', () => {
     } as never);
 
     expect(resetSessionMissionsMock).toHaveBeenCalledWith('2026-04-07');
+  });
+
+  it('keeps local birdhouse when local updatedAt is newer than remote', () => {
+    const localStore = { real: ['real:local-bird'], fake: [], updatedAt: '2026-04-08T00:00:00.000Z' };
+    const remoteStore = { real: ['real:remote-bird'], fake: [], updatedAt: '2026-04-07T00:00:00.000Z' };
+    readBirdhouseMock.mockReturnValue(localStore);
+    normalizeBirdhouseStoreMock.mockReturnValue(remoteStore);
+
+    applyPulledAccountProgress({
+      score: { seeds: 0 },
+      unlockedThemes: [],
+      dailyChallengeHistory: [],
+      dailyMissionHistory: [],
+      milestones: [],
+      birdhouse: remoteStore,
+      journalEntries: [],
+      lastLocalSyncAt: null,
+      todayMissionClaims: null,
+    } as never);
+
+    expect(writeBirdhouseMock).toHaveBeenCalledWith(localStore, false);
+  });
+
+  it('uses remote birdhouse when remote updatedAt is newer, including +00:00 vs Z comparison', () => {
+    const localStore = { real: [], fake: [], updatedAt: '2026-04-07T00:00:00.000Z' };
+    const remoteStore = { real: ['real:remote-bird'], fake: [], updatedAt: '2026-04-08T00:00:00.000+00:00' };
+    readBirdhouseMock.mockReturnValue(localStore);
+    normalizeBirdhouseStoreMock.mockReturnValue(remoteStore);
+
+    applyPulledAccountProgress({
+      score: { seeds: 0 },
+      unlockedThemes: [],
+      dailyChallengeHistory: [],
+      dailyMissionHistory: [],
+      milestones: [],
+      birdhouse: remoteStore,
+      journalEntries: [],
+      lastLocalSyncAt: null,
+      todayMissionClaims: null,
+    } as never);
+
+    expect(writeBirdhouseMock).toHaveBeenCalledWith(remoteStore, false);
+  });
+
+  it('suppresses writeBirdhouse notification in favor of batched notification', () => {
+    applyPulledAccountProgress({
+      score: { seeds: 0 },
+      unlockedThemes: [],
+      dailyChallengeHistory: [],
+      dailyMissionHistory: [],
+      milestones: [],
+      birdhouse: { real: [], fake: [], updatedAt: '2026-04-07T00:00:00.000Z' },
+      journalEntries: [],
+      lastLocalSyncAt: null,
+      todayMissionClaims: null,
+    } as never);
+
+    // writeBirdhouse is called with notify=false; the explicit batched call at the end handles it
+    expect(writeBirdhouseMock).toHaveBeenCalledWith(expect.any(Object), false);
+    expect(notifyStoredValueChangedMock).toHaveBeenCalledWith('birdhouse');
   });
 });

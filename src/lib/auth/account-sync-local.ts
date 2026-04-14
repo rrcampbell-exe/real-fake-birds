@@ -153,8 +153,15 @@ export function applyPulledAccountProgress(progress: PulledAccountProgress): voi
   );
   const localBirdhouse = readBirdhouse();
   const remoteBirdhouse = normalizeBirdhouseStore(progress.birdhouse);
+  const toEpochMs = (timestamp: string): number => {
+    const parsed = Date.parse(timestamp);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
   writeBirdhouse(
-    localBirdhouse.updatedAt > remoteBirdhouse.updatedAt ? localBirdhouse : remoteBirdhouse
+    toEpochMs(localBirdhouse.updatedAt) > toEpochMs(remoteBirdhouse.updatedAt)
+      ? localBirdhouse
+      : remoteBirdhouse,
+    false
   );
 
   const today = getTodayMissionDate();
