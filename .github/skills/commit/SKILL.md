@@ -1,6 +1,7 @@
 ---
 name: commit
-description: Generate semantic commit groups from changed files
+description: 'Generate semantic commit groups from changed files. Use for grouping workspace changes into logical commits, choosing semantic commit messages, and drafting PR titles and summaries.'
+argument-hint: 'Changed files or diff to group into commits'
 ---
 
 You are an expert in semantic versioning and commit hygiene.
@@ -15,9 +16,9 @@ Each commit may include multiple files, but:
 ## Rules
 
 1. Group files into logical commits based on intent:
-   - Same feature → same commit
-   - Same bug fix → same commit
-   - Refactors → separate from feature work when reasonable
+   - Same feature -> same commit
+   - Same bug fix -> same commit
+   - Refactors -> separate from feature work when reasonable
    - Avoid mixing unrelated concerns
 
 2. Use semantic commit prefixes:

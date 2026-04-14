@@ -22,13 +22,21 @@ interface UnlockToast {
   detail: string;
   priority: number;
   badgeName?: string;
+  lifetimeMs?: number;
 }
 
 const TOAST_LIFETIME_IMPORTANT_MS = 4500;
 const TOAST_LIFETIME_ROUTINE_MS = 3000;
+const TOAST_LIFETIME_EXTENDED_MS = 5200;
 const TOAST_GAP_MS = 300;
 
-function buildUnlockToasts(options: {
+function buildDailyStreakToastDetail(roundResult: GameRoundResult): string {
+  return roundResult.dailyMissionStreak
+    ? `Your daily streak is now ${roundResult.dailyMissionStreak} day${roundResult.dailyMissionStreak > 1 ? 's' : ''}! Have +${roundResult.missionSetBonusSeedsEarned} bonus seeds as a treat.`
+    : `+${roundResult.missionSetBonusSeedsEarned} bonus seeds.`;
+}
+
+export function buildUnlockToasts(options: {
   isMilestone: boolean;
   earnedBadgeName: string | null;
   newThemeUnlockName: string | null;
@@ -37,6 +45,9 @@ function buildUnlockToasts(options: {
   roundResult: GameRoundResult | null;
 }): UnlockToast[] {
   const nextToasts: UnlockToast[] = [];
+  const missionRewards = options.roundResult?.missionRewards ?? [];
+  const shouldPreferDailyStreakToast = Boolean(options.roundResult?.completedDailyMissionSet && missionRewards.length > 0);
+  const visibleMissionRewards = shouldPreferDailyStreakToast ? missionRewards.slice(0, -1) : missionRewards;
 
   if (options.firstGameOfDayBonusSeedsEarned > 0) {
     nextToasts.push({
@@ -47,7 +58,7 @@ function buildUnlockToasts(options: {
     });
   }
 
-  options.roundResult?.missionRewards.forEach((missionReward, index) => {
+  visibleMissionRewards.forEach((missionReward, index) => {
     nextToasts.push({
       id: 10 + index,
       title: 'Mission Complete!',
@@ -78,10 +89,9 @@ function buildUnlockToasts(options: {
     nextToasts.push({
       id: 20,
       title: 'Daily Streak Extended!',
-      detail: options.roundResult.dailyMissionStreak
-        ? `Your daily streak is now ${options.roundResult.dailyMissionStreak} day${options.roundResult.dailyMissionStreak > 1 ? 's' : ''}. Have +${options.roundResult.missionSetBonusSeedsEarned} bonus seeds as a treat.`
-        : `+${options.roundResult.missionSetBonusSeedsEarned} bonus seeds.`,
-      priority: 40,
+      detail: buildDailyStreakToastDetail(options.roundResult),
+      priority: shouldPreferDailyStreakToast ? 65 : 40,
+      lifetimeMs: shouldPreferDailyStreakToast ? TOAST_LIFETIME_EXTENDED_MS : undefined,
     });
   }
 
@@ -255,7 +265,8 @@ export default function GameSection() {
     const currentToast = sortedToasts[currentToastIndex];
     if (!currentToast) return;
 
-    const lifetime = currentToast.priority >= 70 ? TOAST_LIFETIME_IMPORTANT_MS : TOAST_LIFETIME_ROUTINE_MS;
+    const lifetime = currentToast.lifetimeMs
+      ?? (currentToast.priority >= 70 ? TOAST_LIFETIME_IMPORTANT_MS : TOAST_LIFETIME_ROUTINE_MS);
     let gapTimerId: number | undefined;
 
     const timerId = window.setTimeout(() => {
@@ -312,9 +323,16 @@ export default function GameSection() {
                     />
                   ) : null}
                   <div className="min-w-0">
-                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-secondary)]">
-                      {activeUnlockToast.title}
-                    </p>
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-secondary)]">
+                        {activeUnlockToast.title}
+                      </p>
+                      {sortedToasts.length > 1 ? (
+                        <p className="shrink-0 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
+                          {currentToastIndex + 1} of {sortedToasts.length}
+                        </p>
+                      ) : null}
+                    </div>
                     <p className="mt-1 text-sm font-medium text-[var(--color-text)]">{activeUnlockToast.detail}</p>
                   </div>
                 </div>
