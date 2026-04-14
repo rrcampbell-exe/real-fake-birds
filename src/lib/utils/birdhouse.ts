@@ -31,8 +31,16 @@ export function normalizeBirdhouseStore(storeLike: unknown): BirdhouseStore {
   return {
     real: normalizeBirdhouseKeys(candidate.real),
     fake: normalizeBirdhouseKeys(candidate.fake),
-    updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : new Date(0).toISOString(),
+    updatedAt: normalizeUpdatedAt(candidate.updatedAt),
   };
+}
+
+function normalizeUpdatedAt(value: unknown): string {
+  if (typeof value !== 'string') {
+    return new Date(0).toISOString();
+  }
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? new Date(0).toISOString() : new Date(parsed).toISOString();
 }
 
 export function readBirdhouse(): BirdhouseStore {

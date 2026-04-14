@@ -46,6 +46,16 @@ describe('birdhouse utilities', () => {
     expect(result.updatedAt).toBe(new Date(0).toISOString());
   });
 
+  it('normalizeBirdhouseStore falls back for an unparseable updatedAt string', () => {
+    const result = normalizeBirdhouseStore({ real: [], fake: [], updatedAt: 'not-a-date' });
+    expect(result.updatedAt).toBe(new Date(0).toISOString());
+  });
+
+  it('normalizeBirdhouseStore normalizes +00:00 offset timestamps to Z-suffix ISO format', () => {
+    const result = normalizeBirdhouseStore({ real: [], fake: [], updatedAt: '2026-04-13T00:00:00.000+00:00' });
+    expect(result.updatedAt).toBe('2026-04-13T00:00:00.000Z');
+  });
+
   it('normalizeBirdhouseStore filters out non-string and empty entries', () => {
     const result = normalizeBirdhouseStore({ real: [null, '', 'real:jay', 'real:jay', 42], fake: [] });
     expect(result.real).toEqual(['real:jay']);
