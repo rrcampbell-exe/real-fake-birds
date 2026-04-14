@@ -479,7 +479,12 @@ async function syncBirdhouseStore(options: {
       }
     : { real: [], fake: [], updatedAt: new Date(0).toISOString() };
 
-  const acceptedBirdhouse = incomingBirdhouse.updatedAt >= existingStore.updatedAt
+  const toEpochMillis = (timestamp: string): number => {
+    const parsed = Date.parse(timestamp);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+
+  const acceptedBirdhouse = toEpochMillis(incomingBirdhouse.updatedAt) >= toEpochMillis(existingStore.updatedAt)
     ? incomingBirdhouse
     : existingStore;
 
