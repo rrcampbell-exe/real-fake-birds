@@ -293,7 +293,7 @@ export default function Answer({
         <div
           className={hasImage
             ? 'grid grid-cols-[1fr_7rem] items-start gap-4 md:grid-cols-[10rem_minmax(0,1fr)_auto]'
-            : 'grid items-start gap-4 grid-cols-[minmax(0,1fr)_7rem]'}
+            : 'grid items-start gap-3 grid-cols-[minmax(0,1fr)_auto]'}
         >
           {hasImage ? (
             <AnswerImage
@@ -369,7 +369,7 @@ export default function Answer({
           </div>
 
           {hasImage ? (
-            <div className="col-span-2 min-w-0 space-y-1 md:col-span-2 md:col-start-1 md:row-start-2">
+            <div className="col-span-2 min-w-0 space-y-1 md:col-span-3 md:col-start-1 md:row-start-2">
               <h2 className="font-[family-name:var(--font-display)] text-xl font-bold leading-tight text-[var(--color-text)] md:text-2xl">
                 {birdData}
               </h2>
