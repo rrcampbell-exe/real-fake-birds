@@ -139,6 +139,8 @@ export default function MenuDrawer({ isOpen, onClose, notifications }: MenuDrawe
                         ? 'This week\'s live standings'
                       : href === '/journal'
                         ? 'Your collection of birds'
+                        : href === '/birdhouse'
+                          ? 'Your hand-picked bird gallery'
                       : href === '/rewards'
                         ? 'Bonuses, trophies, and milestones'
                         : 'Themes, audio, and gameplay options'}

@@ -107,7 +107,7 @@ describe('useUsernameValidation', () => {
   it('surfaces remote availability results', async () => {
     mockedValidateUsernameAvailability.mockResolvedValueOnce({
       isValid: true,
-      issues: ['already_taken'],
+      issues: [],
       normalizedUsername: 'ceo',
       available: false,
     });
@@ -125,7 +125,7 @@ describe('useUsernameValidation', () => {
 
     expect(result.current.normalizedUsername).toBe('ceo');
     expect(result.current.available).toBe(false);
-    expect(result.current.issues).toEqual(['already_taken']);
+    expect(result.current.issues).toEqual([]);
     expect(result.current.isChecking).toBe(false);
   });
 

@@ -22,6 +22,8 @@ const SOUND_DEFS: Record<SoundKey, SoundDef> = {
   correct: { type: 'file', url: '/sounds/fx/correct.mp3' },
   wrong: { type: 'file', url: '/sounds/fx/wrong.mp3' },
   error: { type: 'file', url: '/sounds/fx/error.mp3' },
+  collect: { type: 'synth', synthFn: synthCollect },
+  release: { type: 'synth', synthFn: synthRelease },
   streak: { type: 'file', url: '/sounds/fx/streak.mp3', gain: 0.45 },
   milestone: { type: 'file', url: '/sounds/fx/milestone.mp3' },
   whoosh: { type: 'synth', synthFn: synthWhoosh },
@@ -97,6 +99,38 @@ function synthThemeChange(ctx: AudioContext, dest: AudioNode) {
     osc.connect(gain).connect(dest);
     osc.start(now + i * 0.1);
     osc.stop(now + i * 0.1 + 0.2);
+  });
+}
+
+function synthCollect(ctx: AudioContext, dest: AudioNode) {
+  const now = ctx.currentTime;
+  [523.25, 659.25].forEach((freq, index) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, now + index * 0.05);
+    gain.gain.setValueAtTime(0.001, now + index * 0.05);
+    gain.gain.linearRampToValueAtTime(0.16, now + index * 0.05 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + index * 0.05 + 0.2);
+    osc.connect(gain).connect(dest);
+    osc.start(now + index * 0.05);
+    osc.stop(now + index * 0.05 + 0.22);
+  });
+}
+
+function synthRelease(ctx: AudioContext, dest: AudioNode) {
+  const now = ctx.currentTime;
+  [659.25, 523.25].forEach((freq, index) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now + index * 0.06);
+    gain.gain.setValueAtTime(0.001, now + index * 0.06);
+    gain.gain.linearRampToValueAtTime(0.12, now + index * 0.06 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + index * 0.06 + 0.18);
+    osc.connect(gain).connect(dest);
+    osc.start(now + index * 0.06);
+    osc.stop(now + index * 0.06 + 0.2);
   });
 }
 

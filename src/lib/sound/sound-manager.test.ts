@@ -652,7 +652,7 @@ describe('SoundManager', () => {
       }
 
       Object.assign(activeCtx, { state: 'interrupted' as AudioContextState });
-      activeCtx.onstatechange?.();
+      activeCtx.onstatechange?.(new Event('statechange'));
 
       expect(themeSource?.stop).toHaveBeenCalledTimes(1);
     });
@@ -676,7 +676,7 @@ describe('SoundManager', () => {
       // Should have created exactly one theme-song source, not two
       // (re-entrant flush guard prevents the circular startThemeSong→flush→startThemeSong loop).
       const themeSources = mockCtx.createBufferSource.mock.results.filter(
-        (r: { value: ReturnType<typeof createMockBufferSource> }) => r.value?.loop === true
+        (result) => result.type === 'return' && result.value.loop === true
       );
       expect(themeSources.length).toBe(1);
     });

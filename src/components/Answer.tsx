@@ -7,6 +7,8 @@ import Image from 'next/image';
 import { ArrowRight, GraduationCap } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import BirdhouseSwapSheet from '@/components/birdhouse/BirdhouseSwapSheet';
+import BirdhouseToggleButton from '@/components/birdhouse/BirdhouseToggleButton';
 import { useSound } from '@/hooks/useSound';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useStoredJson } from '@/hooks/useStoredValue';
@@ -74,7 +76,7 @@ function AnswerImage({ birdData, imageUrl, journalHref, isNewBirdEncounter, onLe
       href={journalHref}
       scroll={false}
       onClick={onLearnMore}
-      className="relative block w-[calc(50%-0.5rem)] max-w-[10rem] md:row-start-1 md:w-28 md:max-w-none"
+      className="group relative block w-full"
       aria-label="Learn more about this bird"
     >
       <div
@@ -96,13 +98,20 @@ function AnswerImage({ birdData, imageUrl, journalHref, isNewBirdEncounter, onLe
           src={imageUrl}
           alt={birdData}
           fill
-          sizes="(max-width: 768px) 50vw, 112px"
+          sizes="(max-width: 768px) 50vw, 160px"
           className={`object-cover object-center transition-opacity duration-200 ${imageStatus === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
           loading="eager"
           unoptimized
           onLoad={() => setImageStatus('loaded')}
           onError={() => setImageStatus('error')}
         />
+        {/* Explore overlay — visible on hover/focus */}
+        <div
+          aria-hidden="true"
+          className={`absolute inset-0 flex items-end justify-start bg-gradient-to-t from-black/50 to-transparent pb-2.5 pl-2.5 transition-opacity duration-200 ${isNewBirdEncounter ? 'opacity-0' : 'opacity-100'} md:opacity-0 md:group-hover:opacity-100 md:group-focus-visible:opacity-100`}
+        >
+          <span className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-white/90">Explore</span>
+        </div>
       </div>
       {isNewBirdEncounter ? (
         <span
@@ -177,6 +186,7 @@ export default function Answer({
   const [fakeFieldNote] = useState(getRandomFakeFieldNote);
   const [isNextBirdVisible, setIsNextBirdVisible] = useState(false);
   const [isWiggling, setIsWiggling] = useState(false);
+  const [birdhouseSwapTarget, setBirdhouseSwapTarget] = useState<{ birdKey: string; birdName: string; isReal: boolean } | null>(null);
   const sharePayload = isMilestone && earnedBadgeName
     ? buildMilestoneSharePayload({
         badgeName: earnedBadgeName,
@@ -282,8 +292,8 @@ export default function Answer({
       <div className="w-full space-y-4">
         <div
           className={hasImage
-            ? 'flex flex-wrap items-stretch justify-between gap-4 md:grid md:grid-cols-[7rem_minmax(0,1fr)_auto] md:items-start'
-            : 'grid items-start gap-4 grid-cols-[minmax(0,1fr)_auto]'}
+            ? 'grid grid-cols-[1fr_7rem] items-start gap-4 md:grid-cols-[10rem_minmax(0,1fr)_auto]'
+            : 'grid items-start gap-3 grid-cols-[minmax(0,1fr)_auto]'}
         >
           {hasImage ? (
             <AnswerImage
@@ -313,7 +323,7 @@ export default function Answer({
             </div>
           )}
 
-          <div className="flex shrink-0 self-stretch flex-col items-end gap-2 text-right md:col-start-3 md:row-start-1 md:self-auto">
+          <div className="flex self-stretch flex-col items-end gap-2 text-right md:col-start-3 md:row-start-1">
             <motion.span
               initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -340,22 +350,26 @@ export default function Answer({
               {isReal ? 'Real' : 'Fake'}
             </motion.span>
 
-            {/* Learn More for real birds, just under labels */}
-            {isReal && (
-              <Link
-                href={journalHref}
-                scroll={false}
-                onClick={handleLearnMore}
-                className="mt-auto inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-surface-hover)]"
-              >
-                Learn More
-                <GraduationCap size={16} />
-              </Link>
-            )}
+            <motion.div
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={prefersReducedMotion ? { duration: 0 } : { delay: 0.26 }}
+              className="mt-auto"
+            >
+              <BirdhouseToggleButton
+                birdKey={journalBirdKey}
+                birdName={birdData}
+                isReal={isReal}
+                iconSize={16}
+                size="sm"
+                showLabel
+                onRequestSwap={setBirdhouseSwapTarget}
+              />
+            </motion.div>
           </div>
 
           {hasImage ? (
-            <div className="w-full min-w-0 space-y-1 md:col-span-2 md:col-start-1 md:row-start-2">
+            <div className="col-span-2 min-w-0 space-y-1 md:col-span-3 md:col-start-1 md:row-start-2">
               <h2 className="font-[family-name:var(--font-display)] text-xl font-bold leading-tight text-[var(--color-text)] md:text-2xl">
                 {birdData}
               </h2>
@@ -380,6 +394,16 @@ export default function Answer({
             {displayedFact ? (
               <p className="text-sm leading-6 text-[var(--color-text)]">{displayedFact}</p>
             ) : null}
+
+            <Link
+              href={journalHref}
+              scroll={false}
+              onClick={handleLearnMore}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+            >
+              <GraduationCap size={13} strokeWidth={2} />
+              Learn More
+            </Link>
           </div>
         ) : (
           <div className="space-y-3 rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-4">
@@ -390,6 +414,12 @@ export default function Answer({
           </div>
         )}
       </div>
+
+      <BirdhouseSwapSheet
+        incomingBird={birdhouseSwapTarget}
+        isOpen={birdhouseSwapTarget !== null}
+        onClose={() => setBirdhouseSwapTarget(null)}
+      />
     </div>
   );
 }

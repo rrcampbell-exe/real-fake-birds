@@ -26,6 +26,10 @@ vi.mock('@/hooks/useBirdJournal', () => ({
   useBirdJournal: vi.fn(),
 }));
 
+vi.mock('@/hooks/useBirdhouse', () => ({
+  useBirdhouse: vi.fn(),
+}));
+
 vi.mock('@/hooks/useStoredValue', () => ({
   useStoredJson: vi.fn(),
   notifyStoredValueChanged: vi.fn(),
@@ -39,11 +43,17 @@ vi.mock('@/components/journal/JournalControls', () => ({
   default: () => <div>JournalControls</div>,
 }));
 
+vi.mock('@/components/birdhouse/BirdhouseSwapSheet', () => ({
+  default: () => null,
+}));
+
 import { useBirdJournal } from '@/hooks/useBirdJournal';
+import { useBirdhouse } from '@/hooks/useBirdhouse';
 import { usePageProgressSync } from '@/hooks/usePageProgressSync';
 import { useStoredJson } from '@/hooks/useStoredValue';
 
 const mockedUseBirdJournal = vi.mocked(useBirdJournal);
+const mockedUseBirdhouse = vi.mocked(useBirdhouse);
 const mockedUsePageProgressSync = vi.mocked(usePageProgressSync);
 const mockedUseStoredJson = vi.mocked(useStoredJson);
 
@@ -55,6 +65,17 @@ describe('JournalPage', () => {
       isPageSyncLoading: false,
       isPageBackgroundRefreshing: false,
       isSignedIn: true,
+    });
+    mockedUseBirdhouse.mockReturnValue({
+      birdhouse: { real: [], fake: [], updatedAt: new Date(0).toISOString() },
+      realCount: 0,
+      fakeCount: 0,
+      realCap: 10,
+      fakeCap: 10,
+      isInBirdhouse: vi.fn().mockReturnValue(false),
+      add: vi.fn(),
+      remove: vi.fn(),
+      swap: vi.fn(),
     });
     mockedUseBirdJournal.mockReturnValue({
       journal: [
@@ -97,6 +118,17 @@ describe('JournalPage', () => {
       isPageBackgroundRefreshing: false,
       isSignedIn: true,
     });
+    mockedUseBirdhouse.mockReturnValue({
+      birdhouse: { real: [], fake: [], updatedAt: new Date(0).toISOString() },
+      realCount: 0,
+      fakeCount: 0,
+      realCap: 10,
+      fakeCap: 10,
+      isInBirdhouse: vi.fn().mockReturnValue(false),
+      add: vi.fn(),
+      remove: vi.fn(),
+      swap: vi.fn(),
+    });
     mockedUseBirdJournal.mockReturnValue({
       journal: [
         {
@@ -138,6 +170,17 @@ describe('JournalPage', () => {
       isPageBackgroundRefreshing: false,
       isSignedIn: true,
     });
+    mockedUseBirdhouse.mockReturnValue({
+      birdhouse: { real: [], fake: [], updatedAt: new Date(0).toISOString() },
+      realCount: 0,
+      fakeCount: 0,
+      realCap: 10,
+      fakeCap: 10,
+      isInBirdhouse: vi.fn().mockReturnValue(false),
+      add: vi.fn(),
+      remove: vi.fn(),
+      swap: vi.fn(),
+    });
     mockedUseBirdJournal.mockReturnValue({
       journal: [
         {
@@ -177,6 +220,17 @@ describe('JournalPage', () => {
       isPageBackgroundRefreshing: true,
       isSignedIn: true,
     });
+    mockedUseBirdhouse.mockReturnValue({
+      birdhouse: { real: [], fake: [], updatedAt: new Date(0).toISOString() },
+      realCount: 0,
+      fakeCount: 0,
+      realCap: 10,
+      fakeCap: 10,
+      isInBirdhouse: vi.fn().mockReturnValue(false),
+      add: vi.fn(),
+      remove: vi.fn(),
+      swap: vi.fn(),
+    });
     mockedUseBirdJournal.mockReturnValue({
       journal: [],
       journalByKey: {},
@@ -200,6 +254,17 @@ describe('JournalPage', () => {
       isPageSyncLoading: false,
       isPageBackgroundRefreshing: false,
       isSignedIn: true,
+    });
+    mockedUseBirdhouse.mockReturnValue({
+      birdhouse: { real: [], fake: [], updatedAt: new Date(0).toISOString() },
+      realCount: 0,
+      fakeCount: 0,
+      realCap: 10,
+      fakeCap: 10,
+      isInBirdhouse: vi.fn().mockReturnValue(false),
+      add: vi.fn(),
+      remove: vi.fn(),
+      swap: vi.fn(),
     });
     mockedUseBirdJournal.mockReturnValue({
       journal: [

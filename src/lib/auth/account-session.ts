@@ -1,10 +1,11 @@
 import { CURRENT_HINTS_STORAGE_KEY } from '@/lib/constants/hints';
 import { track } from '@/lib/analytics';
-import { applyProgressEvents, pullAccountProgress, syncBirdJournal, syncLocalProgress, type LocalProgressPayload } from '@/lib/auth/account-sync';
+import { applyProgressEvents, pullAccountProgress, syncBirdhouse, syncBirdJournal, syncLocalProgress, type LocalProgressPayload } from '@/lib/auth/account-sync';
 import { applyPulledAccountProgress } from '@/lib/auth/account-sync-local';
 import type { ProgressEvent } from '@/lib/progress/progress-events';
 import { clearProgressEventOutbox, readProgressEventOutbox, removeQueuedProgressEvents } from '@/lib/progress/progress-event-outbox';
 import { clearDirtyBirdJournalKeys, getDirtyBirdJournalEntries, readBirdJournal, writeBirdJournal } from '@/lib/utils/bird-journal';
+import { readBirdhouse, writeBirdhouse } from '@/lib/utils/birdhouse';
 import {
   getTodayChallengeDate,
   readDailyChallengeHistory,
@@ -32,6 +33,7 @@ import {
 export const ACCOUNT_STATE_CHANGED_EVENT = 'rfb-account-state-changed';
 let progressFlushPromise: Promise<void> | null = null;
 let signedInSyncPromise: Promise<void> | null = null;
+let birdhouseSyncPromise: Promise<void> | null = null;
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined';
@@ -55,6 +57,7 @@ function readLocalProgressPayload(): LocalProgressPayload {
     dailyMissionHistory: readDailyMissionHistory(),
     milestones: getEarnedMilestonesForBirds(score.birdsIdentified).map((milestone) => milestone.value),
     journalEntries: Object.values(readBirdJournal()),
+    birdhouse: readBirdhouse(),
   };
 }
 
@@ -80,6 +83,22 @@ async function pushDirtyBirdJournalEntriesToAccount(): Promise<void> {
   if (response.journalCount > 0) {
     clearDirtyBirdJournalKeys(dirtyJournalEntries.map((entry) => entry.birdKey));
   }
+}
+
+export async function pushBirdhouseToAccount(): Promise<void> {
+  if (birdhouseSyncPromise) {
+    await birdhouseSyncPromise;
+    return;
+  }
+
+  birdhouseSyncPromise = (async () => {
+    const response = await syncBirdhouse(readBirdhouse());
+    writeBirdhouse(response.birdhouse);
+  })().finally(() => {
+    birdhouseSyncPromise = null;
+  });
+
+  await birdhouseSyncPromise;
 }
 
 export function mergeFlushedProgressScore(
@@ -136,6 +155,7 @@ export async function flushQueuedProgressEventsForSignedInUser(): Promise<void> 
       setUnlockedThemeNames(response.snapshot.unlockedThemes);
       writeDailyChallengeHistory(response.snapshot.dailyChallengeHistory);
       await pushDirtyBirdJournalEntriesToAccount();
+      await pushBirdhouseToAccount();
     }
   })().finally(() => {
     progressFlushPromise = null;
@@ -185,6 +205,12 @@ export async function syncSignedInAccountToLocalState(options?: { notify?: boole
       // Keep unsynced journal updates so the next sync attempt can retry.
     }
 
+    try {
+      await pushBirdhouseToAccount();
+    } catch {
+      // Keep unsynced birdhouse updates so the next sync attempt can retry.
+    }
+
     const response = await pullAccountProgress(getTodayMissionDate());
     applyPulledAccountProgress({
       ...response.progress,
@@ -226,6 +252,7 @@ export function resetLocalStateForGuestSession(): void {
   writeDailyChallengeHistory([]);
   writeDailyMissionHistory([]);
   writeBirdJournal({});
+  writeBirdhouse({ real: [], fake: [], updatedAt: new Date(0).toISOString() });
   clearDirtyBirdJournalKeys();
   resetEphemeralLocalState();
   clearProgressEventOutbox();

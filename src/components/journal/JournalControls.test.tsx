@@ -11,7 +11,9 @@ describe('JournalControls', () => {
       <JournalControls
         filter="all"
         sort="recent"
+        searchQuery=""
         onFilterChange={onFilterChange}
+        onSearchChange={vi.fn()}
         onSortChange={onSortChange}
       />
     );
@@ -29,7 +31,9 @@ describe('JournalControls', () => {
       <JournalControls
         filter="fake"
         sort="recent"
+        searchQuery=""
         onFilterChange={onFilterChange}
+        onSearchChange={vi.fn()}
         onSortChange={onSortChange}
       />
     );

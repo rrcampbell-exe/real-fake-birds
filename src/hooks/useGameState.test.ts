@@ -122,7 +122,7 @@ describe('useGameState', () => {
       };
     });
 
-    vi.mocked(fetchData).mockImplementation((setIsReal, setIsLoading, setBirdData, setSciName, setRegionLabel) => {
+    vi.mocked(fetchData).mockImplementation(async (setIsReal, setIsLoading, setBirdData, setSciName, setRegionLabel) => {
       setIsReal(true);
       setIsLoading(false);
       setBirdData('Blue Jay');
@@ -140,7 +140,7 @@ describe('useGameState', () => {
 
   it('exposes bird context returned by fetchData', () => {
     vi.mocked(fetchData).mockImplementation(
-      (setIsReal, setIsLoading, setBirdData, setSciName, setRegionLabel, setFact) => {
+      async (setIsReal, setIsLoading, setBirdData, setSciName, setRegionLabel, setFact) => {
         setIsReal(false);
         setIsLoading(false);
         setBirdData('Crimson Cape Warbler');

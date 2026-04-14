@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { GetLeaderboardResponse } from '@/lib/auth/account-sync';
 import {
   buildSignUpPromptContent,
   getEligibleSignUpPromptThreshold,
@@ -6,21 +7,31 @@ import {
   shouldShowSignUpPrompt,
 } from './signup-prompt';
 
-function buildLeaderboard(overrides: Record<string, unknown> = {}) {
+function buildLeaderboard(
+  overrides: Omit<Partial<GetLeaderboardResponse['leaderboard']>, 'challenge'> & {
+    challenge?: Partial<GetLeaderboardResponse['leaderboard']['challenge']>;
+  } = {}
+): GetLeaderboardResponse['leaderboard'] {
+  const { challenge: challengeOverrides, ...leaderboardOverrides } = overrides;
+  const baseChallenge: GetLeaderboardResponse['leaderboard']['challenge'] = {
+    id: 'seed-collector',
+    name: 'Seed Collector',
+    description: 'Gather more seeds this week than anyone else.',
+    icon: 'sprout',
+    primaryLabel: 'Seeds earned',
+    tiebreakerLabel: 'Accuracy',
+    metric: 'weeklySeedsEarned',
+    tiebreakerMetric: 'accuracy',
+  };
+  const challenge: GetLeaderboardResponse['leaderboard']['challenge'] = {
+    ...baseChallenge,
+    ...(challengeOverrides ?? {}),
+  };
+
   return {
     weekStart: '2026-04-06',
     endsAt: '2026-04-13T00:00:00.000Z',
-    challenge: {
-      id: 'seed-collector',
-      name: 'Seed Collector',
-      description: 'Gather more seeds this week than anyone else.',
-      icon: 'sprout',
-      primaryLabel: 'Seeds earned',
-      tiebreakerLabel: 'Accuracy',
-      metric: 'weeklySeedsEarned',
-      tiebreakerMetric: 'accuracy',
-      ...((overrides.challenge as Record<string, unknown> | undefined) ?? {}),
-    },
+    challenge,
     currentUserEntry: null,
     entries: Array.from({ length: 10 }, (_, index) => ({
       rank: index + 1,
@@ -33,7 +44,7 @@ function buildLeaderboard(overrides: Record<string, unknown> = {}) {
       birdsSeen: 80 - index,
       isCurrentUser: false,
     })),
-    ...overrides,
+    ...leaderboardOverrides,
   };
 }
 
@@ -243,7 +254,7 @@ describe('buildSignUpPromptContent', () => {
       unlockedThemeNames: ['Finch'],
       leaderboard: buildLeaderboard({
         challenge: {
-          id: 'mystery-week',
+          id: 'mystery-week' as unknown as GetLeaderboardResponse['leaderboard']['challenge']['id'],
           qualificationText: 'Hit the weekly minimum to place.',
         },
         entries: [],
@@ -256,7 +267,7 @@ describe('buildSignUpPromptContent', () => {
       unlockedThemeNames: ['Finch'],
       leaderboard: buildLeaderboard({
         challenge: {
-          id: 'mystery-week',
+          id: 'mystery-week' as unknown as GetLeaderboardResponse['leaderboard']['challenge']['id'],
           qualificationText: undefined,
         },
         entries: [],

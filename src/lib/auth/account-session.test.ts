@@ -4,6 +4,7 @@ import type { ProgressEvent } from '@/lib/progress/progress-events';
 const {
   applyProgressEventsMock,
   pullAccountProgressMock,
+  syncBirdhouseMock,
   syncBirdJournalMock,
   syncLocalProgressMock,
   applyPulledAccountProgressMock,
@@ -12,7 +13,9 @@ const {
   removeQueuedProgressEventsMock,
   clearDirtyBirdJournalKeysMock,
   getDirtyBirdJournalEntriesMock,
+  readBirdhouseMock,
   readBirdJournalMock,
+  writeBirdhouseMock,
   writeBirdJournalMock,
   getTodayChallengeDateMock,
   readDailyChallengeHistoryMock,
@@ -31,6 +34,7 @@ const {
 } = vi.hoisted(() => ({
   applyProgressEventsMock: vi.fn(),
   pullAccountProgressMock: vi.fn(),
+  syncBirdhouseMock: vi.fn(),
   syncBirdJournalMock: vi.fn(),
   syncLocalProgressMock: vi.fn(),
   applyPulledAccountProgressMock: vi.fn(),
@@ -39,7 +43,9 @@ const {
   removeQueuedProgressEventsMock: vi.fn(),
   clearDirtyBirdJournalKeysMock: vi.fn(),
   getDirtyBirdJournalEntriesMock: vi.fn(),
+  readBirdhouseMock: vi.fn(),
   readBirdJournalMock: vi.fn(),
+  writeBirdhouseMock: vi.fn(),
   writeBirdJournalMock: vi.fn(),
   getTodayChallengeDateMock: vi.fn(),
   readDailyChallengeHistoryMock: vi.fn(),
@@ -60,6 +66,7 @@ const {
 vi.mock('@/lib/auth/account-sync', () => ({
   applyProgressEvents: applyProgressEventsMock,
   pullAccountProgress: pullAccountProgressMock,
+  syncBirdhouse: syncBirdhouseMock,
   syncBirdJournal: syncBirdJournalMock,
   syncLocalProgress: syncLocalProgressMock,
 }));
@@ -79,6 +86,11 @@ vi.mock('@/lib/utils/bird-journal', () => ({
   getDirtyBirdJournalEntries: getDirtyBirdJournalEntriesMock,
   readBirdJournal: readBirdJournalMock,
   writeBirdJournal: writeBirdJournalMock,
+}));
+
+vi.mock('@/lib/utils/birdhouse', () => ({
+  readBirdhouse: readBirdhouseMock,
+  writeBirdhouse: writeBirdhouseMock,
 }));
 
 vi.mock('@/lib/utils/daily-challenge', () => ({
@@ -152,6 +164,8 @@ describe('account-session', () => {
     localStorage.clear();
     applyProgressEventsMock.mockReset();
     pullAccountProgressMock.mockReset();
+    syncBirdhouseMock.mockReset();
+    syncBirdhouseMock.mockResolvedValue({ birdhouse: { real: [], fake: [], updatedAt: new Date(0).toISOString() } });
     syncBirdJournalMock.mockReset();
     syncBirdJournalMock.mockResolvedValue({ journalCount: 0 });
     syncLocalProgressMock.mockReset();
@@ -163,8 +177,11 @@ describe('account-session', () => {
     clearDirtyBirdJournalKeysMock.mockReset();
     getDirtyBirdJournalEntriesMock.mockReset();
     getDirtyBirdJournalEntriesMock.mockReturnValue([]);
+    readBirdhouseMock.mockReset();
+    readBirdhouseMock.mockReturnValue({ real: [], fake: [], updatedAt: '2026-04-07T00:00:00.000Z' });
     readBirdJournalMock.mockReset();
     readBirdJournalMock.mockReturnValue({ bird1: { birdKey: 'bird1' } });
+    writeBirdhouseMock.mockReset();
     writeBirdJournalMock.mockReset();
     getTodayChallengeDateMock.mockReset();
     getTodayChallengeDateMock.mockReturnValue('2026-04-07');
@@ -190,6 +207,7 @@ describe('account-session', () => {
       currentStreak: 2,
       justAchievedStreak: false,
       bestStreak: 6,
+      activePersonalBestTarget: null,
       currentDailyStreak: 1,
       bestDailyStreak: 2,
       seeds: 18,
@@ -240,6 +258,7 @@ describe('account-session', () => {
         currentStreak: 0,
         justAchievedStreak: false,
         bestStreak: 6,
+        activePersonalBestTarget: null,
         currentDailyStreak: 0,
         bestDailyStreak: 0,
         seeds: 18,
@@ -249,6 +268,7 @@ describe('account-session', () => {
         birdsIdentified: 11,
         currentStreak: 0,
         bestStreak: 6,
+        activePersonalBestTarget: null,
         currentDailyStreak: 0,
         bestDailyStreak: 0,
         seeds: 18,
@@ -317,6 +337,7 @@ describe('account-session', () => {
     expect(setUnlockedThemeNamesMock).toHaveBeenCalledWith(['Robin']);
     expect(writeDailyChallengeHistoryMock).toHaveBeenCalledWith([{ date: '2026-04-07', correctAnswers: 4, roundsPlayed: 5, completed: true }]);
     expect(syncBirdJournalMock).not.toHaveBeenCalled();
+    expect(syncBirdhouseMock).toHaveBeenCalledWith({ real: [], fake: [], updatedAt: '2026-04-07T00:00:00.000Z' });
   });
 
   it('pushes dirty bird journal entries after flushing progress events', async () => {
@@ -352,6 +373,7 @@ describe('account-session', () => {
       expect.objectContaining({ birdKey: 'real:blue-jay' }),
     ]);
     expect(clearDirtyBirdJournalKeysMock).toHaveBeenCalledWith(['real:blue-jay']);
+    expect(syncBirdhouseMock).toHaveBeenCalled();
   });
 
   it('hydrates local state from the signed-in account and resets ephemeral state first', async () => {
@@ -432,6 +454,7 @@ describe('account-session', () => {
       expect.objectContaining({ birdKey: 'real:blue-jay' }),
     ]);
     expect(clearDirtyBirdJournalKeysMock).toHaveBeenCalledWith(['real:blue-jay']);
+    expect(syncBirdhouseMock).toHaveBeenCalled();
     expect(pullAccountProgressMock).toHaveBeenCalledWith('2026-04-07');
   });
 
@@ -448,6 +471,7 @@ describe('account-session', () => {
       dailyMissionHistory: [{ date: '2026-04-06' }],
       milestones: [10],
       journalEntries: [{ birdKey: 'bird1' }],
+      birdhouse: { real: [], fake: [], updatedAt: '2026-04-07T00:00:00.000Z' },
     });
     expect(listener).toHaveBeenCalledTimes(1);
     window.removeEventListener(ACCOUNT_STATE_CHANGED_EVENT, listener);
@@ -472,6 +496,7 @@ describe('account-session', () => {
     expect(writeDailyChallengeHistoryMock).toHaveBeenCalledWith([]);
     expect(writeDailyMissionHistoryMock).toHaveBeenCalledWith([]);
     expect(writeBirdJournalMock).toHaveBeenCalledWith({});
+    expect(writeBirdhouseMock).toHaveBeenCalledWith({ real: [], fake: [], updatedAt: new Date(0).toISOString() });
     expect(clearDirtyBirdJournalKeysMock).toHaveBeenCalled();
     expect(resetDailyChallengeStateMock).toHaveBeenCalledWith('2026-04-07');
     expect(resetSessionMissionsMock).toHaveBeenCalledWith('2026-04-07');

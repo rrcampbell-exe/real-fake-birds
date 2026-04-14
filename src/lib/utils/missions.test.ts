@@ -203,7 +203,7 @@ describe('incrementForMission – branch coverage', () => {
       ),
     });
 
-    const roundResult = buildRoundResult({ usedHintTypes: ['fact', 'sound'] });
+    const roundResult = buildRoundResult({ usedHintTypes: ['fact', 'image'] });
     const update = applyRoundToSessionMissions(roundResult);
     const missionEntry = update.nextState.missions.find((m) => m.missionId === 'field-notes');
     expect(missionEntry?.progress).toBe(2);

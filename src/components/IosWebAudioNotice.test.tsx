@@ -13,6 +13,24 @@ import { useAccountState } from '@/components/account/AccountStateProvider';
 const originalMatchMedia = window.matchMedia;
 const navigatorOverrides: Array<() => void> = [];
 
+function createAccountState(overrides: Partial<ReturnType<typeof useAccountState>> = {}): ReturnType<typeof useAccountState> {
+  return {
+    isLoadingAccount: false,
+    isSignedIn: false,
+    isBooting: false,
+    isBackgroundSyncing: false,
+    isAppChromeVisible: true,
+    accountEmail: null,
+    accountUsername: null,
+    remoteSummary: null,
+    remoteUnlockedThemes: [],
+    weeklyOverview: null,
+    refreshAccountState: vi.fn().mockResolvedValue(undefined),
+    syncSignedInProgress: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
 function mockNavigator(value: Partial<Navigator>) {
   for (const [key, descriptorValue] of Object.entries(value)) {
     const originalDescriptor = Object.getOwnPropertyDescriptor(window.navigator, key);
@@ -57,9 +75,7 @@ afterEach(() => {
 
 describe('IosWebAudioNotice', () => {
   it('shows on iPhone browsers and can be dismissed', async () => {
-    vi.mocked(useAccountState).mockReturnValue({
-      isAppChromeVisible: true,
-    });
+    vi.mocked(useAccountState).mockReturnValue(createAccountState({ isAppChromeVisible: true }));
     mockNavigator({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)', platform: 'iPhone', maxTouchPoints: 5 });
 
     render(<IosWebAudioNotice />);
@@ -73,9 +89,7 @@ describe('IosWebAudioNotice', () => {
   });
 
   it('does not show on non-iOS devices', () => {
-    vi.mocked(useAccountState).mockReturnValue({
-      isAppChromeVisible: true,
-    });
+    vi.mocked(useAccountState).mockReturnValue(createAccountState({ isAppChromeVisible: true }));
     mockNavigator({ userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0)', platform: 'MacIntel', maxTouchPoints: 0 });
 
     render(<IosWebAudioNotice />);
@@ -84,9 +98,7 @@ describe('IosWebAudioNotice', () => {
   });
 
   it('does not show when already dismissed', () => {
-    vi.mocked(useAccountState).mockReturnValue({
-      isAppChromeVisible: true,
-    });
+    vi.mocked(useAccountState).mockReturnValue(createAccountState({ isAppChromeVisible: true }));
     mockNavigator({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)', platform: 'iPhone', maxTouchPoints: 5 });
     localStorage.setItem(IOS_WEB_AUDIO_NOTICE_DISMISSED_STORAGE_KEY, 'true');
 
@@ -96,9 +108,7 @@ describe('IosWebAudioNotice', () => {
   });
 
   it('does not show until the app chrome is visible', () => {
-    vi.mocked(useAccountState).mockReturnValue({
-      isAppChromeVisible: false,
-    });
+    vi.mocked(useAccountState).mockReturnValue(createAccountState({ isAppChromeVisible: false }));
     mockNavigator({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)', platform: 'iPhone', maxTouchPoints: 5 });
 
     render(<IosWebAudioNotice />);
