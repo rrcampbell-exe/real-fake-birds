@@ -26,6 +26,7 @@ import {
   readAnalyticsUsername,
   setAnalyticsUsername,
   track,
+  trackClientError,
   trackFirstPurchase,
   trackSessionStart,
 } from './index';
@@ -111,6 +112,41 @@ describe('analytics helpers', () => {
     track('session_start');
 
     expect(posthogMock.capture).not.toHaveBeenCalled();
+  });
+
+  it('swallows PostHog runtime errors so analytics cannot break the UI', () => {
+    posthogMock.capture.mockImplementation(() => {
+      throw new Error('capture failed');
+    });
+
+    expect(() => {
+      track('session_start');
+    }).not.toThrow();
+  });
+
+  it('tracks normalized client error details', () => {
+    trackClientError('journal_open_details_failed', new TypeError('sync failed'), {
+      screen: 'journal',
+      bird_key: 'real:owl',
+    });
+
+    expect(posthogMock.capture).toHaveBeenCalledWith('client_error_reported', {
+      error_context: 'journal_open_details_failed',
+      error_name: 'TypeError',
+      error_message: 'sync failed',
+      screen: 'journal',
+      bird_key: 'real:owl',
+    });
+  });
+
+  it('tracks string-based client errors as UnknownError', () => {
+    trackClientError('journal_progress_flush_failed', 'network timeout');
+
+    expect(posthogMock.capture).toHaveBeenCalledWith('client_error_reported', {
+      error_context: 'journal_progress_flush_failed',
+      error_name: 'UnknownError',
+      error_message: 'network timeout',
+    });
   });
 
   it('does not track session start when consent is declined', () => {
