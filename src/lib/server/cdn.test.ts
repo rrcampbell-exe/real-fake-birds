@@ -4,14 +4,17 @@ import { getCdnImageUrl, getCdnFactUrl, isCdnEnabled } from './cdn';
 describe('cdn utilities', () => {
   beforeEach(() => {
     vi.unstubAllEnvs();
+    vi.stubEnv('CDN_BASE_URL', 'https://cdn.realfakebirds.app');
   });
 
   describe('isCdnEnabled', () => {
     it('returns false when CDN_BASE_URL is not set', () => {
       vi.stubEnv('CDN_BASE_URL', '');
-      // Re-import would be needed for env changes since it reads at module level,
-      // but for this test we verify the function exists and returns a boolean.
-      expect(typeof isCdnEnabled()).toBe('boolean');
+      expect(isCdnEnabled()).toBe(false);
+    });
+
+    it('returns true when CDN_BASE_URL is set', () => {
+      expect(isCdnEnabled()).toBe(true);
     });
   });
 

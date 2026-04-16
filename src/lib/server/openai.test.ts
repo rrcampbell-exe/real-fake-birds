@@ -192,7 +192,7 @@ describe('openai helpers', () => {
   });
 
   it('returns null when the api key is missing', async () => {
-    vi.unstubAllEnvs();
+    vi.stubEnv('OPENAI_API_KEY', '');
 
     await expect(generateFakeFact('Blue Ember Finch')).resolves.toBeNull();
     await expect(generateRealBirdFact({ birdName: 'Blue Jay' })).resolves.toBeNull();

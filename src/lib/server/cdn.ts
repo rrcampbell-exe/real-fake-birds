@@ -1,8 +1,6 @@
 import type { ImageAttribution } from '@/types';
 import { slugifyBirdName } from '@/lib/utils/slugify';
 
-const CDN_BASE_URL = process.env.CDN_BASE_URL;
-
 export interface CdnFact {
   fact?: string;
   summary?: string;
@@ -11,23 +9,38 @@ export interface CdnFact {
   attribution?: ImageAttribution;
 }
 
+function getCdnBaseUrl(): string | null {
+  const baseUrl = process.env.CDN_BASE_URL?.trim();
+  return baseUrl ? baseUrl : null;
+}
+
 export function isCdnEnabled(): boolean {
-  return Boolean(CDN_BASE_URL);
+  return Boolean(getCdnBaseUrl());
 }
 
 export function getCdnImageUrl(birdKey: string, size: 'full' | 'thumb' = 'full'): string {
+  const baseUrl = getCdnBaseUrl();
+  if (!baseUrl) {
+    throw new Error('CDN_BASE_URL is not configured');
+  }
+
   const filename = size === 'thumb' ? 'thumb.webp' : 'image.webp';
-  return `${CDN_BASE_URL}/birds/real/${birdKey}/${filename}`;
+  return `${baseUrl}/birds/real/${birdKey}/${filename}`;
 }
 
 export function getCdnFactUrl(birdKey: string): string {
-  return `${CDN_BASE_URL}/birds/real/${birdKey}/fact.json`;
+  const baseUrl = getCdnBaseUrl();
+  if (!baseUrl) {
+    throw new Error('CDN_BASE_URL is not configured');
+  }
+
+  return `${baseUrl}/birds/real/${birdKey}/fact.json`;
 }
 
 const CDN_FACT_TIMEOUT_MS = 3000;
 
 export async function fetchCdnFact(birdName: string): Promise<CdnFact | null> {
-  if (!CDN_BASE_URL) {
+  if (!getCdnBaseUrl()) {
     return null;
   }
 

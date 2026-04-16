@@ -242,8 +242,9 @@ export default function Answer({
   const displayedFact = getAnswerFact(hints.fact?.content ?? fact);
   const journalBirdKey = deriveBirdKey(birdData, isReal);
   const journalHref = `/journal?bird=${encodeURIComponent(journalBirdKey)}`;
-  const [isImageVisible, setIsImageVisible] = useState(isReal && Boolean(imageUrl));
-  const hasImage = isReal && Boolean(imageUrl) && isImageVisible;
+  const [hiddenImageKey, setHiddenImageKey] = useState<string | null>(null);
+  const currentImageKey = imageUrl ? `${journalBirdKey}:${imageUrl}` : null;
+  const hasImage = isReal && Boolean(imageUrl) && hiddenImageKey !== currentImageKey;
   const handleLearnMore = (event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
     writeCurrentRoundJournalRevealKey(journalBirdKey);
@@ -254,9 +255,6 @@ export default function Answer({
   const [isNextBirdVisible, setIsNextBirdVisible] = useState(false);
   const [isWiggling, setIsWiggling] = useState(false);
   const [birdhouseSwapTarget, setBirdhouseSwapTarget] = useState<{ birdKey: string; birdName: string; isReal: boolean } | null>(null);
-  useEffect(() => {
-    setIsImageVisible(isReal && Boolean(imageUrl));
-  }, [imageUrl, isReal]);
 
   const sharePayload = isMilestone && earnedBadgeName
     ? buildMilestoneSharePayload({
@@ -376,7 +374,7 @@ export default function Answer({
               journalHref={journalHref}
               isNewBirdEncounter={isNewBirdEncounter}
               onLearnMore={handleLearnMore}
-              onUnavailable={() => setIsImageVisible(false)}
+              onUnavailable={() => setHiddenImageKey(currentImageKey)}
             />
           ) : (
             <div className="min-w-0 space-y-1">

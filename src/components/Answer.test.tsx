@@ -24,11 +24,11 @@ vi.mock('@/lib/analytics', () => ({
 }));
 
 vi.mock('next/image', () => ({
-  default: ({ fill: _fill, unoptimized: _unoptimized, priority: _priority, ...props }: React.ImgHTMLAttributes<HTMLImageElement> & {
+  default: ({ fill: _fill, unoptimized: _unoptimized, priority: _priority, alt, ...props }: React.ImgHTMLAttributes<HTMLImageElement> & {
     fill?: boolean;
     unoptimized?: boolean;
     priority?: boolean;
-  }) => <img {...props} />,
+  }) => <img alt={alt ?? ''} {...props} />,
 }));
 
 vi.mock('@/hooks/useSound', () => ({

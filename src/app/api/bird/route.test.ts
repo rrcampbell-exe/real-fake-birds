@@ -31,6 +31,7 @@ describe('bird route', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.stubEnv('CDN_BASE_URL', '');
     vi.mocked(nameGenerator).mockReset();
     vi.mocked(generateFakeImage).mockReset();
     vi.mocked(generateRealBirdFact).mockReset();
