@@ -10,7 +10,7 @@ import BirdhouseSwapSheet from '@/components/birdhouse/BirdhouseSwapSheet';
 import BirdCard from '@/components/journal/BirdCard';
 import JournalControls, { type JournalFilter, type JournalSort } from '@/components/journal/JournalControls';
 import { flushQueuedProgressEventsForSignedInUser } from '@/lib/auth/account-session';
-import { track } from '@/lib/analytics';
+import { track, trackClientError } from '@/lib/analytics';
 import { useBirdhouse } from '@/hooks/useBirdhouse';
 import { useBirdJournal } from '@/hooks/useBirdJournal';
 import { usePageProgressSync } from '@/hooks/usePageProgressSync';
@@ -57,16 +57,32 @@ function getLinkedBirdKeySnapshot() {
   }
 
   const hash = window.location.hash.slice(1);
-  return hash ? decodeURIComponent(hash) : null;
+  if (!hash) {
+    return null;
+  }
+
+  try {
+    return decodeURIComponent(hash);
+  } catch {
+    return hash;
+  }
 }
 
-function getLinkedBirdQueryParamSnapshot() {
+function readAndConsumeLinkedBirdQueryParamSnapshot() {
   if (typeof window === 'undefined') {
     return null;
   }
 
-  const bird = new URLSearchParams(window.location.search).get('bird');
-  return bird ? decodeURIComponent(bird) : null;
+  const url = new URL(window.location.href);
+  const bird = url.searchParams.get('bird');
+  if (!bird) {
+    return null;
+  }
+
+  url.searchParams.delete('bird');
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+
+  return bird;
 }
 
 export default function JournalPage() {
@@ -112,60 +128,78 @@ export default function JournalPage() {
       return;
     }
 
-    track('journal_bird_viewed', { bird_key: birdKey });
+    const interactionSource = linkedBirdKey === birdKey ? 'linked-target' : 'journal-details';
 
-    const missionDate = getTodayMissionDate();
-    const missionUpdate = applyJournalClassificationViewToSessionMissions(missionDate);
+    try {
+      track('journal_bird_viewed', { bird_key: birdKey });
 
-    if (missionUpdate.missionRewards.length > 0 || missionUpdate.missionSetBonusSeedsEarned > 0) {
-      track('mission_reward_granted', {
-        missions_granted: missionUpdate.missionRewards.length,
-        reward_seeds: missionUpdate.totalRewardSeeds,
-        all_missions_complete: missionUpdate.completedDailyMissionSet,
-        bonus_seeds: missionUpdate.missionSetBonusSeedsEarned,
-      });
+      const missionDate = getTodayMissionDate();
+      const missionUpdate = applyJournalClassificationViewToSessionMissions(missionDate);
 
-      const newToasts: JournalToast[] = [];
-      missionUpdate.missionRewards.forEach((reward, index) => {
-        newToasts.push({
-          id: index,
-          title: 'Mission Complete!',
-          detail: `${reward.toastDescription} You've earned an extra ${reward.rewardSeeds} seeds for your efforts!`,
+      if (missionUpdate.missionRewards.length > 0 || missionUpdate.missionSetBonusSeedsEarned > 0) {
+        track('mission_reward_granted', {
+          missions_granted: missionUpdate.missionRewards.length,
+          reward_seeds: missionUpdate.totalRewardSeeds,
+          all_missions_complete: missionUpdate.completedDailyMissionSet,
+          bonus_seeds: missionUpdate.missionSetBonusSeedsEarned,
         });
-      });
-      if (missionUpdate.completedDailyMissionSet) {
-        newToasts.push({
-          id: missionUpdate.missionRewards.length,
-          title: 'Daily Streak Extended!',
-          detail: missionUpdate.dailyMissionStreak
-            ? `Your daily streak is now ${missionUpdate.dailyMissionStreak} day${missionUpdate.dailyMissionStreak > 1 ? 's' : ''}. Have +${missionUpdate.missionSetBonusSeedsEarned} bonus seeds as a treat.`
-            : `+${missionUpdate.missionSetBonusSeedsEarned} bonus seeds.`,
+
+        const newToasts: JournalToast[] = [];
+        missionUpdate.missionRewards.forEach((reward, index) => {
+          newToasts.push({
+            id: index,
+            title: 'Mission Complete!',
+            detail: `${reward.toastDescription} You've earned an extra ${reward.rewardSeeds} seeds for your efforts!`,
+          });
         });
+        if (missionUpdate.completedDailyMissionSet) {
+          newToasts.push({
+            id: missionUpdate.missionRewards.length,
+            title: 'Daily Streak Extended!',
+            detail: missionUpdate.dailyMissionStreak
+              ? `Your daily streak is now ${missionUpdate.dailyMissionStreak} day${missionUpdate.dailyMissionStreak > 1 ? 's' : ''}. Have +${missionUpdate.missionSetBonusSeedsEarned} bonus seeds as a treat.`
+              : `+${missionUpdate.missionSetBonusSeedsEarned} bonus seeds.`,
+          });
+        }
+        setJournalToastBatch({ id: Date.now(), toasts: newToasts });
       }
-      setJournalToastBatch({ id: Date.now(), toasts: newToasts });
-    }
 
-    if (!isSignedIn) {
+      if (!isSignedIn) {
+        return;
+      }
+
+      buildMissionRewardGrantEvents(missionDate, {
+        missionRewards: missionUpdate.missionRewards,
+        missionSetBonusSeedsEarned: missionUpdate.missionSetBonusSeedsEarned,
+      }).forEach((missionReward) => {
+        queueProgressEvent({
+          eventId: missionReward.eventId,
+          eventType: 'mission-reward-granted',
+          occurredAt: new Date().toISOString(),
+          payload: {
+            missionDate,
+            missionId: missionReward.missionId,
+            rewardSeeds: missionReward.rewardSeeds,
+          },
+        });
+      });
+
+      void flushQueuedProgressEventsForSignedInUser().catch((error) => {
+        trackClientError('journal_progress_flush_failed', error, {
+          bird_key: birdKey,
+          interaction_source: interactionSource,
+          screen: 'journal',
+        });
+      });
+    } catch (error) {
+      trackClientError('journal_open_details_failed', error, {
+        bird_key: birdKey,
+        interaction_source: interactionSource,
+        is_signed_in: isSignedIn,
+        screen: 'journal',
+      });
       return;
     }
-
-    buildMissionRewardGrantEvents(missionDate, {
-      missionRewards: missionUpdate.missionRewards,
-      missionSetBonusSeedsEarned: missionUpdate.missionSetBonusSeedsEarned,
-    }).forEach((missionReward) => {
-      queueProgressEvent({
-        eventId: missionReward.eventId,
-        eventType: 'mission-reward-granted',
-        occurredAt: new Date().toISOString(),
-        payload: {
-          missionDate,
-          missionId: missionReward.missionId,
-          rewardSeeds: missionReward.rewardSeeds,
-        },
-      });
-    });
-
-    void flushQueuedProgressEventsForSignedInUser();
   };
 
   const filteredJournal = useMemo(() => {
@@ -286,7 +320,7 @@ export default function JournalPage() {
 
   useEffect(() => {
     const updateLinkedBirdKey = () => {
-      const searchParamBirdKey = getLinkedBirdQueryParamSnapshot();
+      const searchParamBirdKey = readAndConsumeLinkedBirdQueryParamSnapshot();
       if (searchParamBirdKey) {
         setLinkedBirdKey(searchParamBirdKey);
         writePendingJournalTargetKey(null);

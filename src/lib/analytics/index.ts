@@ -8,6 +8,7 @@ type AnalyticsEventProperties = Record<string, Primitive>;
 export type AnalyticsEventName =
   | 'account_sync_started'
   | 'bird_content_loaded'
+  | 'client_error_reported'
   | 'daily_challenge_completed'
   | 'daily_challenge_started'
   | 'error_displayed'
@@ -38,6 +39,8 @@ const SESSION_STORAGE_PREFIX = 'analytics-session:';
 const ANALYTICS_USERNAME_STORAGE_KEY = 'analyticsUsername';
 const FIRST_SESSION_TIMESTAMP_KEY = 'analytics-first-session-ts';
 const FIRST_PURCHASE_TRACKED_KEY = 'analytics-first-purchase-tracked';
+const MAX_ERROR_NAME_LENGTH = 80;
+const MAX_ERROR_MESSAGE_LENGTH = 160;
 
 function hasPostHogKey(): boolean {
   return Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY);
@@ -61,6 +64,30 @@ function clearEmailIdentityArtifacts(): void {
   }
 }
 
+function truncateValue(value: string, maxLength: number): string {
+  return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
+}
+
+function normalizeErrorDetails(error: unknown): { errorName: string; errorMessage?: string } {
+  if (error instanceof Error) {
+    return {
+      errorName: truncateValue(error.name || 'Error', MAX_ERROR_NAME_LENGTH),
+      errorMessage: error.message
+        ? truncateValue(error.message, MAX_ERROR_MESSAGE_LENGTH)
+        : undefined,
+    };
+  }
+
+  if (typeof error === 'string') {
+    return {
+      errorName: 'UnknownError',
+      errorMessage: truncateValue(error, MAX_ERROR_MESSAGE_LENGTH),
+    };
+  }
+
+  return { errorName: 'UnknownError' };
+}
+
 export function track(
   eventName: AnalyticsEventName,
   properties?: AnalyticsEventProperties
@@ -73,38 +100,57 @@ export function track(
     return;
   }
 
-  const username = readAnalyticsUsername();
+  try {
+    const username = readAnalyticsUsername();
 
-  if (username) {
-    const currentDistinctId = typeof posthog.get_distinct_id === 'function'
-      ? posthog.get_distinct_id()
-      : null;
+    if (username) {
+      const currentDistinctId = typeof posthog.get_distinct_id === 'function'
+        ? posthog.get_distinct_id()
+        : null;
 
-    if (currentDistinctId !== username) {
-      posthog.reset(true);
+      if (currentDistinctId !== username) {
+        posthog.reset(true);
+        clearEmailIdentityArtifacts();
+        posthog.identify(username, {
+          name: username,
+          username,
+          email: null,
+        });
+      }
+
       clearEmailIdentityArtifacts();
-      posthog.identify(username, {
-        name: username,
-        username,
-        email: null,
-      });
+      posthog.register({ username });
     }
 
-    clearEmailIdentityArtifacts();
-    posthog.register({ username });
+    posthog.capture(
+      eventName,
+      sanitizeProperties(
+        username
+          ? {
+              ...properties,
+              username,
+            }
+          : properties
+      )
+    );
+  } catch {
+    return;
   }
+}
 
-  posthog.capture(
-    eventName,
-    sanitizeProperties(
-      username
-        ? {
-            ...properties,
-            username,
-          }
-        : properties
-    )
-  );
+export function trackClientError(
+  errorContext: string,
+  error: unknown,
+  properties?: AnalyticsEventProperties
+): void {
+  const { errorName, errorMessage } = normalizeErrorDetails(error);
+
+  track('client_error_reported', {
+    error_context: errorContext,
+    error_name: errorName,
+    error_message: errorMessage,
+    ...properties,
+  });
 }
 
 export function trackSessionStart(mode: 'classic' | 'daily'): void {
