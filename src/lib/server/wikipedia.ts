@@ -82,19 +82,36 @@ function stripHtml(value: string | undefined): string | undefined {
   return withoutTags || undefined;
 }
 
-async function fetchWikipediaImageAttribution(imageUrl: string | null): Promise<ImageAttribution | null> {
-  if (!imageUrl) {
-    return null;
-  }
-
+function extractWikimediaFilenameFromUrl(imageUrl: string): string | null {
   try {
     const parsedUrl = new URL(imageUrl);
     if (!parsedUrl.hostname.endsWith('wikimedia.org')) {
       return null;
     }
 
-    const pathSegments = parsedUrl.pathname.split('/');
-    const filename = decodeURIComponent(pathSegments[pathSegments.length - 1] ?? '');
+    const pathSegments = parsedUrl.pathname.split('/').filter(Boolean);
+    if (pathSegments.length === 0) {
+      return null;
+    }
+
+    const thumbIndex = pathSegments.indexOf('thumb');
+    const rawFilename = thumbIndex !== -1 && pathSegments.length > thumbIndex + 3
+      ? pathSegments[thumbIndex + 3]
+      : pathSegments[pathSegments.length - 1];
+
+    return rawFilename ? decodeURIComponent(rawFilename) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchWikipediaImageAttribution(imageUrl: string | null): Promise<ImageAttribution | null> {
+  if (!imageUrl) {
+    return null;
+  }
+
+  try {
+    const filename = extractWikimediaFilenameFromUrl(imageUrl);
     if (!filename) {
       return null;
     }

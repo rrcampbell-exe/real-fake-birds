@@ -154,13 +154,14 @@ describe('Answer', () => {
     );
   });
 
-  it('shows an image-unavailable fallback when the real-bird image fails', () => {
+  it('hides the real-bird image when it cannot be loaded', () => {
     render(<Answer {...defaultProps} />);
 
     fireEvent.error(screen.getByRole('img', { name: 'Blue Robin' }));
 
-    expect(screen.getByText('Image unavailable')).toBeInTheDocument();
-    expect(screen.queryByTestId('answer-image-shimmer')).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'Blue Robin' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Image unavailable')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tap to retry')).not.toBeInTheDocument();
     expect(trackMock).toHaveBeenCalledWith(
       'bird_content_loaded',
       expect.objectContaining({

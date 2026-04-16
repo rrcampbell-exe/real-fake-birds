@@ -74,49 +74,67 @@ describe('wikipedia', () => {
   });
 
   it('returns consolidated summary data from the summary endpoint', async () => {
-    vi.spyOn(global, 'fetch')
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          title: 'Blue Jay',
-          description: 'bird species',
-          extract: 'A bright blue corvid. It is common in eastern North America. A third sentence.',
-          thumbnail: { source: 'https://upload.wikimedia.org/example/blue-jay-thumb.jpg' },
-          originalimage: { source: 'https://upload.wikimedia.org/example/blue-jay.jpg' },
-          content_urls: {
-            desktop: {
-              page: 'https://en.wikipedia.org/wiki/Blue_Jay',
-            },
-          },
-        }),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          query: {
-            pages: {
-              '1': {
-                imageinfo: [
-                  {
-                    extmetadata: {
-                      Artist: { value: 'Example Photographer' },
-                      LicenseShortName: { value: 'CC BY-SA 4.0' },
-                      LicenseUrl: { value: 'https://creativecommons.org/licenses/by-sa/4.0' },
-                    },
-                  },
-                ],
+    const fetchMock = vi.spyOn(global, 'fetch')
+      .mockImplementation(async (input) => {
+        const url = String(input);
+
+        if (url.includes('/api/rest_v1/page/summary/Blue%20Jay')) {
+          return {
+            ok: true,
+            json: async () => ({
+              title: 'Blue Jay',
+              description: 'bird species',
+              extract: 'A bright blue corvid. It is common in eastern North America. A third sentence.',
+              thumbnail: {
+                source: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Blue_Jay.jpg/320px-Blue_Jay.jpg',
               },
-            },
-          },
-        }),
-      } as Response);
+              originalimage: {
+                source: 'https://upload.wikimedia.org/wikipedia/commons/1/12/Blue_Jay.jpg',
+              },
+              content_urls: {
+                desktop: {
+                  page: 'https://en.wikipedia.org/wiki/Blue_Jay',
+                },
+              },
+            }),
+          } as Response;
+        }
+
+        if (url.includes('titles=File:Blue_Jay.jpg')) {
+          return {
+            ok: true,
+            json: async () => ({
+              query: {
+                pages: {
+                  '1': {
+                    imageinfo: [
+                      {
+                        extmetadata: {
+                          Artist: { value: 'Example Photographer' },
+                          LicenseShortName: { value: 'CC BY-SA 4.0' },
+                          LicenseUrl: { value: 'https://creativecommons.org/licenses/by-sa/4.0' },
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            }),
+          } as Response;
+        }
+
+        return {
+          ok: false,
+          json: async () => ({}),
+        } as Response;
+      });
 
     await expect(fetchWikipediaBirdSummary('Blue Jay')).resolves.toEqual({
       title: 'Blue Jay',
       description: 'bird species',
       fact: 'A bright blue corvid. It is common in eastern North America.',
       summary: 'A bright blue corvid. It is common in eastern North America. A third sentence.',
-      imageUrl: 'https://upload.wikimedia.org/example/blue-jay-thumb.jpg',
+      imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Blue_Jay.jpg/320px-Blue_Jay.jpg',
       articleUrl: 'https://en.wikipedia.org/wiki/Blue_Jay',
       attribution: {
         artist: 'Example Photographer',
@@ -124,6 +142,8 @@ describe('wikipedia', () => {
         licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0',
       },
     });
+
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain('titles=File:Blue_Jay.jpg');
   });
 
   it('returns null when no summary can be found', async () => {

@@ -69,9 +69,10 @@ interface AnswerImageProps {
   journalHref: string;
   isNewBirdEncounter?: boolean;
   onLearnMore: (event: React.MouseEvent<HTMLAnchorElement>) => void;
+  onUnavailable: () => void;
 }
 
-function AnswerImage({ birdData, imageUrl, fallbackImageUrl, contentSource, journalHref, isNewBirdEncounter, onLearnMore }: AnswerImageProps) {
+function AnswerImage({ birdData, imageUrl, fallbackImageUrl, contentSource, journalHref, isNewBirdEncounter, onLearnMore, onUnavailable }: AnswerImageProps) {
   const [imageStatus, setImageStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
   const [activeSrc, setActiveSrc] = useState(imageUrl);
   const [usedFallback, setUsedFallback] = useState(false);
@@ -80,20 +81,6 @@ function AnswerImage({ birdData, imageUrl, fallbackImageUrl, contentSource, jour
   useEffect(() => {
     mountedAt.current = Date.now();
   }, []);
-
-  const handleRetry = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!usedFallback && fallbackImageUrl) {
-      setActiveSrc(fallbackImageUrl);
-      setUsedFallback(true);
-    } else {
-      // Cache-bust the current src to force a fresh request
-      const separator = activeSrc.includes('?') ? '&' : '?';
-      setActiveSrc(`${activeSrc}${separator}retry=${Date.now()}`);
-    }
-    setImageStatus('loading');
-  };
 
   return (
     <div className="min-w-0 w-full">
@@ -113,18 +100,6 @@ function AnswerImage({ birdData, imageUrl, fallbackImageUrl, contentSource, jour
             data-testid="answer-image-shimmer"
             className="absolute inset-0 bg-[linear-gradient(110deg,var(--color-surface-hover)_8%,color-mix(in_srgb,var(--color-surface)_65%,white_35%)_18%,var(--color-surface-hover)_33%)] bg-[length:200%_100%] animate-[shimmer_1.25s_linear_infinite]"
           />
-        ) : null}
-        {imageStatus === 'error' ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-[var(--color-surface-hover)] px-3 text-center">
-            <span className="text-xs font-medium text-[var(--color-muted)]">Image unavailable</span>
-            <button
-              type="button"
-              onClick={handleRetry}
-              className="text-[0.65rem] font-semibold text-[var(--color-secondary)] underline underline-offset-2"
-            >
-              Tap to retry
-            </button>
-          </div>
         ) : null}
         <Image
           src={activeSrc}
@@ -159,6 +134,7 @@ function AnswerImage({ birdData, imageUrl, fallbackImageUrl, contentSource, jour
                 outcome: 'failure',
                 error: true,
               });
+              onUnavailable();
             }
           }}
         />
@@ -266,7 +242,8 @@ export default function Answer({
   const displayedFact = getAnswerFact(hints.fact?.content ?? fact);
   const journalBirdKey = deriveBirdKey(birdData, isReal);
   const journalHref = `/journal?bird=${encodeURIComponent(journalBirdKey)}`;
-  const hasImage = isReal && Boolean(imageUrl);
+  const [isImageVisible, setIsImageVisible] = useState(isReal && Boolean(imageUrl));
+  const hasImage = isReal && Boolean(imageUrl) && isImageVisible;
   const handleLearnMore = (event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
     writeCurrentRoundJournalRevealKey(journalBirdKey);
@@ -277,6 +254,10 @@ export default function Answer({
   const [isNextBirdVisible, setIsNextBirdVisible] = useState(false);
   const [isWiggling, setIsWiggling] = useState(false);
   const [birdhouseSwapTarget, setBirdhouseSwapTarget] = useState<{ birdKey: string; birdName: string; isReal: boolean } | null>(null);
+  useEffect(() => {
+    setIsImageVisible(isReal && Boolean(imageUrl));
+  }, [imageUrl, isReal]);
+
   const sharePayload = isMilestone && earnedBadgeName
     ? buildMilestoneSharePayload({
         badgeName: earnedBadgeName,
@@ -395,6 +376,7 @@ export default function Answer({
               journalHref={journalHref}
               isNewBirdEncounter={isNewBirdEncounter}
               onLearnMore={handleLearnMore}
+              onUnavailable={() => setIsImageVisible(false)}
             />
           ) : (
             <div className="min-w-0 space-y-1">

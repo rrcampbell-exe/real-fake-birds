@@ -166,7 +166,7 @@ describe('Journal BirdCard', () => {
     expect(screen.getByRole('img', { name: 'Blue Jay' })).toBeInTheDocument();
   });
 
-  it('shows an image-unavailable fallback when the journal image fails', () => {
+  it('hides the journal image when it cannot be loaded', () => {
     render(
       <BirdCard
         entry={concealedEntry}
@@ -179,7 +179,8 @@ describe('Journal BirdCard', () => {
 
     fireEvent.error(screen.getByRole('img', { name: 'Blue Jay' }));
 
-    expect(screen.getByText('Image unavailable')).toBeInTheDocument();
-    expect(screen.queryByTestId('journal-image-shimmer')).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'Blue Jay' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Image unavailable')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tap to retry')).not.toBeInTheDocument();
   });
 });

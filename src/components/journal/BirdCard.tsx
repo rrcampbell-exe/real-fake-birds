@@ -39,12 +39,11 @@ interface JournalBirdImageProps {
 function JournalBirdImage({ birdName, imageUrl, attribution }: JournalBirdImageProps) {
   const [imageStatus, setImageStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
   const [activeSrc, setActiveSrc] = useState(imageUrl);
+  const [isUnavailable, setIsUnavailable] = useState(false);
 
-  const handleRetry = () => {
-    const separator = activeSrc.includes('?') ? '&' : '?';
-    setActiveSrc(`${activeSrc}${separator}retry=${Date.now()}`);
-    setImageStatus('loading');
-  };
+  if (isUnavailable) {
+    return null;
+  }
 
   return (
     <div>
@@ -56,18 +55,6 @@ function JournalBirdImage({ birdName, imageUrl, attribution }: JournalBirdImageP
             className="absolute inset-0 bg-[linear-gradient(110deg,var(--color-surface-hover)_8%,color-mix(in_srgb,var(--color-surface)_65%,white_35%)_18%,var(--color-surface-hover)_33%)] bg-[length:200%_100%] animate-[shimmer_1.25s_linear_infinite]"
           />
         ) : null}
-        {imageStatus === 'error' ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-[var(--color-surface-hover)] px-4 text-center">
-            <span className="text-sm font-medium text-[var(--color-muted)]">Image unavailable</span>
-            <button
-              type="button"
-              onClick={handleRetry}
-              className="text-xs font-semibold text-[var(--color-secondary)] underline underline-offset-2"
-            >
-              Tap to retry
-            </button>
-          </div>
-        ) : null}
         <Image
           src={activeSrc}
           alt={birdName}
@@ -77,7 +64,10 @@ function JournalBirdImage({ birdName, imageUrl, attribution }: JournalBirdImageP
           loading="lazy"
           unoptimized
           onLoad={() => setImageStatus('loaded')}
-          onError={() => setImageStatus('error')}
+          onError={() => {
+            setImageStatus('error');
+            setIsUnavailable(true);
+          }}
         />
       </div>
       {attribution?.artist ? (
