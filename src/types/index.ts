@@ -1,3 +1,11 @@
+export interface ImageAttribution {
+  artist?: string;
+  license?: string;
+  licenseUrl?: string;
+}
+
+export type BirdContentSource = 'cdn' | 'wikipedia' | 'generated';
+
 export interface BirdResponse {
   birdName: string;
   isReal: boolean;
@@ -8,7 +16,12 @@ export interface BirdResponse {
   summary?: string;
   articleUrl?: string;
   imageUrl?: string;
+  imageThumbUrl?: string;
+  fallbackImageUrl?: string;
   description?: string;
+  contentSource?: BirdContentSource;
+  factSource?: BirdContentSource;
+  attribution?: ImageAttribution;
 }
 
 export interface BirdErrorResponse {
@@ -25,7 +38,10 @@ export interface BirdJournalMetadata {
   url?: string;
   articleUrl?: string;
   imageUrl?: string;
+  imageThumbUrl?: string;
   description?: string;
+  contentSource?: string;
+  attribution?: ImageAttribution;
   classificationRevealed?: boolean;
 }
 

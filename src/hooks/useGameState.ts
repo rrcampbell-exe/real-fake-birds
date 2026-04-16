@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { GameMode, GameRoundResult, HintState, HintType } from '@/types';
+import type { GameMode, GameRoundResult, HintState, HintType, ImageAttribution } from '@/types';
 import { useStoredJson } from './useStoredValue';
 import { flushQueuedProgressEventsForSignedInUser } from '@/lib/auth/account-session';
 import {
@@ -83,6 +83,10 @@ export function useGameState(options?: UseGameStateOptions) {
   const [summary, setSummary] = useState<string | null>(null);
   const [articleUrl, setArticleUrl] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageThumbUrl, setImageThumbUrl] = useState<string | null>(null);
+  const [fallbackImageUrl, setFallbackImageUrl] = useState<string | null>(null);
+  const [contentSource, setContentSource] = useState<string | null>(null);
+  const [attribution, setAttribution] = useState<ImageAttribution | null>(null);
   const [description, setDescription] = useState<string | null>(null);
   const [hasAnswered, setHasAnswered] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -142,6 +146,10 @@ export function useGameState(options?: UseGameStateOptions) {
     setSummary(null);
     setArticleUrl(null);
     setImageUrl(null);
+    setImageThumbUrl(null);
+    setFallbackImageUrl(null);
+    setContentSource(null);
+    setAttribution(null);
     setDescription(null);
     setHints(emptyHintState);
     setHintError(null);
@@ -227,7 +235,11 @@ export function useGameState(options?: UseGameStateOptions) {
       setDescription,
       setIsError,
       mode,
-      controller.signal
+      controller.signal,
+      setImageThumbUrl,
+      setFallbackImageUrl,
+      setContentSource,
+      setAttribution,
     );
 
     return () => {
@@ -365,7 +377,10 @@ export function useGameState(options?: UseGameStateOptions) {
           summary: summary ?? undefined,
           articleUrl: articleUrl ?? undefined,
           imageUrl: imageUrl ?? undefined,
+          imageThumbUrl: imageThumbUrl ?? undefined,
           description: description ?? undefined,
+          contentSource: contentSource ?? undefined,
+          attribution: attribution ?? undefined,
         },
       });
       setIsNewBirdEncounter(journalEntry.seenCount === 1);
@@ -413,7 +428,7 @@ export function useGameState(options?: UseGameStateOptions) {
       localStorage.removeItem(hintsKey);
       setHasAnswered(true);
     },
-    [articleUrl, birdData, birdDataKey, currentJournalEntry, description, fact, hints, hintsKey, imageUrl, isReal, isSignedIn, mode, options, regionLabel, scheduleProgressFlush, sciName, summary]
+    [articleUrl, attribution, birdData, birdDataKey, contentSource, currentJournalEntry, description, fact, hints, hintsKey, imageThumbUrl, imageUrl, isReal, isSignedIn, mode, options, regionLabel, scheduleProgressFlush, sciName, summary]
   );
 
   const requestHint = useCallback(
@@ -551,6 +566,10 @@ export function useGameState(options?: UseGameStateOptions) {
     summary,
     articleUrl,
     imageUrl,
+    imageThumbUrl,
+    fallbackImageUrl,
+    contentSource,
+    attribution,
     description,
     hasAnswered,
     isLoading,

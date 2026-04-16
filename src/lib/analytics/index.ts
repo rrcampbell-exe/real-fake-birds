@@ -7,6 +7,7 @@ type AnalyticsEventProperties = Record<string, Primitive>;
 
 export type AnalyticsEventName =
   | 'account_sync_started'
+  | 'bird_content_loaded'
   | 'daily_challenge_completed'
   | 'daily_challenge_started'
   | 'error_displayed'

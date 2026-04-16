@@ -1,9 +1,17 @@
-import type { BirdErrorResponse, BirdResponse, GameMode } from '@/types';
+import { track } from '@/lib/analytics';
+import type { BirdErrorResponse, BirdResponse, GameMode, ImageAttribution } from '@/types';
 
 const BIRD_DATA_STORAGE_KEY = 'birdData';
 
 const BIRD_REVEAL_DELAY_MS = 1000;
 const CACHED_BIRD_REVEAL_DELAY_MS = 300;
+
+function preloadImage(url: string | undefined | null): void {
+  if (url && typeof window !== 'undefined') {
+    const img = new window.Image();
+    img.src = url;
+  }
+}
 
 function getBirdDataStorageKey(mode: GameMode): string {
   return `${BIRD_DATA_STORAGE_KEY}:${mode}`;
@@ -52,12 +60,16 @@ const fetchData = async (
   setDescription: (val: string | null) => void,
   setIsError: (val: boolean) => void,
   mode: GameMode = 'classic',
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  setImageThumbUrl?: (val: string | null) => void,
+  setFallbackImageUrl?: (val: string | null) => void,
+  setContentSource?: (val: string | null) => void,
+  setAttribution?: (val: ImageAttribution | null) => void,
 ) => {
   const storageKey = getBirdDataStorageKey(mode);
   const cached = localStorage.getItem(storageKey);
   if (cached) {
-    const { birdName, isReal, sciName, regionLabel, fact, summary, articleUrl, imageUrl, description } = JSON.parse(cached) as BirdResponse;
+    const { birdName, isReal, sciName, regionLabel, fact, summary, articleUrl, imageUrl, description, imageThumbUrl, fallbackImageUrl, contentSource, attribution } = JSON.parse(cached) as BirdResponse;
     setIsReal(isReal);
     setSciName(sciName ?? null);
     setRegionLabel(regionLabel ?? null);
@@ -66,6 +78,11 @@ const fetchData = async (
     setArticleUrl(articleUrl ?? null);
     setImageUrl(imageUrl ?? null);
     setDescription(description ?? null);
+    setImageThumbUrl?.(imageThumbUrl ?? null);
+    setFallbackImageUrl?.(fallbackImageUrl ?? null);
+    setContentSource?.(contentSource ?? null);
+    setAttribution?.(attribution ?? null);
+    preloadImage(imageUrl);
     const delayCompleted = await waitForRevealDelay(CACHED_BIRD_REVEAL_DELAY_MS, signal);
     if (!delayCompleted || signal?.aborted) {
       return;
@@ -76,8 +93,10 @@ const fetchData = async (
   }
 
   try {
+    const requestStartedAt = Date.now();
     const response = await fetch('/api/bird', { signal });
     const data: BirdResponse | BirdErrorResponse = await response.json();
+    const requestDurationMs = Date.now() - requestStartedAt;
 
     if ('error' in data) {
       setIsError(true);
@@ -94,9 +113,24 @@ const fetchData = async (
       summary: data.summary,
       articleUrl: data.articleUrl,
       imageUrl: data.imageUrl,
+      imageThumbUrl: data.imageThumbUrl,
+      fallbackImageUrl: data.fallbackImageUrl,
       description: data.description,
+      contentSource: data.contentSource,
+      factSource: data.factSource,
+      attribution: data.attribution,
     };
     localStorage.setItem(storageKey, JSON.stringify(birdData));
+
+    if (data.isReal) {
+      track('bird_content_loaded', {
+        source: data.factSource ?? 'none',
+        content_type: 'fact',
+        load_stage: 'api',
+        load_time_ms: requestDurationMs,
+        outcome: data.fact ? 'success' : 'failure',
+      });
+    }
 
     setIsReal(data.isReal);
     setSciName(data.sciName ?? null);
@@ -106,6 +140,11 @@ const fetchData = async (
     setArticleUrl(data.articleUrl ?? null);
     setImageUrl(data.imageUrl ?? null);
     setDescription(data.description ?? null);
+    setImageThumbUrl?.(data.imageThumbUrl ?? null);
+    setFallbackImageUrl?.(data.fallbackImageUrl ?? null);
+    setContentSource?.(data.contentSource ?? null);
+    setAttribution?.(data.attribution ?? null);
+    preloadImage(data.imageUrl);
     const delayCompleted = await waitForRevealDelay(BIRD_REVEAL_DELAY_MS, signal);
     if (!delayCompleted || signal?.aborted) {
       return;
@@ -124,6 +163,10 @@ const fetchData = async (
     setArticleUrl(null);
     setImageUrl(null);
     setDescription(null);
+    setImageThumbUrl?.(null);
+    setFallbackImageUrl?.(null);
+    setContentSource?.(null);
+    setAttribution?.(null);
     setIsError(true);
     setIsLoading(false);
   }

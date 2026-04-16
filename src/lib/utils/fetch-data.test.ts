@@ -1,4 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+const { trackMock } = vi.hoisted(() => ({
+  trackMock: vi.fn(),
+}));
+
+vi.mock('@/lib/analytics', () => ({
+  track: trackMock,
+}));
+
 import fetchData from './fetch-data';
 
 describe('fetchData', () => {
@@ -6,6 +15,7 @@ describe('fetchData', () => {
     vi.clearAllTimers();
     vi.useRealTimers();
     vi.unstubAllGlobals();
+    trackMock.mockReset();
   });
 
   it('uses cached bird data when available', async () => {
@@ -54,6 +64,7 @@ describe('fetchData', () => {
     expect(setIsLoading).toHaveBeenCalledWith(false);
     expect(setBirdData).toHaveBeenCalledWith('Blue Finch');
     expect(setIsError).not.toHaveBeenCalled();
+    expect(trackMock).not.toHaveBeenCalled();
   });
 
   it('fetches and caches fresh bird data', async () => {
@@ -120,6 +131,83 @@ describe('fetchData', () => {
     expect(setIsLoading).toHaveBeenCalledWith(false);
     expect(setBirdData).toHaveBeenCalledWith('Copper Heron');
     expect(setIsError).not.toHaveBeenCalled();
+    expect(trackMock).not.toHaveBeenCalled();
+  });
+
+  it('tracks a successful fact load for real birds separately from image loading', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn().mockResolvedValue({
+      json: vi.fn().mockResolvedValue({
+        birdName: 'Blue Jay',
+        isReal: true,
+        fact: 'A bright corvid with loud calls.',
+        factSource: 'cdn',
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const fetchPromise = fetchData(
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+    );
+    await vi.runAllTimersAsync();
+    await fetchPromise;
+
+    expect(trackMock).toHaveBeenCalledWith(
+      'bird_content_loaded',
+      expect.objectContaining({
+        source: 'cdn',
+        content_type: 'fact',
+        load_stage: 'api',
+        outcome: 'success',
+      })
+    );
+  });
+
+  it('tracks a failed fact load for real birds when no fact content is returned', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn().mockResolvedValue({
+      json: vi.fn().mockResolvedValue({
+        birdName: 'Blue Jay',
+        isReal: true,
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const fetchPromise = fetchData(
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+    );
+    await vi.runAllTimersAsync();
+    await fetchPromise;
+
+    expect(trackMock).toHaveBeenCalledWith(
+      'bird_content_loaded',
+      expect.objectContaining({
+        source: 'none',
+        content_type: 'fact',
+        load_stage: 'api',
+        outcome: 'failure',
+      })
+    );
   });
 
   it('handles api error responses without caching', async () => {
