@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from 'react';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import LoadingBirdAnimation from '@/components/LoadingBirdAnimation';
 import { finch } from '@/lib/themes';
@@ -40,9 +41,9 @@ export default function AppBootScreen({ progress, status }: AppBootScreenProps) 
   return (
     <div
       style={finchBootStyles}
-      className="flex min-h-dvh flex-col items-center justify-center bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_45%),var(--boot-primary)] px-6 py-12 text-center"
+      className="relative flex min-h-dvh flex-col items-center justify-center bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_45%),var(--boot-primary)] px-6 py-12 text-center"
     >
-      <div className="w-full max-w-md rounded-[2rem] border border-[var(--boot-surface-border)] bg-[color-mix(in_srgb,var(--boot-surface)_88%,transparent)] px-6 py-10 shadow-[var(--boot-shadow)] backdrop-blur-md">
+      <div className="relative w-full max-w-md rounded-[2rem] border border-[var(--boot-surface-border)] bg-[color-mix(in_srgb,var(--boot-surface)_88%,transparent)] px-6 py-10 shadow-[var(--boot-shadow)] backdrop-blur-md">
         <div className="flex flex-col items-center gap-5">
           <LoadingBirdAnimation size={64} />
 
@@ -69,6 +70,16 @@ export default function AppBootScreen({ progress, status }: AppBootScreenProps) 
           </div>
         </div>
       </div>
+
+      <Image
+        src="/images/branding/catbird_games_logo.png"
+        alt="Catbird Games"
+        width={100}
+        height={33}
+        priority
+        className="absolute bottom-4 left-1/2 -translate-x-1/2 brightness-0 invert transition-opacity duration-700"
+        style={{ height: 'auto' }}
+      />
     </div>
   );
 }

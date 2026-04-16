@@ -65,6 +65,7 @@ button:disabled {
   --color-streak: #FEF3C7;
   --shadow-card: 0 8px 32px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.15);
   --shadow-button: 0 2px 8px rgba(0,0,0,0.2);
+  --color-logo-filter: brightness(0) invert(1);
 }
 
 :root[data-theme="Finch"] {
@@ -125,6 +126,7 @@ button:disabled {
   --color-error: #B91C1C;
   --color-streak: #9A3412;
   --shadow-card: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+  --color-logo-filter: brightness(0);
 }
 
 :root[data-theme="Swan"] {
@@ -141,6 +143,7 @@ button:disabled {
   --color-error: #B91C1C;
   --color-streak: #9A3412;
   --shadow-card: 0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.05);
+  --color-logo-filter: brightness(0);
 }
 
 :root[data-theme="Robin"] {

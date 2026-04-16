@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { Check, Music4, Volume2, VolumeX } from 'lucide-react';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import UsernameAvailabilityCard from '@/components/auth/UsernameAvailabilityCard';
@@ -415,7 +416,15 @@ export default function SettingsPage() {
         <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold mb-3">
           About
         </h2>
-        <div className="p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-surface-border)] text-sm flex flex-col gap-2">
+        <div className="relative p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-surface-border)] text-sm flex flex-col gap-2">
+          <Image
+            src="/images/branding/catbird_games_logo.png"
+            alt="Catbird Games"
+            width={80}
+            height={26}
+            className="absolute top-1 right-1"
+            style={{ filter: 'var(--color-logo-filter)', height: 'auto' }}
+          />
           <div className="flex flex-col gap-0.5">
             <p className="font-medium">Real Fake Birds</p>
             <p className="text-[var(--color-muted)]">
