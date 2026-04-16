@@ -1,3 +1,4 @@
+import type { ImageAttribution } from '@/types';
 import { limitFactLength } from './utils/limit-fact-length';
 
 interface WikipediaSummaryImage {
@@ -24,6 +25,7 @@ export interface WikipediaBirdSummary {
   summary: string | null;
   imageUrl: string | null;
   articleUrl: string | null;
+  attribution?: ImageAttribution | null;
 }
 
 interface WikipediaSearchResponse {
@@ -67,7 +69,70 @@ function formatWikipediaSummary(summary: WikipediaSummaryResponse | null): Wikip
     summary: extract,
     imageUrl: getPreferredWikipediaImageUrl(summary),
     articleUrl: summary?.content_urls?.desktop?.page?.trim() || null,
+    attribution: null,
   };
+}
+
+function stripHtml(value: string | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const withoutTags = value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return withoutTags || undefined;
+}
+
+async function fetchWikipediaImageAttribution(imageUrl: string | null): Promise<ImageAttribution | null> {
+  if (!imageUrl) {
+    return null;
+  }
+
+  try {
+    const parsedUrl = new URL(imageUrl);
+    if (!parsedUrl.hostname.endsWith('wikimedia.org')) {
+      return null;
+    }
+
+    const pathSegments = parsedUrl.pathname.split('/');
+    const filename = decodeURIComponent(pathSegments[pathSegments.length - 1] ?? '');
+    if (!filename) {
+      return null;
+    }
+
+    const response = await fetchWikipediaJson<{
+      query?: {
+        pages?: Record<string, {
+          imageinfo?: Array<{
+            extmetadata?: Record<string, { value?: string }>;
+          }>;
+        }>;
+      };
+    }>(
+      `https://commons.wikimedia.org/w/api.php?action=query&titles=File:${encodeURIComponent(filename)}&prop=imageinfo&iiprop=extmetadata&format=json`
+    );
+
+    const page = response?.query?.pages ? Object.values(response.query.pages)[0] : undefined;
+    const extmetadata = page?.imageinfo?.[0]?.extmetadata;
+    if (!extmetadata) {
+      return null;
+    }
+
+    const artist = stripHtml(extmetadata.Artist?.value);
+    const license = stripHtml(extmetadata.LicenseShortName?.value);
+    const licenseUrl = extmetadata.LicenseUrl?.value?.trim() || undefined;
+
+    if (!artist && !license && !licenseUrl) {
+      return null;
+    }
+
+    return {
+      artist,
+      license,
+      licenseUrl,
+    };
+  } catch {
+    return null;
+  }
 }
 
 async function fetchWikipediaJson<T>(url: string): Promise<T | null> {
@@ -175,5 +240,10 @@ export async function fetchWikipediaBirdSummary(
     return null;
   }
 
-  return formatWikipediaSummary(summary);
+  const formattedSummary = formatWikipediaSummary(summary);
+
+  return {
+    ...formattedSummary,
+    attribution: await fetchWikipediaImageAttribution(formattedSummary.imageUrl),
+  };
 }

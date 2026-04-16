@@ -74,29 +74,55 @@ describe('wikipedia', () => {
   });
 
   it('returns consolidated summary data from the summary endpoint', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        title: 'Blue Jay',
-        description: 'bird species',
-        extract: 'A bright blue corvid. It is common in eastern North America. A third sentence.',
-        thumbnail: { source: 'https://images.example.com/blue-jay-thumb.jpg' },
-        originalimage: { source: 'https://images.example.com/blue-jay.jpg' },
-        content_urls: {
-          desktop: {
-            page: 'https://en.wikipedia.org/wiki/Blue_Jay',
+    vi.spyOn(global, 'fetch')
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          title: 'Blue Jay',
+          description: 'bird species',
+          extract: 'A bright blue corvid. It is common in eastern North America. A third sentence.',
+          thumbnail: { source: 'https://upload.wikimedia.org/example/blue-jay-thumb.jpg' },
+          originalimage: { source: 'https://upload.wikimedia.org/example/blue-jay.jpg' },
+          content_urls: {
+            desktop: {
+              page: 'https://en.wikipedia.org/wiki/Blue_Jay',
+            },
           },
-        },
-      }),
-    } as Response);
+        }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          query: {
+            pages: {
+              '1': {
+                imageinfo: [
+                  {
+                    extmetadata: {
+                      Artist: { value: 'Example Photographer' },
+                      LicenseShortName: { value: 'CC BY-SA 4.0' },
+                      LicenseUrl: { value: 'https://creativecommons.org/licenses/by-sa/4.0' },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        }),
+      } as Response);
 
     await expect(fetchWikipediaBirdSummary('Blue Jay')).resolves.toEqual({
       title: 'Blue Jay',
       description: 'bird species',
       fact: 'A bright blue corvid. It is common in eastern North America.',
       summary: 'A bright blue corvid. It is common in eastern North America. A third sentence.',
-      imageUrl: 'https://images.example.com/blue-jay-thumb.jpg',
+      imageUrl: 'https://upload.wikimedia.org/example/blue-jay-thumb.jpg',
       articleUrl: 'https://en.wikipedia.org/wiki/Blue_Jay',
+      attribution: {
+        artist: 'Example Photographer',
+        license: 'CC BY-SA 4.0',
+        licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0',
+      },
     });
   });
 
