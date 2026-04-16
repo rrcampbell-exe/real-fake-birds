@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import Image from 'next/image';
@@ -13,11 +13,12 @@ import { useSound } from '@/hooks/useSound';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useStoredJson } from '@/hooks/useStoredValue';
 import ShareButton from '@/components/ShareButton';
+import { track } from '@/lib/analytics';
 import { isMajorStreakCheckpoint } from '@/lib/constants/streaks';
 import { deriveBirdKey, writeCurrentRoundJournalRevealKey, writePendingJournalTargetKey } from '@/lib/utils/bird-journal';
 import { defaultBirdScore, normalizeBirdScore } from '@/lib/utils/player-progress';
 import { buildMilestoneSharePayload, buildRoundSharePayload } from '@/lib/utils/share-data';
-import type { HintState } from '@/types';
+import type { HintState, ImageAttribution } from '@/types';
 
 const FAKE_FIELD_NOTES = [
   'This bird was made up. We still love it, though!',
@@ -63,25 +64,36 @@ function getAnswerFact(text: string | null): string | null {
 interface AnswerImageProps {
   birdData: string;
   imageUrl: string;
+  fallbackImageUrl?: string | null;
+  contentSource?: string | null;
   journalHref: string;
   isNewBirdEncounter?: boolean;
   onLearnMore: (event: React.MouseEvent<HTMLAnchorElement>) => void;
+  onUnavailable: () => void;
 }
 
-function AnswerImage({ birdData, imageUrl, journalHref, isNewBirdEncounter, onLearnMore }: AnswerImageProps) {
+function AnswerImage({ birdData, imageUrl, fallbackImageUrl, contentSource, journalHref, isNewBirdEncounter, onLearnMore, onUnavailable }: AnswerImageProps) {
   const [imageStatus, setImageStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+  const [activeSrc, setActiveSrc] = useState(imageUrl);
+  const [usedFallback, setUsedFallback] = useState(false);
+  const mountedAt = useRef(0);
+
+  useEffect(() => {
+    mountedAt.current = Date.now();
+  }, []);
 
   return (
-    <Link
-      href={journalHref}
-      scroll={false}
-      onClick={onLearnMore}
-      className="group relative block w-full"
-      aria-label="Learn more about this bird"
-    >
-      <div
-        className="relative aspect-square overflow-hidden rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)]"
+    <div className="min-w-0 w-full">
+      <Link
+        href={journalHref}
+        scroll={false}
+        onClick={onLearnMore}
+        className="group block w-full"
+        aria-label="Learn more about this bird"
       >
+        <div
+          className="relative aspect-square overflow-hidden rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)]"
+        >
         {imageStatus === 'loading' ? (
           <div
             aria-hidden="true"
@@ -89,21 +101,42 @@ function AnswerImage({ birdData, imageUrl, journalHref, isNewBirdEncounter, onLe
             className="absolute inset-0 bg-[linear-gradient(110deg,var(--color-surface-hover)_8%,color-mix(in_srgb,var(--color-surface)_65%,white_35%)_18%,var(--color-surface-hover)_33%)] bg-[length:200%_100%] animate-[shimmer_1.25s_linear_infinite]"
           />
         ) : null}
-        {imageStatus === 'error' ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-[var(--color-surface-hover)] px-3 text-center text-xs font-medium text-[var(--color-muted)]">
-            Image unavailable
-          </div>
-        ) : null}
         <Image
-          src={imageUrl}
+          src={activeSrc}
           alt={birdData}
           fill
           sizes="(max-width: 768px) 50vw, 160px"
           className={`object-cover object-center transition-opacity duration-200 ${imageStatus === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
           loading="eager"
           unoptimized
-          onLoad={() => setImageStatus('loaded')}
-          onError={() => setImageStatus('error')}
+          onLoad={() => {
+            setImageStatus('loaded');
+            track('bird_content_loaded', {
+              source: usedFallback ? 'fallback' : (contentSource ?? 'wikipedia'),
+              content_type: 'image',
+              load_stage: 'browser',
+              load_time_ms: Date.now() - mountedAt.current,
+              outcome: 'success',
+            });
+          }}
+          onError={() => {
+            if (!usedFallback && fallbackImageUrl) {
+              setActiveSrc(fallbackImageUrl);
+              setUsedFallback(true);
+              // keep imageStatus as 'loading' to try the fallback
+            } else {
+              setImageStatus('error');
+              track('bird_content_loaded', {
+                source: usedFallback ? 'fallback' : (contentSource ?? 'wikipedia'),
+                content_type: 'image',
+                load_stage: 'browser',
+                load_time_ms: Date.now() - mountedAt.current,
+                outcome: 'failure',
+                error: true,
+              });
+              onUnavailable();
+            }
+          }}
         />
         {/* Explore overlay — visible on hover/focus */}
         <div
@@ -112,16 +145,43 @@ function AnswerImage({ birdData, imageUrl, journalHref, isNewBirdEncounter, onLe
         >
           <span className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-white/90">Explore</span>
         </div>
-      </div>
-      {isNewBirdEncounter ? (
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute bottom-2 right-2 z-10 inline-flex items-center justify-center rounded-full border border-[var(--color-secondary)] px-2 py-0.5 text-[0.6rem] font-bold leading-none text-[var(--color-on-secondary)] new-badge-shimmer"
-        >
-          NEW
-        </span>
+        {isNewBirdEncounter ? (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute bottom-2 right-2 z-10 inline-flex items-center justify-center rounded-full border border-[var(--color-secondary)] px-2 py-0.5 text-[0.6rem] font-bold leading-none text-[var(--color-on-secondary)] new-badge-shimmer"
+          >
+            NEW
+          </span>
+        ) : null}
+        </div>
+      </Link>
+    </div>
+  );
+}
+
+function ImageAttributionText({ attribution }: { attribution?: ImageAttribution | null }) {
+  if (!attribution?.artist) {
+    return null;
+  }
+
+  return (
+    <div className="min-w-0 space-y-0.5 text-[0.6rem] leading-tight text-[var(--color-muted)]">
+      <p className="truncate">Photo: {attribution.artist}</p>
+      {attribution.license ? (
+        attribution.licenseUrl ? (
+          <a
+            href={attribution.licenseUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block break-words underline underline-offset-2 hover:text-[var(--color-text)]"
+          >
+            {attribution.license}
+          </a>
+        ) : (
+          <p className="break-words">{attribution.license}</p>
+        )
       ) : null}
-    </Link>
+    </div>
   );
 }
 
@@ -134,6 +194,9 @@ interface AnswerProps {
   summary: string | null;
   articleUrl: string | null;
   imageUrl: string | null;
+  fallbackImageUrl?: string | null;
+  contentSource?: string | null;
+  attribution?: ImageAttribution | null;
   description: string | null;
   hints: HintState;
   isStreak: boolean;
@@ -156,6 +219,9 @@ export default function Answer({
   sciName,
   fact,
   imageUrl,
+  fallbackImageUrl,
+  contentSource,
+  attribution,
   hints,
   isStreak,
   isCorrect,
@@ -176,7 +242,9 @@ export default function Answer({
   const displayedFact = getAnswerFact(hints.fact?.content ?? fact);
   const journalBirdKey = deriveBirdKey(birdData, isReal);
   const journalHref = `/journal?bird=${encodeURIComponent(journalBirdKey)}`;
-  const hasImage = isReal && Boolean(imageUrl);
+  const [hiddenImageKey, setHiddenImageKey] = useState<string | null>(null);
+  const currentImageKey = imageUrl ? `${journalBirdKey}:${imageUrl}` : null;
+  const hasImage = isReal && Boolean(imageUrl) && hiddenImageKey !== currentImageKey;
   const handleLearnMore = (event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
     writeCurrentRoundJournalRevealKey(journalBirdKey);
@@ -187,6 +255,7 @@ export default function Answer({
   const [isNextBirdVisible, setIsNextBirdVisible] = useState(false);
   const [isWiggling, setIsWiggling] = useState(false);
   const [birdhouseSwapTarget, setBirdhouseSwapTarget] = useState<{ birdKey: string; birdName: string; isReal: boolean } | null>(null);
+
   const sharePayload = isMilestone && earnedBadgeName
     ? buildMilestoneSharePayload({
         badgeName: earnedBadgeName,
@@ -300,9 +369,12 @@ export default function Answer({
               key={imageUrl}
               birdData={birdData}
               imageUrl={imageUrl ?? ''}
+              fallbackImageUrl={fallbackImageUrl}
+              contentSource={contentSource}
               journalHref={journalHref}
               isNewBirdEncounter={isNewBirdEncounter}
               onLearnMore={handleLearnMore}
+              onUnavailable={() => setHiddenImageKey(currentImageKey)}
             />
           ) : (
             <div className="min-w-0 space-y-1">
@@ -376,6 +448,7 @@ export default function Answer({
               {sciName ? (
                 <p className="text-sm italic text-[var(--color-muted)]">{sciName}</p>
               ) : null}
+              <ImageAttributionText attribution={attribution} />
             </div>
           ) : null}
         </div>

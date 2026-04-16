@@ -165,6 +165,9 @@ export default function GameSection() {
     summary,
     articleUrl,
     imageUrl,
+    fallbackImageUrl,
+    contentSource,
+    attribution,
     description,
     hasAnswered,
     isLoading,
@@ -369,6 +372,9 @@ export default function GameSection() {
               summary={summary}
               articleUrl={articleUrl}
               imageUrl={imageUrl}
+              fallbackImageUrl={fallbackImageUrl}
+              contentSource={contentSource}
+              attribution={attribution}
               description={description}
               hints={hints}
               isStreak={isStreak}

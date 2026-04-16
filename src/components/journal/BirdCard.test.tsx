@@ -27,6 +27,15 @@ describe('Journal BirdCard', () => {
     },
   };
 
+  const entryWithBothImageSizes = {
+    ...concealedEntry,
+    metadata: {
+      ...concealedEntry.metadata,
+      imageUrl: 'https://images.example.com/blue-jay-full.jpg',
+      imageThumbUrl: 'https://images.example.com/blue-jay-thumb.jpg',
+    },
+  };
+
   it('masks stats for concealed birds and offers a reveal button', () => {
     const onRevealClassification = vi.fn();
 
@@ -81,6 +90,23 @@ describe('Journal BirdCard', () => {
     expect(screen.queryByText('bird species')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Read more on Wikipedia' })).not.toBeInTheDocument();
     expect(onOpenDetails).toHaveBeenCalledWith('real:blue-jay');
+  });
+
+  it('prefers the full-size image over the thumbnail in the expanded journal view', () => {
+    render(
+      <BirdCard
+        entry={entryWithBothImageSizes}
+        isMaskedForCurrentRound={false}
+        canAffordReveal
+        onRevealForCurrentRound={vi.fn()}
+        isLinkedTarget
+      />
+    );
+
+    expect(screen.getByRole('img', { name: 'Blue Jay' })).toHaveAttribute(
+      'src',
+      'https://images.example.com/blue-jay-full.jpg'
+    );
   });
 
   it('auto-expands the linked journal target', () => {
@@ -140,7 +166,7 @@ describe('Journal BirdCard', () => {
     expect(screen.getByRole('img', { name: 'Blue Jay' })).toBeInTheDocument();
   });
 
-  it('shows an image-unavailable fallback when the journal image fails', () => {
+  it('hides the journal image when it cannot be loaded', () => {
     render(
       <BirdCard
         entry={concealedEntry}
@@ -153,7 +179,8 @@ describe('Journal BirdCard', () => {
 
     fireEvent.error(screen.getByRole('img', { name: 'Blue Jay' }));
 
-    expect(screen.getByText('Image unavailable')).toBeInTheDocument();
-    expect(screen.queryByTestId('journal-image-shimmer')).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'Blue Jay' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Image unavailable')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tap to retry')).not.toBeInTheDocument();
   });
 });

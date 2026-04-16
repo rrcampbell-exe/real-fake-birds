@@ -31,6 +31,7 @@ describe('bird route', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.stubEnv('CDN_BASE_URL', '');
     vi.mocked(nameGenerator).mockReset();
     vi.mocked(generateFakeImage).mockReset();
     vi.mocked(generateRealBirdFact).mockReset();
@@ -59,6 +60,11 @@ describe('bird route', () => {
       summary: 'A widespread songbird.',
       imageUrl: 'https://images.example.com/blue-jay.jpg',
       articleUrl: 'https://en.wikipedia.org/wiki/Blue_Jay',
+      attribution: {
+        artist: 'Example Photographer',
+        license: 'CC BY-SA 4.0',
+        licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0',
+      },
     });
     vi.mocked(fetchWikipediaFact).mockResolvedValue('A widespread songbird.');
     vi.spyOn(Math, 'random').mockReturnValue(0);
@@ -74,9 +80,16 @@ describe('bird route', () => {
       regionLabel: 'Algeria',
       sciName: 'Cyanocitta cristata',
       fact: 'A widespread songbird.',
+      factSource: 'wikipedia',
       summary: 'A widespread songbird.',
       articleUrl: 'https://en.wikipedia.org/wiki/Blue_Jay',
       imageUrl: 'https://images.example.com/blue-jay.jpg',
+      contentSource: 'wikipedia',
+      attribution: {
+        artist: 'Example Photographer',
+        license: 'CC BY-SA 4.0',
+        licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0',
+      },
     });
   });
 

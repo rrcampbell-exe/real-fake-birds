@@ -26,7 +26,16 @@ function normalizeMetadata(metadata: BirdJournalMetadata | null | undefined): Bi
     url: typeof metadata.url === 'string' ? metadata.url : undefined,
     articleUrl: typeof metadata.articleUrl === 'string' ? metadata.articleUrl : undefined,
     imageUrl: typeof metadata.imageUrl === 'string' ? metadata.imageUrl : undefined,
+    imageThumbUrl: typeof metadata.imageThumbUrl === 'string' ? metadata.imageThumbUrl : undefined,
     description: typeof metadata.description === 'string' ? metadata.description : undefined,
+    contentSource: typeof metadata.contentSource === 'string' ? metadata.contentSource : undefined,
+    attribution: metadata.attribution && typeof metadata.attribution === 'object'
+      ? {
+          artist: typeof metadata.attribution.artist === 'string' ? metadata.attribution.artist : undefined,
+          license: typeof metadata.attribution.license === 'string' ? metadata.attribution.license : undefined,
+          licenseUrl: typeof metadata.attribution.licenseUrl === 'string' ? metadata.attribution.licenseUrl : undefined,
+        }
+      : undefined,
     classificationRevealed: typeof metadata.classificationRevealed === 'boolean'
       ? metadata.classificationRevealed
       : undefined,

@@ -24,6 +24,24 @@ The app presents a bird name and asks the player to guess whether it is real or 
 - Score, seeds, streaks, earned badges, unlocked themes, unseen rewards, sound settings, and theme selection are stored in localStorage
 - Rewards and settings live in dedicated routes instead of the old menu page
 
+## Current Real Bird Flow
+
+The real-bird path is currently a hybrid of live APIs and CDN-backed content.
+
+1. The client requests `/api/bird` unless the current round is already cached in localStorage.
+2. The server calls eBird recent observations for a randomly selected location and chooses one bird from that response.
+3. The server slugifies that bird name and checks a generated CDN manifest to see whether curated CDN assets already exist for it.
+4. The server also fetches Wikipedia summary and image data so it has fallback content available.
+5. If the bird exists in the CDN manifest, the API returns CDN image URLs and CDN `fact.json` metadata as the primary content, while keeping Wikipedia image/summary data available as fallback fields.
+6. If the bird does not exist in the CDN manifest, the API returns Wikipedia-derived image and fact data only.
+7. The client preloads the primary image before reveal and tracks fact and image load analytics.
+
+Important notes:
+
+- The runtime does not upload new real-bird data to R2. R2 is populated offline via `scripts/seed-cdn.ts` and `scripts/backfill-cdn-sciname.ts`.
+- Normal real-bird fetches are not rewritten by AI on the fly. OpenAI is currently used for offline seeding and for some hint-generation fallback paths, not for the standard real-bird GET flow.
+- Today, real-bird selection still depends on eBird, and Wikipedia still acts as the non-CDN fallback source.
+
 ## Features
 
 - Responsive play experience with separate desktop and mobile navigation
@@ -96,6 +114,8 @@ Supabase is now the planned backing store for account auth and progression migra
 ### APIs Used
 
 - [eBird API 2.0](https://documenter.getpostman.com/view/664302/S1ENwy59)
+- [Wikipedia REST API](https://en.wikipedia.org/api/rest_v1/)
+- [OpenAI Platform](https://platform.openai.com/docs/api-reference)
 - [The Color API](https://www.thecolorapi.com)
 - [Random User](https://www.randomuser.me)
 - Geographic data embedded in the repository and used for fake-name generation

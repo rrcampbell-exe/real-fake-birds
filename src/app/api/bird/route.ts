@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import type { BirdApiResult, HintRequest, HintType } from '@/types';
+import type { BirdApiResult, BirdContentSource, HintRequest, HintType } from '@/types';
 import { locations } from '@/lib/server/constants/locations';
 import { nameGenerator } from '@/lib/server/name-generator';
 import { generateFakeFact, generateFakeImage, generateRealBirdFact } from '@/lib/server/openai';
 import { percentOfTime } from '@/lib/server/utils/percent-of-time';
 import { fetchWikipediaBirdSummary, fetchWikipediaFact, fetchWikipediaImage } from '@/lib/server/wikipedia';
 import { consumeRateLimit, getRateLimitKey } from '@/lib/server/rate-limiter';
+import { isCdnEnabled, getCdnImageUrl, fetchCdnFact } from '@/lib/server/cdn';
+import { hasCdnAssets } from '@/lib/server/cdn-manifest';
+import { slugifyBirdName } from '@/lib/utils/slugify';
 
 const EBIRD_TIMEOUT_MS = 8000;
 const BIRD_FETCH_WINDOW_MS = 60_000;
@@ -136,15 +139,47 @@ async function fetchRealBird(): Promise<BirdApiResult> {
     if (data.length) {
       const random = Math.floor(Math.random() * data.length);
       const selectedBird = data[random];
+      const birdName = selectedBird.comName ?? 'Unknown Bird';
+      const birdKey = slugifyBirdName(birdName);
+      const cdnEnabled = isCdnEnabled() && hasCdnAssets(birdKey);
+
       const wikipediaSummary = await fetchWikipediaBirdSummary(
-        selectedBird.comName ?? 'Unknown Bird',
+        birdName,
         selectedBird.sciName
       );
       const fact = wikipediaSummary?.fact
-        ?? await fetchWikipediaFact(selectedBird.comName ?? 'Unknown Bird', selectedBird.sciName);
+        ?? await fetchWikipediaFact(birdName, selectedBird.sciName);
+      const factSource: BirdContentSource | undefined = fact ? 'wikipedia' : undefined;
+      const wikipediaImageSource: BirdContentSource | undefined = wikipediaSummary?.imageUrl ? 'wikipedia' : undefined;
+
+      // When CDN assets exist, use them as primary and keep Wikipedia as fallback.
+      if (cdnEnabled) {
+        const cdnFact = await fetchCdnFact(birdName);
+        const resolvedFactSource: BirdContentSource | undefined = cdnFact?.fact
+          ? 'cdn'
+          : factSource;
+
+        return {
+          birdName,
+          isReal: true,
+          regionLabel: location.name,
+          sciName: selectedBird.sciName,
+          url,
+          fact: cdnFact?.fact ?? fact ?? undefined,
+          summary: cdnFact?.summary ?? wikipediaSummary?.summary ?? fact ?? undefined,
+          articleUrl: cdnFact?.articleUrl ?? wikipediaSummary?.articleUrl ?? undefined,
+          imageUrl: getCdnImageUrl(birdKey, 'full'),
+          imageThumbUrl: getCdnImageUrl(birdKey, 'thumb'),
+          fallbackImageUrl: wikipediaSummary?.imageUrl ?? undefined,
+          description: cdnFact?.description ?? wikipediaSummary?.description ?? undefined,
+          contentSource: 'cdn',
+          factSource: resolvedFactSource,
+          attribution: cdnFact?.attribution ?? wikipediaSummary?.attribution ?? undefined,
+        };
+      }
 
       return {
-        birdName: selectedBird.comName ?? 'Unknown Bird',
+        birdName,
         isReal: true,
         regionLabel: location.name,
         sciName: selectedBird.sciName,
@@ -154,6 +189,9 @@ async function fetchRealBird(): Promise<BirdApiResult> {
         articleUrl: wikipediaSummary?.articleUrl ?? undefined,
         imageUrl: wikipediaSummary?.imageUrl ?? undefined,
         description: wikipediaSummary?.description ?? undefined,
+        contentSource: wikipediaImageSource,
+        factSource,
+        attribution: wikipediaSummary?.attribution ?? undefined,
       };
     }
 

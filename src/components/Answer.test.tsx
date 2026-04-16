@@ -11,8 +11,24 @@ const { confettiMock, playMock, pushMock } = vi.hoisted(() => ({
   pushMock: vi.fn(),
 }));
 
+const { trackMock } = vi.hoisted(() => ({
+  trackMock: vi.fn(),
+}));
+
 vi.mock('canvas-confetti', () => ({
   default: confettiMock,
+}));
+
+vi.mock('@/lib/analytics', () => ({
+  track: trackMock,
+}));
+
+vi.mock('next/image', () => ({
+  default: ({ fill: _fill, unoptimized: _unoptimized, priority: _priority, alt, ...props }: React.ImgHTMLAttributes<HTMLImageElement> & {
+    fill?: boolean;
+    unoptimized?: boolean;
+    priority?: boolean;
+  }) => <img alt={alt ?? ''} {...props} />,
 }));
 
 vi.mock('@/hooks/useSound', () => ({
@@ -45,6 +61,7 @@ const defaultProps: React.ComponentProps<typeof Answer> = {
   summary: 'Blue Robin is known for its vivid plumage. Another field-guide sentence.',
   articleUrl: 'https://en.wikipedia.org/wiki/Blue_Robin',
   imageUrl: 'https://upload.wikimedia.org/example.jpg',
+  contentSource: 'cdn',
   description: 'bird species',
   hints: emptyHints,
   isStreak: false,
@@ -62,6 +79,7 @@ describe('Answer', () => {
     confettiMock.mockClear();
     playMock.mockClear();
     pushMock.mockClear();
+    trackMock.mockClear();
     localStorage.clear();
   });
 
@@ -100,13 +118,59 @@ describe('Answer', () => {
     expect(screen.getByRole('img', { name: 'Blue Robin' })).toBeInTheDocument();
   });
 
-  it('shows an image-unavailable fallback when the real-bird image fails', () => {
+  it('keeps attribution links outside the journal link wrapper', () => {
+    const { container } = render(
+      <Answer
+        {...defaultProps}
+        attribution={{
+          artist: 'Gediminas',
+          license: 'CC BY-SA 4.0',
+          licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0',
+        }}
+      />
+    );
+
+    expect(screen.getByText(/Photo: Gediminas/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'CC BY-SA 4.0' })).toHaveAttribute(
+      'href',
+      'https://creativecommons.org/licenses/by-sa/4.0'
+    );
+    expect(container.querySelector('a a')).toBeNull();
+  });
+
+  it('tracks successful image loads separately from fact loads', () => {
+    render(<Answer {...defaultProps} />);
+
+    fireEvent.load(screen.getByRole('img', { name: 'Blue Robin' }));
+
+    expect(trackMock).toHaveBeenCalledWith(
+      'bird_content_loaded',
+      expect.objectContaining({
+        source: 'cdn',
+        content_type: 'image',
+        load_stage: 'browser',
+        outcome: 'success',
+      })
+    );
+  });
+
+  it('hides the real-bird image when it cannot be loaded', () => {
     render(<Answer {...defaultProps} />);
 
     fireEvent.error(screen.getByRole('img', { name: 'Blue Robin' }));
 
-    expect(screen.getByText('Image unavailable')).toBeInTheDocument();
-    expect(screen.queryByTestId('answer-image-shimmer')).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'Blue Robin' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Image unavailable')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tap to retry')).not.toBeInTheDocument();
+    expect(trackMock).toHaveBeenCalledWith(
+      'bird_content_loaded',
+      expect.objectContaining({
+        source: 'cdn',
+        content_type: 'image',
+        load_stage: 'browser',
+        outcome: 'failure',
+      })
+    );
   });
 
   it('keeps the next-bird action in the top row above the field notes', () => {
