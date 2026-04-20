@@ -356,6 +356,7 @@ export default function Answer({
   const [hiddenImageKey, setHiddenImageKey] = useState<string | null>(null);
   const currentImageKey = imageUrl ? `${journalBirdKey}:${imageUrl}` : null;
   const fakeImageUnlocked = !isReal && (fakeBirdImageRevealed || Boolean(hints.image));
+  const fakeImageRevealedViaHint = !isReal && Boolean(hints.image) && !fakeBirdImageRevealed;
   const shouldShowFakeReveal = !isReal && !fakeImageUnlocked && Boolean(revealFakeBirdImage);
   const isCurrentImageHidden = Boolean(currentImageKey) && hiddenImageKey === currentImageKey;
   const showVisualSlot = (Boolean(imageUrl) || shouldShowFakeReveal) && !isCurrentImageHidden;
@@ -503,17 +504,19 @@ export default function Answer({
         >
           {showVisualSlot ? (
             hasImage ? (
-              <AnswerImage
-                key={currentImageKey ?? imageUrl ?? 'answer-image'}
-                birdData={birdData}
-                imageUrl={imageUrl ?? ''}
-                fallbackImageUrl={fallbackImageUrl}
-                contentSource={contentSource}
-                journalHref={journalHref}
-                isNewBirdEncounter={isNewBirdEncounter}
-                onLearnMore={handleLearnMore}
-                onUnavailable={handleAnswerImageUnavailable}
-              />
+              <div className="space-y-1">
+                <AnswerImage
+                  key={currentImageKey ?? imageUrl ?? 'answer-image'}
+                  birdData={birdData}
+                  imageUrl={imageUrl ?? ''}
+                  fallbackImageUrl={fallbackImageUrl}
+                  contentSource={contentSource}
+                  journalHref={journalHref}
+                  isNewBirdEncounter={isNewBirdEncounter}
+                  onLearnMore={handleLearnMore}
+                  onUnavailable={handleAnswerImageUnavailable}
+                />
+              </div>
             ) : (
               <FakeBirdRevealImage
                 onReveal={() => {

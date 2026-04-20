@@ -193,7 +193,7 @@ export function trackSessionStart(mode: 'classic' | 'daily'): void {
 }
 
 export function trackFirstPurchase(
-  purchaseType: 'hint_fact' | 'hint_description' | 'hint_image' | 'fake_reveal' | 'theme' | 'streak_insurance'
+  purchaseType: 'hint_fact' | 'hint_image' | 'fake_reveal' | 'theme' | 'streak_insurance'
 ): void {
   if (typeof window === 'undefined' || !hasPostHogKey()) {
     return;

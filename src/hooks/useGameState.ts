@@ -479,6 +479,7 @@ export function useGameState(options?: UseGameStateOptions) {
           type,
           is_real: isReal,
           cost,
+          seeds_balance_after: birdScore.seeds - cost,
         });
         trackFirstPurchase(type === 'fact' ? 'hint_fact' : 'hint_image');
       } catch {
