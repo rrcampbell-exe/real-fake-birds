@@ -6,19 +6,17 @@ import { useStoredJson } from './useStoredValue';
 import { flushQueuedProgressEventsForSignedInUser } from '@/lib/auth/account-session';
 import {
   BIRD_JOURNAL_STORAGE_KEY,
-  CURRENT_ROUND_JOURNAL_REVEAL_KEY,
   deriveBirdKey,
   normalizeBirdJournalStore,
   recordBirdEncounter,
+  revealBirdImage,
   writeCurrentRoundJournalBirdKey,
-  writeCurrentRoundJournalRevealKey,
 } from '@/lib/utils/bird-journal';
 import {
   CURRENT_HINTS_STORAGE_KEY,
   FACT_HINT_COST,
+  FAKE_REVEAL_COST,
   IMAGE_HINT_COST,
-  REVEAL_BIRD_COST,
-  SKIP_BIRD_COST,
   emptyHintState,
 } from '@/lib/constants/hints';
 import { getTodayChallengeDate } from '@/lib/utils/daily-challenge';
@@ -67,7 +65,8 @@ function writeStoredHints(hints: HintState, storageKey: string): void {
 }
 
 function getHintCost(type: HintType): number {
-  return type === 'fact' ? FACT_HINT_COST : IMAGE_HINT_COST;
+  if (type === 'fact') return FACT_HINT_COST;
+  return IMAGE_HINT_COST;
 }
 
 export function useGameState(options?: UseGameStateOptions) {
@@ -108,18 +107,15 @@ export function useGameState(options?: UseGameStateOptions) {
     image: false,
   });
   const [fetchKey, setFetchKey] = useState(0);
+  const [fakeBirdImageRevealed, setFakeBirdImageRevealed] = useState(false);
   const [isSignedIn, setIsSignedIn] = useState(false);
   const flushTimeoutRef = useRef<number | null>(null);
   const birdScore = useStoredJson(BIRD_SCORE_STORAGE_KEY, defaultBirdScore);
   const birdJournalStore = useStoredJson(BIRD_JOURNAL_STORAGE_KEY, {});
-  const currentRoundRevealKey = useStoredJson<string | null>(CURRENT_ROUND_JOURNAL_REVEAL_KEY, null);
   const currentBirdKey = birdData ? deriveBirdKey(birdData, isReal) : null;
   const currentJournalEntry = birdData
     ? normalizeBirdJournalStore(birdJournalStore)[currentBirdKey ?? ''] ?? null
     : null;
-  const isCurrentBirdRevealedForRound = Boolean(currentBirdKey && currentRoundRevealKey === currentBirdKey);
-  const canRevealCurrentBird = Boolean(currentJournalEntry && currentBirdKey && currentRoundRevealKey !== currentBirdKey);
-  const canSkipCurrentBird = Boolean(birdData && !currentJournalEntry);
 
   const resetRoundState = useCallback(() => {
     localStorage.setItem('birdStreakAchieved', 'false');
@@ -155,8 +151,8 @@ export function useGameState(options?: UseGameStateOptions) {
     setHintError(null);
     setHintErrorType(null);
     setHintLoading({ fact: false, image: false });
+    setFakeBirdImageRevealed(false);
     writeCurrentRoundJournalBirdKey(null);
-    writeCurrentRoundJournalRevealKey(null);
   }, [birdDataKey, hintsKey]);
 
   const flushQueuedProgressEvents = useCallback(async () => {
@@ -333,10 +329,7 @@ export function useGameState(options?: UseGameStateOptions) {
     }
 
     writeCurrentRoundJournalBirdKey(currentBirdKey);
-    if (currentRoundRevealKey && currentRoundRevealKey !== currentBirdKey) {
-      writeCurrentRoundJournalRevealKey(null);
-    }
-  }, [currentBirdKey, currentRoundRevealKey, hasAnswered, isLoading]);
+  }, [currentBirdKey, hasAnswered, isLoading]);
 
   const handleAnswer = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -381,6 +374,7 @@ export function useGameState(options?: UseGameStateOptions) {
           description: description ?? undefined,
           contentSource: contentSource ?? undefined,
           attribution: attribution ?? undefined,
+          imageRevealed: fakeBirdImageRevealed || Boolean(hints.image),
         },
       });
       setIsNewBirdEncounter(journalEntry.seenCount === 1);
@@ -433,7 +427,16 @@ export function useGameState(options?: UseGameStateOptions) {
 
   const requestHint = useCallback(
     async (type: HintType) => {
-      if (hasAnswered || isLoading || isError || !birdData || hintLoading[type] || hints[type]) {
+      const hasPendingHintRequest = hintLoading.fact || hintLoading.image;
+
+      if (
+        hasAnswered
+        || isLoading
+        || isError
+        || !birdData
+        || hasPendingHintRequest
+        || hints[type]
+      ) {
         return;
       }
 
@@ -493,32 +496,26 @@ export function useGameState(options?: UseGameStateOptions) {
     [birdData, birdScore.seeds, hasAnswered, hintLoading, hints, hintsKey, isError, isLoading, isReal, mode, queueSeedRefund, queueSeedSpend, regionLabel, sciName]
   );
 
-  const revealCurrentBird = useCallback(() => {
-    if (hasAnswered || isLoading || isError || !currentJournalEntry || !canRevealCurrentBird || !currentBirdKey) {
+  const revealFakeBirdImage = useCallback(() => {
+    if (!hasAnswered || isReal || !currentBirdKey || fakeBirdImageRevealed) {
       return;
     }
 
-    if (birdScore.seeds < REVEAL_BIRD_COST || !spendSeeds(REVEAL_BIRD_COST)) {
+    if (birdScore.seeds < FAKE_REVEAL_COST || !spendSeeds(FAKE_REVEAL_COST)) {
       return;
     }
 
-    writeCurrentRoundJournalRevealKey(currentBirdKey);
-    queueSeedSpend(REVEAL_BIRD_COST);
-  }, [birdScore.seeds, canRevealCurrentBird, currentBirdKey, currentJournalEntry, hasAnswered, isError, isLoading, queueSeedSpend]);
-
-  const skipCurrentBird = useCallback(() => {
-    if (hasAnswered || isLoading || isError || !birdData || !canSkipCurrentBird) {
-      return;
-    }
-
-    if (birdScore.seeds < SKIP_BIRD_COST || !spendSeeds(SKIP_BIRD_COST)) {
-      return;
-    }
-
-    queueSeedSpend(SKIP_BIRD_COST);
-    resetRoundState();
-    setFetchKey((key) => key + 1);
-  }, [birdData, birdScore.seeds, canSkipCurrentBird, hasAnswered, isError, isLoading, queueSeedSpend, resetRoundState]);
+    queueSeedSpend(FAKE_REVEAL_COST);
+    setFakeBirdImageRevealed(true);
+    revealBirdImage(currentBirdKey);
+    track('fake_bird_image_revealed', {
+      bird_key: currentBirdKey,
+      cost: FAKE_REVEAL_COST,
+      seeds_balance_after: birdScore.seeds - FAKE_REVEAL_COST,
+      source: 'answer_card',
+    });
+    trackFirstPurchase('fake_reveal');
+  }, [birdScore.seeds, currentBirdKey, fakeBirdImageRevealed, hasAnswered, isReal, queueSeedSpend]);
 
   const tryAgain = useCallback(() => {
     resetRoundState();
@@ -526,36 +523,6 @@ export function useGameState(options?: UseGameStateOptions) {
   }, [resetRoundState]);
 
   const showQuestion = !hasAnswered && !isError && !isLoading;
-  const specialHintAction = isCurrentBirdRevealedForRound
-    ? {
-        type: 'reveal' as const,
-        title: 'Reveal This Bird',
-        description: 'See whether this bird is real or fake for this round.',
-        cost: REVEAL_BIRD_COST,
-        disabled: false,
-        onRequest: revealCurrentBird,
-        previewTitle: 'Round Reveal',
-        previewContent: `${birdData} is a ${isReal ? 'real' : 'fake'} bird.`,
-      }
-    : canRevealCurrentBird
-      ? {
-          type: 'reveal' as const,
-          title: 'Reveal This Bird',
-          description: 'See whether this bird is real or fake for this round only.',
-          cost: REVEAL_BIRD_COST,
-          disabled: birdScore.seeds < REVEAL_BIRD_COST,
-          onRequest: revealCurrentBird,
-        }
-      : canSkipCurrentBird
-        ? {
-            type: 'skip' as const,
-            title: 'Skip This Bird',
-            description: 'Pass on this encounter and spot a new bird immediately.',
-            cost: SKIP_BIRD_COST,
-            disabled: birdScore.seeds < SKIP_BIRD_COST,
-            onRequest: skipCurrentBird,
-          }
-        : null;
 
   return {
     birdData,
@@ -588,10 +555,11 @@ export function useGameState(options?: UseGameStateOptions) {
     hintErrorType,
     hintLoading,
     seedsBalance: birdScore.seeds,
-    specialHintAction,
     showQuestion,
     handleAnswer,
     requestHint,
+    revealFakeBirdImage,
+    fakeBirdImageRevealed,
     tryAgain,
   };
 }

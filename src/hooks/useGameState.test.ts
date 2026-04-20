@@ -1,11 +1,10 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { deriveBirdKeyMock, recordBirdEncounterMock, writeCurrentRoundJournalBirdKeyMock, writeCurrentRoundJournalRevealKeyMock } = vi.hoisted(() => ({
+const { deriveBirdKeyMock, recordBirdEncounterMock, writeCurrentRoundJournalBirdKeyMock } = vi.hoisted(() => ({
   deriveBirdKeyMock: vi.fn(),
   recordBirdEncounterMock: vi.fn(),
   writeCurrentRoundJournalBirdKeyMock: vi.fn(),
-  writeCurrentRoundJournalRevealKeyMock: vi.fn(),
 }));
 
 vi.mock('./useStoredValue', () => ({
@@ -14,12 +13,10 @@ vi.mock('./useStoredValue', () => ({
 
 vi.mock('@/lib/utils/bird-journal', () => ({
   BIRD_JOURNAL_STORAGE_KEY: 'birdJournal',
-  CURRENT_ROUND_JOURNAL_REVEAL_KEY: 'currentRoundJournalRevealKey',
   deriveBirdKey: deriveBirdKeyMock,
   normalizeBirdJournalStore: (value: unknown) => value,
   recordBirdEncounter: recordBirdEncounterMock,
   writeCurrentRoundJournalBirdKey: writeCurrentRoundJournalBirdKeyMock,
-  writeCurrentRoundJournalRevealKey: writeCurrentRoundJournalRevealKeyMock,
 }));
 
 vi.mock('@/lib/utils/fetch-data', () => ({
@@ -61,7 +58,6 @@ describe('useGameState', () => {
     deriveBirdKeyMock.mockReturnValue('real:blue-jay');
     recordBirdEncounterMock.mockReset();
     writeCurrentRoundJournalBirdKeyMock.mockReset();
-    writeCurrentRoundJournalRevealKeyMock.mockReset();
     recordBirdEncounterMock.mockReturnValue({
       birdKey: 'real:blue-jay',
       birdName: 'Blue Jay',
@@ -167,82 +163,20 @@ describe('useGameState', () => {
     });
 
     expect(responseEval).toHaveBeenCalled();
-    expect(recordBirdEncounterMock).toHaveBeenCalledWith({
+    expect(recordBirdEncounterMock).toHaveBeenCalledWith(expect.objectContaining({
       birdName: 'Blue Jay',
       isReal: true,
       outcome: 'correct',
-      metadata: {
+      metadata: expect.objectContaining({
         regionLabel: 'Algeria',
         sciName: 'Cyanocitta cristata',
         fact: undefined,
-      },
-    });
+        imageRevealed: false,
+      }),
+    }));
     expect(result.current.hasAnswered).toBe(true);
     expect(result.current.isNewBirdEncounter).toBe(true);
     expect(writeCurrentRoundJournalBirdKeyMock).not.toHaveBeenCalledWith(null);
-    expect(writeCurrentRoundJournalRevealKeyMock).not.toHaveBeenCalledWith(null);
-  });
-
-  it('offers skip for unseen birds without recording progress before fetching a replacement', () => {
-    const { result } = renderHook(() => useGameState());
-
-    expect(result.current.specialHintAction?.type).toBe('skip');
-
-    act(() => {
-      result.current.specialHintAction?.onRequest();
-    });
-
-    expect(spendSeeds).toHaveBeenCalledWith(18);
-    expect(recordBirdEncounterMock).not.toHaveBeenCalled();
-    expect(fetchData).toHaveBeenCalledTimes(2);
-  });
-
-  it('offers reveal for concealed seen birds and shows the reveal preview after purchase', () => {
-    vi.mocked(useStoredJson).mockImplementation((key: string) => {
-      if (key === 'birdJournal') {
-        return {
-          'real:blue-jay': {
-            birdKey: 'real:blue-jay',
-            birdName: 'Blue Jay',
-            isReal: true,
-            seenCount: 2,
-            correctCount: 1,
-            incorrectCount: 1,
-            lastSeenAt: '2026-04-05T12:00:00.000Z',
-            metadata: {
-              classificationRevealed: false,
-            },
-          },
-        };
-      }
-
-      if (key === 'currentRoundJournalRevealKey') {
-        return null;
-      }
-
-      return {
-        birdsSeen: 0,
-        birdsIdentified: 0,
-        currentStreak: 0,
-        justAchievedStreak: false,
-        bestStreak: 0,
-        currentDailyStreak: 0,
-        bestDailyStreak: 0,
-        seeds: 100,
-      };
-    });
-
-    const { result } = renderHook(() => useGameState());
-
-    expect(result.current.specialHintAction?.type).toBe('reveal');
-
-    act(() => {
-      result.current.specialHintAction?.onRequest();
-    });
-
-    expect(spendSeeds).toHaveBeenCalledWith(32);
-    expect(writeCurrentRoundJournalRevealKeyMock).toHaveBeenCalledWith('real:blue-jay');
-    expect(result.current.specialHintAction?.title).toBe('Reveal This Bird');
   });
 
   it('requests a hint and stores the result', async () => {
@@ -272,6 +206,70 @@ describe('useGameState', () => {
     });
   });
 
+  it('persists image hints as permanent journal image reveals after answering', async () => {
+    vi.mocked(fetchData).mockImplementation(
+      async (
+        setIsReal,
+        setIsLoading,
+        setBirdData,
+        setSciName,
+        setRegionLabel,
+        setFact,
+        setSummary,
+        setArticleUrl,
+        setImageUrl,
+      ) => {
+        setIsReal(false);
+        setIsLoading(false);
+        setBirdData('Blue Jay');
+        setSciName('Cyanocitta cristata');
+        setRegionLabel('Algeria');
+        setFact('A suspiciously convincing fake bird.');
+        setSummary('A fake bird with an image hint.');
+        setArticleUrl(null);
+        setImageUrl('https://images.example.com/fake-blue-jay.jpg');
+      }
+    );
+    vi.mocked(fetchHint).mockResolvedValue({
+      type: 'image',
+      content: 'https://images.example.com/fake-blue-jay-hint.jpg',
+    });
+
+    const { result } = renderHook(() => useGameState());
+
+    await act(async () => {
+      await result.current.requestHint('image');
+    });
+
+    const event = {
+      preventDefault: vi.fn(),
+      currentTarget: { id: 'fake' },
+    } as unknown as React.MouseEvent<HTMLButtonElement>;
+
+    act(() => {
+      result.current.handleAnswer(event);
+    });
+
+    expect(recordBirdEncounterMock).toHaveBeenCalledWith({
+      birdName: 'Blue Jay',
+      isReal: false,
+      outcome: 'correct',
+      metadata: {
+        regionLabel: 'Algeria',
+        sciName: 'Cyanocitta cristata',
+        fact: 'A suspiciously convincing fake bird.',
+        summary: 'A fake bird with an image hint.',
+        articleUrl: undefined,
+        imageUrl: 'https://images.example.com/fake-blue-jay.jpg',
+        imageThumbUrl: undefined,
+        description: undefined,
+        contentSource: undefined,
+        attribution: undefined,
+        imageRevealed: true,
+      },
+    });
+  });
+
   it('refunds seeds when a hint request fails', async () => {
     vi.mocked(fetchHint).mockRejectedValue(new Error('hint_unavailable'));
 
@@ -281,8 +279,8 @@ describe('useGameState', () => {
       await result.current.requestHint('image');
     });
 
-    expect(spendSeeds).toHaveBeenCalledWith(50);
-    expect(refundSeeds).toHaveBeenCalledWith(50);
+    expect(spendSeeds).toHaveBeenCalledWith(40);
+    expect(refundSeeds).toHaveBeenCalledWith(40);
     expect(result.current.hintError).toBe('Request failed. Your seeds were refunded.');
     expect(result.current.hintErrorType).toBe('image');
   });
@@ -328,6 +326,42 @@ describe('useGameState', () => {
     );
   });
 
+  it('does not start another hint request while one is still loading', async () => {
+    let resolveHint: ((value: { type: 'fact'; content: string }) => void) | null = null;
+
+    vi.mocked(fetchHint).mockImplementationOnce(() => new Promise((resolve) => {
+      resolveHint = resolve as (value: { type: 'fact'; content: string }) => void;
+    }));
+
+    const { result } = renderHook(() => useGameState());
+
+    await act(async () => {
+      void result.current.requestHint('fact');
+    });
+
+    expect(result.current.hintLoading.fact).toBe(true);
+
+    await act(async () => {
+      await result.current.requestHint('image');
+    });
+
+    expect(fetchHint).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveHint?.({
+        type: 'fact',
+        content: 'A hint fact.',
+      });
+      await Promise.resolve();
+    });
+
+    expect(result.current.hintLoading.fact).toBe(false);
+    expect(result.current.hints.fact).toEqual({
+      type: 'fact',
+      content: 'A hint fact.',
+    });
+  });
+
   it('resets transient state and re-fetches on tryAgain', () => {
     localStorage.setItem('birdData', JSON.stringify({ birdName: 'Legacy Bird' }));
     localStorage.setItem('birdData:classic', JSON.stringify({ birdName: 'Test Bird' }));
@@ -347,7 +381,6 @@ describe('useGameState', () => {
     expect(localStorage.getItem('birdData:classic')).toBeNull();
     expect(localStorage.getItem('currentHints:classic')).toBeNull();
     expect(writeCurrentRoundJournalBirdKeyMock).toHaveBeenCalledWith(null);
-    expect(writeCurrentRoundJournalRevealKeyMock).toHaveBeenCalledWith(null);
     expect(fetchData).toHaveBeenCalledTimes(2);
   });
 });

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import HintPanel from './HintPanel';
 
 describe('HintPanel', () => {
-  it('expands to show only the fact hint option', () => {
+  it('expands to show both hint options', () => {
     render(
       <HintPanel
         birdName="Blue Jay"
@@ -18,8 +18,8 @@ describe('HintPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /get a hint/i }));
 
-    expect(screen.getByRole('button', { name: /request a fact/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /image hint/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /field note/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /photo/i })).toBeInTheDocument();
   });
 
   it('passes hint requests through to the caller', () => {
@@ -37,7 +37,7 @@ describe('HintPanel', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /get a hint/i }));
-    fireEvent.click(screen.getByRole('button', { name: /request a fact/i }));
+    fireEvent.click(screen.getByRole('button', { name: /field note/i }));
 
     expect(onRequestHint).toHaveBeenCalledWith('fact');
   });
@@ -59,8 +59,29 @@ describe('HintPanel', () => {
     );
 
     expect(screen.getByText('A fact about this bird.')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /request a fact/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /image hint/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /field note/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /photo/i })).toBeInTheDocument();
+  });
+
+  it('lets the player close the panel after a hint has been revealed', () => {
+    render(
+      <HintPanel
+        birdName="Blue Jay"
+        hintError={null}
+        hintErrorType={null}
+        hintLoading={{ fact: false, image: false }}
+        hints={{
+          fact: { type: 'fact', content: 'A fact about this bird.' },
+          image: null,
+        }}
+        onRequestHint={vi.fn()}
+        seedsBalance={75}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /get a hint/i }));
+
+    expect(screen.getByRole('button', { name: /get a hint/i })).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('shows an insufficient seeds state for unaffordable hints', () => {
@@ -78,64 +99,8 @@ describe('HintPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /get a hint/i }));
 
-    expect(screen.getByRole('button', { name: /request a fact/i })).toBeDisabled();
-    expect(screen.queryByRole('button', { name: /image hint/i })).not.toBeInTheDocument();
-  });
-
-  it('renders a contextual skip option when provided', () => {
-    const onRequest = vi.fn();
-
-    render(
-      <HintPanel
-        birdName="Blue Jay"
-        hintError={null}
-        hintErrorType={null}
-        hintLoading={{ fact: false, image: false }}
-        hints={{ fact: null, image: null }}
-        onRequestHint={vi.fn()}
-        seedsBalance={75}
-        specialAction={{
-          type: 'skip',
-          title: 'Skip This Bird',
-          description: 'Pass on this first encounter and spot a new bird immediately.',
-          cost: 18,
-          disabled: false,
-          onRequest,
-        }}
-      />
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: /get a hint/i }));
-    fireEvent.click(screen.getByRole('button', { name: /skip this bird/i }));
-
-    expect(onRequest).toHaveBeenCalled();
-  });
-
-  it('shows a reveal preview after a journal unlock', () => {
-    render(
-      <HintPanel
-        birdName="Blue Jay"
-        hintError={null}
-        hintErrorType={null}
-        hintLoading={{ fact: false, image: false }}
-        hints={{ fact: null, image: null }}
-        onRequestHint={vi.fn()}
-        seedsBalance={75}
-        specialAction={{
-          type: 'reveal',
-          title: 'Reveal This Bird',
-          description: 'See whether this bird is real or fake for this round only.',
-          cost: 32,
-          disabled: false,
-          onRequest: vi.fn(),
-          previewTitle: 'Round Reveal',
-          previewContent: 'Blue Jay is a real bird.',
-        }}
-      />
-    );
-
-    expect(screen.getByText('Round Reveal')).toBeInTheDocument();
-    expect(screen.getByText('Blue Jay is a real bird.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /field note/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /photo/i })).toBeDisabled();
   });
 
   it('shows a richer loading preview while hints are being fetched', () => {
@@ -152,11 +117,11 @@ describe('HintPanel', () => {
     );
 
     expect(screen.getByText('Consulting a real fake ornithologist...')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /request a fact/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /image hint/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /field note/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /photo/i })).toBeInTheDocument();
   });
 
-  it('hides the image hint option entirely', () => {
+  it('shows image hint loading state', () => {
     render(
       <HintPanel
         birdName="Blue Jay"
@@ -171,10 +136,10 @@ describe('HintPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /get a hint/i }));
 
-    expect(screen.queryByRole('button', { name: /image hint/i })).not.toBeInTheDocument();
+    expect(screen.getByText('Seeking a real fake wildlife photographer...')).toBeInTheDocument();
   });
 
-  it('does not surface a previously stored image hint in the panel', () => {
+  it('surfaces a previously stored image hint in the panel', () => {
     render(
       <HintPanel
         birdName="Blue Jay"
@@ -190,11 +155,9 @@ describe('HintPanel', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /get a hint/i }));
-
-    expect(screen.queryByAltText('Hint image for Blue Jay')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /request a fact/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /image hint/i })).not.toBeInTheDocument();
+    expect(screen.getByAltText('Hint image for Blue Jay')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /field note/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /photo/i })).not.toBeInTheDocument();
   });
 
   it('shows inline refunded failure state in the failed hint slot', () => {
@@ -212,12 +175,32 @@ describe('HintPanel', () => {
       />
     );
 
-    expect(screen.getByText('Fact request failed')).toBeInTheDocument();
+    expect(screen.getByText('Field note request failed')).toBeInTheDocument();
     expect(screen.getByText('Request failed. Your seeds were refunded.')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /request a fact/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /image hint/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /field note/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /photo/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /try again/i }));
     expect(onRequestHint).toHaveBeenCalledWith('fact');
+  });
+
+  it('hides the panel entirely when both hints have been purchased', () => {
+    const { container } = render(
+      <HintPanel
+        birdName="Blue Jay"
+        hintError={null}
+        hintErrorType={null}
+        hintLoading={{ fact: false, image: false }}
+        hints={{
+          fact: { type: 'fact', content: 'A fact about this bird.' },
+          image: { type: 'image', content: 'https://images.example.com/bird.jpg' },
+        }}
+        onRequestHint={vi.fn()}
+        seedsBalance={75}
+      />
+    );
+
+    expect(container.innerHTML).toBe('');
+    expect(screen.queryByRole('button', { name: /get a hint/i })).not.toBeInTheDocument();
   });
 });

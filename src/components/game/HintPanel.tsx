@@ -4,30 +4,22 @@ import Image from 'next/image';
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
-import { AlertCircle, BookOpenText, ChevronDown, ImageIcon, LoaderCircle, SkipForward, Sparkles, WandSparkles } from 'lucide-react';
+import { AlertCircle, BookOpenText, ChevronDown, ImageIcon, LoaderCircle, Sparkles } from 'lucide-react';
 import { track } from '@/lib/analytics';
 import type { HintState, HintType } from '@/types';
 import { FACT_HINT_COST, IMAGE_HINT_COST } from '@/lib/constants/hints';
 import { formatNumber } from '@/lib/utils/number-format';
+import { formatBirdName } from '@/lib/utils/format-bird-name';
 
 interface HintPanelProps {
   birdName: string;
+  externalizedHintTypes?: HintType[];
   hintError: string | null;
   hintErrorType: HintType | null;
   hintLoading: Record<HintType, boolean>;
   hints: HintState;
   onRequestHint: (type: HintType) => void;
   seedsBalance: number;
-  specialAction?: {
-    type: 'skip' | 'reveal';
-    title: string;
-    description: string;
-    cost: number;
-    disabled: boolean;
-    onRequest: () => void;
-    previewTitle?: string;
-    previewContent?: string;
-  } | null;
 }
 
 interface HintOption {
@@ -40,22 +32,22 @@ interface HintOption {
 
 const hintOptions: HintOption[] = [
   {
-    type: 'image',
-    title: 'Image Hint',
-    description: 'A single image reveal for this bird.',
-    cost: IMAGE_HINT_COST,
-    Icon: ImageIcon,
-  },
-  {
     type: 'fact',
-    title: 'Request a Fact',
+    title: 'Field Note',
     description: 'One short clue about this bird.',
     cost: FACT_HINT_COST,
     Icon: BookOpenText,
   },
+  {
+    type: 'image',
+    title: 'Photo',
+    description: 'A single image reveal for this bird.',
+    cost: IMAGE_HINT_COST,
+    Icon: ImageIcon,
+  },
 ];
 
-const visibleHintOptions = hintOptions.filter(({ type }) => type === 'fact');
+const visibleHintOptions = hintOptions;
 
 function LoadingHintPreview({ type }: { type: HintType }) {
   return (
@@ -67,14 +59,14 @@ function LoadingHintPreview({ type }: { type: HintType }) {
           : 'Seeking a real fake wildlife photographer...'}
       </div>
       <div className="px-4 pb-4">
-        {type === 'fact' ? (
+        {type === 'image' ? (
+          <div className="aspect-square w-full rounded-xl bg-[linear-gradient(135deg,var(--color-surface-border),transparent)]" />
+        ) : (
           <div className="space-y-2">
             <div className="h-3 w-full rounded-full bg-[var(--color-surface-border)]/80" />
             <div className="h-3 w-[88%] rounded-full bg-[var(--color-surface-border)]/70" />
             <div className="h-3 w-[62%] rounded-full bg-[var(--color-surface-border)]/60" />
           </div>
-        ) : (
-          <div className="aspect-square w-full rounded-xl bg-[linear-gradient(135deg,var(--color-surface-border),transparent)]" />
         )}
       </div>
     </div>
@@ -93,6 +85,8 @@ function FactHintPreview({ content }: { content: string }) {
 }
 
 function ImageHintPreview({ birdName, content }: { birdName: string; content: string }) {
+  const displayBirdName = formatBirdName(birdName);
+
   return (
     <div className="overflow-hidden rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)]">
       <div className="px-4 py-3 font-[family-name:var(--font-display)] text-sm font-semibold text-[var(--color-text)]">
@@ -100,7 +94,7 @@ function ImageHintPreview({ birdName, content }: { birdName: string; content: st
       </div>
       <Image
         src={content}
-        alt={`Hint image for ${birdName}`}
+        alt={`Hint image for ${displayBirdName}`}
         width={800}
         height={800}
         className="block aspect-square w-full object-cover"
@@ -122,7 +116,7 @@ function FailedHintPreview({
     <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-primary-light)] px-4 py-4 text-[var(--color-text)]">
       <div className="flex items-center gap-2 font-[family-name:var(--font-display)] text-sm font-semibold">
         <AlertCircle size={16} className="shrink-0" />
-        {type === 'fact' ? 'Fact request failed' : 'Image request failed'}
+        {type === 'fact' ? 'Field note request failed' : 'Photo request failed'}
       </div>
       <p className="mt-2 text-sm leading-6 text-[var(--color-text)]/86">{message}</p>
       <button
@@ -143,6 +137,7 @@ function HintOptionButton({
   insufficientSeeds,
   loading,
   onRequest,
+  requestLocked,
   title,
 }: {
   cost: number;
@@ -151,21 +146,24 @@ function HintOptionButton({
   insufficientSeeds: boolean;
   loading: boolean;
   onRequest: () => void;
+  requestLocked: boolean;
   title: string;
 }) {
   const statusText = loading
     ? 'Fetching...'
+    : requestLocked
+      ? 'Waiting for current hint...'
     : insufficientSeeds
       ? 'Not enough seeds'
       : `Trade ${formatNumber(cost)} seeds`;
-  const statusClassName = insufficientSeeds && !loading
+  const statusClassName = (insufficientSeeds || requestLocked) && !loading
     ? 'text-[var(--color-text)]/70'
     : 'text-[var(--color-text)]';
 
   return (
     <button
       type="button"
-      disabled={loading || insufficientSeeds}
+      disabled={loading || insufficientSeeds || requestLocked}
       onClick={onRequest}
       className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-4 text-left transition-all enabled:cursor-pointer enabled:hover:-translate-y-0.5 enabled:hover:border-[var(--color-secondary)] disabled:cursor-not-allowed"
     >
@@ -195,18 +193,26 @@ function HintOptionButton({
 
 export default function HintPanel({
   birdName,
+  externalizedHintTypes = [],
   hintError,
   hintErrorType,
   hintLoading,
   hints,
   onRequestHint,
   seedsBalance,
-  specialAction,
 }: HintPanelProps) {
   const prefersReducedMotion = usePrefersReducedMotion();
-  const [isManuallyExpanded, setIsManuallyExpanded] = useState(false);
+  const [isManuallyExpanded, setIsManuallyExpanded] = useState<boolean | null>(null);
+  const hasPendingHintRequest = hintLoading.fact || hintLoading.image;
+  const allHintsPurchased = Boolean(hints.fact) && Boolean(hints.image);
+  const allHintsRequestedOrPurchased = (Boolean(hints.fact) || hintLoading.fact) && (Boolean(hints.image) || hintLoading.image);
+  const autoExpanded = Boolean(hints.fact || hints.image || hintLoading.fact || hintLoading.image || hintErrorType === 'fact' || hintErrorType === 'image');
   const isExpanded = isManuallyExpanded
-    || Boolean(hints.fact || hintLoading.fact || hintErrorType === 'fact' || specialAction?.previewContent);
+    ?? autoExpanded;
+
+  if ((allHintsPurchased || allHintsRequestedOrPurchased) && !hintError) {
+    return null;
+  }
 
   return (
     <div className="w-full">
@@ -217,7 +223,7 @@ export default function HintPanel({
           if (!isExpanded) {
             track('hint_panel_opened');
           }
-          setIsManuallyExpanded((current) => !current);
+          setIsManuallyExpanded(!isExpanded);
         }}
         className="flex w-full items-center justify-between rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-primary-light)] px-4 py-3 text-left transition-colors hover:bg-[var(--color-surface-hover)]"
       >
@@ -246,6 +252,12 @@ export default function HintPanel({
               {visibleHintOptions.map(({ type, title, description, cost, Icon }) => {
                 const loading = hintLoading[type];
                 const insufficientSeeds = seedsBalance < cost;
+                const hint = hints[type];
+                const isExternalized = externalizedHintTypes.includes(type);
+
+                if (isExternalized && (loading || Boolean(hint))) {
+                  return null;
+                }
 
                 if (loading) {
                   return <LoadingHintPreview key={type} type={type} />;
@@ -280,32 +292,13 @@ export default function HintPanel({
                     Icon={Icon}
                     insufficientSeeds={insufficientSeeds}
                     loading={loading}
+                    requestLocked={hasPendingHintRequest}
                     onRequest={() => onRequestHint(type)}
                     title={title}
                   />
                 );
               })}
 
-              {specialAction?.previewContent ? (
-                <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-4 text-sm leading-6 text-[var(--color-text)]">
-                  <div className="mb-2 font-[family-name:var(--font-display)] text-sm font-semibold text-[var(--color-text)]">
-                    {specialAction.previewTitle ?? 'Round Reveal'}
-                  </div>
-                  <p>{specialAction.previewContent}</p>
-                </div>
-              ) : null}
-
-              {specialAction && !specialAction.previewContent ? (
-                <HintOptionButton
-                  cost={specialAction.cost}
-                  description={specialAction.description}
-                  Icon={specialAction.type === 'skip' ? SkipForward : WandSparkles}
-                  insufficientSeeds={specialAction.disabled}
-                  loading={false}
-                  onRequest={specialAction.onRequest}
-                  title={specialAction.title}
-                />
-              ) : null}
             </div>
 
             {hintError && !hintErrorType ? (

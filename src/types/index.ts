@@ -43,6 +43,7 @@ export interface BirdJournalMetadata {
   contentSource?: string;
   attribution?: ImageAttribution;
   classificationRevealed?: boolean;
+  imageRevealed?: boolean;
 }
 
 export interface BirdJournalEntry {
