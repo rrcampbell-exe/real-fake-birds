@@ -224,6 +224,24 @@ describe('SoundManager', () => {
       expect(mockCtx.createOscillator).toHaveBeenCalledTimes(2);
     });
 
+    it('plays the field note loading synth cue', () => {
+      const mgr = SoundManager.getInstance();
+      mgr.play('hintFieldLoading');
+      expect(mockCtx.createOscillator).toHaveBeenCalled();
+    });
+
+    it('plays the image loading shimmer synth cue', () => {
+      const mgr = SoundManager.getInstance();
+      mgr.play('hintImageLoading');
+      expect(mockCtx.createOscillator).toHaveBeenCalledTimes(3);
+    });
+
+    it('plays the hint reveal synth chime', () => {
+      const mgr = SoundManager.getInstance();
+      mgr.play('hintReveal');
+      expect(mockCtx.createOscillator).toHaveBeenCalledTimes(2);
+    });
+
     it('resumes a suspended AudioContext before playing', () => {
       mockCtx.state = 'suspended' as AudioContextState;
       const mgr = SoundManager.getInstance();

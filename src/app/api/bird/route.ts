@@ -7,7 +7,7 @@ import { percentOfTime } from '@/lib/server/utils/percent-of-time';
 import { fetchWikipediaBirdSummary, fetchWikipediaFact, fetchWikipediaImage } from '@/lib/server/wikipedia';
 import { consumeRateLimit, getRateLimitKey } from '@/lib/server/rate-limiter';
 import { isCdnEnabled, getCdnImageUrl, fetchCdnFact } from '@/lib/server/cdn';
-import { hasCdnAssets } from '@/lib/server/cdn-manifest';
+import { hasCdnAssets, hasFakeCdnAssets } from '@/lib/server/cdn-manifest';
 import { getRandomFakeBirdEntry } from '@/lib/server/fake-birds';
 import { slugifyBirdName } from '@/lib/utils/slugify';
 
@@ -216,7 +216,7 @@ async function fetchFakeBird(): Promise<BirdApiResult | null> {
   }
 
   const selectedFakeBird = await getRandomFakeBirdEntry();
-  if (!selectedFakeBird) {
+  if (!selectedFakeBird || !hasFakeCdnAssets(selectedFakeBird.birdKey)) {
     return null;
   }
 
@@ -269,6 +269,10 @@ async function resolveHintContent(request: HintRequest): Promise<string | null> 
   if (request.type === 'fact') {
     const cdnResult = await fetchCdnFact(birdKey, 'fake');
     return cdnResult?.fact?.fact ?? null;
+  }
+
+  if (!hasFakeCdnAssets(birdKey)) {
+    return null;
   }
 
   return getCdnImageUrl(birdKey, 'full', 'fake');

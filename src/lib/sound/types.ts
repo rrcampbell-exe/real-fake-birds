@@ -12,6 +12,9 @@ export type SoundKey =
   | 'whoosh'
   | 'navTap'
   | 'themeChange'
+  | 'hintFieldLoading'
+  | 'hintImageLoading'
+  | 'hintReveal'
   | 'loadingLoop';
 
 export interface SoundController {

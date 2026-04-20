@@ -267,7 +267,7 @@ export default function HintPanel({
             animate={{ opacity: 1, height: 'auto', y: 0 }}
             exit={{ opacity: 0, height: 0, y: -8 }}
             transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: [0.4, 0, 0.2, 1] }}
-            className="[clip-path:inset(0_-24px_-24px_-24px)]"
+            className="[clip-path:inset(-24px_-24px_-24px_-24px)]"
           >
             <div className="mt-3 grid gap-3">
               {visibleHintOptions.map(({ type, title, description, cost, Icon }) => {

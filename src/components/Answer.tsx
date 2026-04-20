@@ -3,7 +3,7 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import { ArrowRight, BookOpen, Bird, Birdhouse, GraduationCap, MapPin, Sparkles } from 'lucide-react';
+import { ArrowRight, BookOpen, Bird, Birdhouse, GraduationCap, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import BirdhouseSwapSheet from '@/components/birdhouse/BirdhouseSwapSheet';
@@ -270,6 +270,38 @@ function LockedBirdhouseNotice({
   );
 }
 
+function PhotoUnavailableNotice({
+  detail,
+  prefersReducedMotion,
+}: {
+  detail: string;
+  prefersReducedMotion: boolean;
+}) {
+  return (
+    <motion.div
+      initial={prefersReducedMotion ? false : { opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.18, ease: 'easeOut' }}
+      className="w-full rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3 shadow-[var(--shadow-card)]"
+      role="status"
+      aria-live="polite"
+    >
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-error)_15%,transparent)] text-[var(--color-error)]">
+          <Sparkles size={15} strokeWidth={2.2} />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-error)]">
+            Photo Unavailable
+          </p>
+          <p className="mt-1 text-sm font-medium leading-5 text-[var(--color-text)]">{detail}</p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 function LockedBirdhouseButton({
   onClick,
 }: {
@@ -316,6 +348,7 @@ interface AnswerProps {
   onAction: () => void;
   revealFakeBirdImage?: () => void;
   fakeBirdImageRevealed?: boolean;
+  fakeImageNotice?: string | null;
   seedsBalance?: number;
 }
 
@@ -343,6 +376,7 @@ export default function Answer({
   onAction,
   revealFakeBirdImage,
   fakeBirdImageRevealed = false,
+  fakeImageNotice = null,
   seedsBalance = 0,
 }: AnswerProps) {
   const { play } = useSound();
@@ -358,7 +392,6 @@ export default function Answer({
   const [hiddenImageKey, setHiddenImageKey] = useState<string | null>(null);
   const currentImageKey = imageUrl ? `${journalBirdKey}:${imageUrl}` : null;
   const fakeImageUnlocked = !isReal && (fakeBirdImageRevealed || Boolean(hints.image));
-  const fakeImageRevealedViaHint = !isReal && Boolean(hints.image) && !fakeBirdImageRevealed;
   const shouldShowFakeReveal = !isReal && !fakeImageUnlocked && Boolean(revealFakeBirdImage) && seedsBalance >= FAKE_REVEAL_COST;
   const isCurrentImageHidden = Boolean(currentImageKey) && hiddenImageKey === currentImageKey;
   const hasRevealableImage = Boolean(imageUrl) && (isReal || fakeImageUnlocked);
@@ -494,6 +527,16 @@ export default function Answer({
           <LockedBirdhouseNotice
             key={lockedBirdhouseToast.detail}
             detail={lockedBirdhouseToast.detail}
+            prefersReducedMotion={prefersReducedMotion}
+          />
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence initial={false}>
+        {fakeImageNotice ? (
+          <PhotoUnavailableNotice
+            key={fakeImageNotice}
+            detail={fakeImageNotice}
             prefersReducedMotion={prefersReducedMotion}
           />
         ) : null}

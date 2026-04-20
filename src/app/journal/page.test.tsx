@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import JournalPage from './page';
 import { PENDING_JOURNAL_TARGET_KEY } from '@/lib/utils/bird-journal';
@@ -38,14 +38,28 @@ const mockedBirdCard = vi.fn(({ entry, isLinkedTarget }: { entry: { birdName: st
   <div>{`${entry.birdName}:${String(Boolean(isLinkedTarget))}`}</div>
 ));
 
-function MockBirdCard(props: { entry: { birdKey: string; birdName: string }; isLinkedTarget?: boolean; onOpenDetails?: (birdKey: string) => void }) {
+function MockBirdCard(props: {
+  entry: { birdKey: string; birdName: string };
+  isLinkedTarget?: boolean;
+  onOpenDetails?: (birdKey: string) => void;
+  onRevealFakeImage?: (birdKey: string) => void | Promise<void>;
+}) {
   useEffect(() => {
     if (props.isLinkedTarget) {
       linkedTargetEffectMock(props);
     }
   }, [props]);
 
-  return mockedBirdCard(props);
+  return (
+    <div>
+      {mockedBirdCard(props)}
+      {'onRevealFakeImage' in props && typeof props.onRevealFakeImage === 'function' ? (
+        <button type="button" onClick={() => void props.onRevealFakeImage(props.entry.birdKey)}>
+          Reveal {props.entry.birdName}
+        </button>
+      ) : null}
+    </div>
+  );
 }
 
 vi.mock('@/components/account/AccountStateProvider', () => ({
@@ -72,6 +86,14 @@ vi.mock('@/hooks/useBirdhouse', () => ({
 vi.mock('@/hooks/useStoredValue', () => ({
   useStoredJson: vi.fn(),
   notifyStoredValueChanged: vi.fn(),
+}));
+
+vi.mock('@/lib/utils/image-availability', () => ({
+  canLoadImage: vi.fn(),
+}));
+
+vi.mock('@/lib/utils/seed-spend', () => ({
+  spendSeeds: vi.fn(),
 }));
 
 vi.mock('@/lib/auth/account-session', () => ({
@@ -112,11 +134,15 @@ import { useBirdJournal } from '@/hooks/useBirdJournal';
 import { useBirdhouse } from '@/hooks/useBirdhouse';
 import { usePageProgressSync } from '@/hooks/usePageProgressSync';
 import { useStoredJson } from '@/hooks/useStoredValue';
+import { canLoadImage } from '@/lib/utils/image-availability';
+import { spendSeeds } from '@/lib/utils/seed-spend';
 
 const mockedUseBirdJournal = vi.mocked(useBirdJournal);
 const mockedUseBirdhouse = vi.mocked(useBirdhouse);
 const mockedUsePageProgressSync = vi.mocked(usePageProgressSync);
 const mockedUseStoredJson = vi.mocked(useStoredJson);
+const mockedCanLoadImage = vi.mocked(canLoadImage);
+const mockedSpendSeeds = vi.mocked(spendSeeds);
 
 describe('JournalPage', () => {
   beforeEach(() => {
@@ -137,7 +163,75 @@ describe('JournalPage', () => {
     useAccountStateMock.mockReturnValue({
       isSignedIn: false,
     });
+    mockedCanLoadImage.mockResolvedValue(true);
+    mockedSpendSeeds.mockReturnValue(true);
     window.history.replaceState({}, '', '/journal');
+  });
+
+  it('does not spend seeds when a fake journal photo is unavailable', async () => {
+    mockedUsePageProgressSync.mockReturnValue({
+      isPageSyncLoading: false,
+      isPageBackgroundRefreshing: false,
+      isSignedIn: false,
+    });
+    mockedUseBirdhouse.mockReturnValue({
+      birdhouse: { real: [], fake: [], updatedAt: new Date(0).toISOString() },
+      realCount: 0,
+      fakeCount: 0,
+      realCap: 10,
+      fakeCap: 10,
+      isInBirdhouse: vi.fn().mockReturnValue(false),
+      add: vi.fn(),
+      remove: vi.fn(),
+      swap: vi.fn(),
+    });
+    mockedUseBirdJournal.mockReturnValue({
+      journal: [
+        {
+          birdKey: 'fake:owl',
+          birdName: 'Owl',
+          isReal: false,
+          seenCount: 1,
+          correctCount: 1,
+          incorrectCount: 0,
+          lastSeenAt: '2026-04-07T12:00:00.000Z',
+          metadata: {
+            imageUrl: 'https://cdn.example.com/birds/fake/owl/image.webp',
+            imageRevealed: false,
+          },
+        },
+      ],
+      journalByKey: {},
+      uniqueBirdCount: 1,
+      realBirdCount: 0,
+      fakeBirdCount: 1,
+      totalSeen: 1,
+      totalCorrect: 1,
+      accuracy: 100,
+      getEntry: vi.fn(),
+    });
+    mockedUseStoredJson.mockReturnValue({
+      birdsSeen: 0,
+      birdsIdentified: 0,
+      currentStreak: 0,
+      justAchievedStreak: false,
+      bestStreak: 0,
+      currentDailyStreak: 0,
+      bestDailyStreak: 0,
+      seeds: 100,
+    });
+    mockedCanLoadImage.mockResolvedValue(false);
+
+    render(<JournalPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reveal Owl' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Photo unavailable')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('That fake photo is unavailable right now, so no seeds were spent.')).toBeInTheDocument();
+    expect(mockedSpendSeeds).not.toHaveBeenCalled();
   });
 
   it('marks the query-param bird as the linked journal target on mount', async () => {
