@@ -8,10 +8,13 @@ type AnalyticsEventProperties = Record<string, Primitive>;
 export type AnalyticsEventName =
   | 'account_sync_started'
   | 'bird_content_loaded'
+  | 'birdhouse_add_gated'
+  | 'birdhouse_gate_converted'
   | 'client_error_reported'
   | 'daily_challenge_completed'
   | 'daily_challenge_started'
   | 'error_displayed'
+  | 'fake_bird_image_revealed'
   | 'game_round_complete'
   | 'hint_panel_opened'
   | 'hint_used'
@@ -190,7 +193,7 @@ export function trackSessionStart(mode: 'classic' | 'daily'): void {
 }
 
 export function trackFirstPurchase(
-  purchaseType: 'hint_fact' | 'hint_image' | 'theme' | 'streak_insurance'
+  purchaseType: 'hint_fact' | 'hint_description' | 'hint_image' | 'fake_reveal' | 'theme' | 'streak_insurance'
 ): void {
   if (typeof window === 'undefined' || !hasPostHogKey()) {
     return;

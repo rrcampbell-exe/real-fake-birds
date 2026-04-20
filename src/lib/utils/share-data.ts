@@ -1,4 +1,5 @@
 import type { SharePayload } from '@/types';
+import { formatBirdName } from './format-bird-name';
 
 const APP_NAME = 'Real Fake Birds';
 
@@ -9,6 +10,7 @@ export function buildRoundSharePayload(options: {
   currentStreak?: number;
   earnedBadgeName?: string | null;
 }): SharePayload {
+  const displayBirdName = formatBirdName(options.birdName);
   const resultText = options.isCorrect ? 'nailed' : 'missed';
   const authenticityText = options.isReal ? 'real' : 'fake';
   const streakText = options.currentStreak && options.currentStreak > 1
@@ -18,7 +20,7 @@ export function buildRoundSharePayload(options: {
 
   return {
     title: `${APP_NAME} round result`,
-    text: `I ${resultText} ${options.birdName} as a ${authenticityText} bird in ${APP_NAME}.${streakText}${badgeText}`,
+    text: `I ${resultText} ${displayBirdName} as a ${authenticityText} bird in ${APP_NAME}.${streakText}${badgeText}`,
   };
 }
 
