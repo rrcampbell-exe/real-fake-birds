@@ -135,16 +135,19 @@ export default function BirdhousePage() {
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {entries.map((entry) => {
           const displayBirdName = formatBirdName(entry.birdName);
+          const imageUnlocked = entry.isReal || Boolean(entry.metadata.imageRevealed);
+          const visibleImageUrl = imageUnlocked ? entry.metadata.imageUrl ?? null : null;
+          const hasVisibleImage = visibleImageUrl !== null;
 
           return (
           <article
             key={entry.birdKey}
             className="group relative overflow-hidden rounded-[1.8rem] border border-[var(--color-surface-border)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]"
           >
-            {entry.isReal && entry.metadata.imageUrl ? (
+            {visibleImageUrl ? (
               <div className="relative aspect-[3/4]">
                 <Image
-                  src={entry.metadata.imageUrl}
+                  src={visibleImageUrl}
                   alt={displayBirdName}
                   fill
                   sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
@@ -172,22 +175,22 @@ export default function BirdhousePage() {
               />
             </div>
 
-            <div className={`absolute inset-x-0 bottom-0 p-5 ${entry.isReal && entry.metadata.imageUrl ? '' : 'static'}`}>
-              <div className={`rounded-[1.35rem] border border-white/10 p-4 ${entry.isReal && entry.metadata.imageUrl ? 'bg-black/35 backdrop-blur-sm' : 'bg-[var(--color-surface)]'}`}>
-                <p className={`text-[0.68rem] font-semibold uppercase tracking-[0.14em] ${entry.isReal && entry.metadata.imageUrl ? 'text-white/75' : 'text-[var(--color-muted)]'}`}>
+            <div className={`absolute inset-x-0 bottom-0 p-5 ${hasVisibleImage ? '' : 'static'}`}>
+              <div className={`rounded-[1.35rem] border border-white/10 p-4 ${hasVisibleImage ? 'bg-black/35 backdrop-blur-sm' : 'bg-[var(--color-surface)]'}`}>
+                <p className={`text-[0.68rem] font-semibold uppercase tracking-[0.14em] ${hasVisibleImage ? 'text-white/75' : 'text-[var(--color-muted)]'}`}>
                   {entry.isReal ? 'Real Bird' : 'Fake Bird'}
                 </p>
-                <h2 className={`mt-2 font-[family-name:var(--font-display)] text-2xl font-bold leading-tight ${entry.isReal && entry.metadata.imageUrl ? 'text-white' : 'text-[var(--color-text)]'}`}>
+                <h2 className={`mt-2 font-[family-name:var(--font-display)] text-2xl font-bold leading-tight ${hasVisibleImage ? 'text-white' : 'text-[var(--color-text)]'}`}>
                   {displayBirdName}
                 </h2>
-                <p className={`mt-2 text-sm leading-6 ${entry.isReal && entry.metadata.imageUrl ? 'text-white/78' : 'text-[var(--color-muted)]'}`}>
+                <p className={`mt-2 text-sm leading-6 ${hasVisibleImage ? 'text-white/78' : 'text-[var(--color-muted)]'}`}>
                   {entry.isReal
                     ? (entry.metadata.regionLabel ?? entry.metadata.sciName ?? 'A Birdhouse keeper from your collection.')
                     : 'Full notes live in the Journal.'}
                 </p>
                 <Link
                   href={`/journal?bird=${encodeURIComponent(entry.birdKey)}`}
-                  className={`mt-4 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${entry.isReal && entry.metadata.imageUrl ? 'border-white/18 bg-white/10 text-white hover:bg-white/18' : 'border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] text-[var(--color-text)] hover:bg-[var(--color-surface)]'}`}
+                  className={`mt-4 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${hasVisibleImage ? 'border-white/18 bg-white/10 text-white hover:bg-white/18' : 'border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] text-[var(--color-text)] hover:bg-[var(--color-surface)]'}`}
                 >
                   View in Journal
                 </Link>
