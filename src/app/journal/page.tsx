@@ -21,7 +21,6 @@ import { JOURNAL_FAKE_REVEAL_COST } from '@/lib/constants/hints';
 import { queueProgressEvent } from '@/lib/progress/progress-event-outbox';
 import { getTodayMissionDate } from '@/lib/utils/daily-mission-date';
 import {
-  CURRENT_ROUND_JOURNAL_BIRD_KEY,
   isBirdImageRevealed,
   readPendingJournalTargetKey,
   revealBirdImage,
@@ -109,7 +108,6 @@ export default function JournalPage() {
   } = useBirdJournal();
   const { isInBirdhouse } = useBirdhouse();
   const storedScore = useStoredJson<typeof defaultBirdScore | null>('birdScore', defaultBirdScore);
-  const currentRoundBirdKey = useStoredJson<string | null>(CURRENT_ROUND_JOURNAL_BIRD_KEY, null);
   const score = normalizeBirdScore(storedScore);
 
   const handleRevealFakeImage = (birdKey: string) => {

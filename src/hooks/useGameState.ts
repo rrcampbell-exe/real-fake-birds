@@ -422,7 +422,7 @@ export function useGameState(options?: UseGameStateOptions) {
       localStorage.removeItem(hintsKey);
       setHasAnswered(true);
     },
-    [articleUrl, attribution, birdData, birdDataKey, contentSource, currentJournalEntry, description, fact, hints, hintsKey, imageThumbUrl, imageUrl, isReal, isSignedIn, mode, options, regionLabel, scheduleProgressFlush, sciName, summary]
+    [articleUrl, attribution, birdData, birdDataKey, contentSource, currentJournalEntry, description, fact, fakeBirdImageRevealed, hints, hintsKey, imageThumbUrl, imageUrl, isReal, isSignedIn, mode, options, regionLabel, scheduleProgressFlush, sciName, summary]
   );
 
   const requestHint = useCallback(

@@ -213,12 +213,7 @@ export default function BirdCard({
   };
 
   const displayBirdName = formatBirdName(entry.birdName);
-
-  useEffect(() => {
-    if (imageUnlocked) {
-      setLockedBirdhouseToast(null);
-    }
-  }, [imageUnlocked]);
+  const showLockedBirdhouseToast = Boolean(lockedBirdhouseToast) && !imageUnlocked;
 
   const handleLockedBirdhousePress = () => {
     handleSetExpanded(true);
@@ -291,7 +286,7 @@ export default function BirdCard({
       )}
 
       <AnimatePresence initial={false}>
-        {lockedBirdhouseToast ? (
+        {showLockedBirdhouseToast ? (
           <div className="mt-3">
             <LockedBirdhouseNotice detail={lockedBirdhouseToast} />
           </div>
