@@ -37,7 +37,7 @@ function selectLocation(): SelectedLocation {
 }
 
 function isHintType(value: unknown): value is HintType {
-  return value === 'fact' || value === 'description' || value === 'image';
+  return value === 'fact' || value === 'image';
 }
 
 function isHintRequest(value: unknown): value is HintRequest {
@@ -104,10 +104,6 @@ function sleep(ms: number): Promise<void> {
 function getMinimumHintDelay(type: HintType): number {
   if (type === 'fact') {
     return Math.ceil(2000 + Math.random() * 1500);
-  }
-
-  if (type === 'description') {
-    return Math.ceil(2500 + Math.random() * 1500);
   }
 
   return Math.ceil(3500 + Math.random() * 2000);
@@ -257,15 +253,6 @@ async function resolveHintContent(request: HintRequest): Promise<string | null> 
       return openAiFact ?? buildStructuredRealBirdFact(request);
     }
 
-    if (request.type === 'description') {
-      const birdKey = slugifyBirdName(request.birdName);
-      if (isCdnEnabled() && hasCdnAssets(birdKey)) {
-        const cdnFact = await fetchCdnFact(birdKey, 'real');
-        return cdnFact?.description ?? null;
-      }
-      return null;
-    }
-
     return fetchWikipediaImage(request.birdName, request.sciName);
   }
 
@@ -278,11 +265,6 @@ async function resolveHintContent(request: HintRequest): Promise<string | null> 
   if (request.type === 'fact') {
     const cdnFact = await fetchCdnFact(birdKey, 'fake');
     return cdnFact?.fact ?? null;
-  }
-
-  if (request.type === 'description') {
-    const cdnFact = await fetchCdnFact(birdKey, 'fake');
-    return cdnFact?.description ?? null;
   }
 
   return getCdnImageUrl(birdKey, 'full', 'fake');

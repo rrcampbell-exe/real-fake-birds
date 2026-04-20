@@ -288,7 +288,7 @@ export default function BirdCard({
       <AnimatePresence initial={false}>
         {showLockedBirdhouseToast ? (
           <div className="mt-3">
-            <LockedBirdhouseNotice detail={lockedBirdhouseToast} />
+            <LockedBirdhouseNotice detail={lockedBirdhouseToast ?? ''} />
           </div>
         ) : null}
       </AnimatePresence>
