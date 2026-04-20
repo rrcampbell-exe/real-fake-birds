@@ -44,7 +44,12 @@ export function getCdnFactUrl(birdKey: string, birdType: CdnBirdType = 'real'): 
 
 const CDN_FACT_TIMEOUT_MS = 3000;
 
-export async function fetchCdnFact(birdKey: string, birdType: CdnBirdType = 'real'): Promise<CdnFact | null> {
+export interface CdnFactResult {
+  fact: CdnFact;
+  cacheStatus?: string;
+}
+
+export async function fetchCdnFact(birdKey: string, birdType: CdnBirdType = 'real'): Promise<CdnFactResult | null> {
   if (!getCdnBaseUrl()) {
     return null;
   }
@@ -62,7 +67,9 @@ export async function fetchCdnFact(birdKey: string, birdType: CdnBirdType = 'rea
       return null;
     }
 
-    return (await response.json()) as CdnFact;
+    const cacheStatus = response.headers.get('cf-cache-status') ?? undefined;
+    const fact = (await response.json()) as CdnFact;
+    return { fact, cacheStatus };
   } catch {
     return null;
   }

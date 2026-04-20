@@ -122,15 +122,15 @@ const fetchData = async (
     };
     localStorage.setItem(storageKey, JSON.stringify(birdData));
 
-    if (data.isReal) {
-      track('bird_content_loaded', {
-        source: data.factSource ?? 'none',
-        content_type: 'fact',
-        load_stage: 'api',
-        load_time_ms: requestDurationMs,
-        outcome: data.fact ? 'success' : 'failure',
-      });
-    }
+    track('bird_content_loaded', {
+      source: data.factSource ?? 'none',
+      content_type: 'fact',
+      load_stage: 'api',
+      load_time_ms: requestDurationMs,
+      outcome: data.fact ? 'success' : 'failure',
+      is_real: data.isReal,
+      cache_status: data.cacheStatus ?? 'none',
+    });
 
     setIsReal(data.isReal);
     setSciName(data.sciName ?? null);

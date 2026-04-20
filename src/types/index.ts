@@ -22,6 +22,7 @@ export interface BirdResponse {
   contentSource?: BirdContentSource;
   factSource?: BirdContentSource;
   attribution?: ImageAttribution;
+  cacheStatus?: string;
 }
 
 export interface BirdErrorResponse {
