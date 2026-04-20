@@ -155,7 +155,8 @@ async function fetchRealBird(): Promise<BirdApiResult> {
 
       // When CDN assets exist, use them as primary and keep Wikipedia as fallback.
       if (cdnEnabled) {
-        const cdnFact = await fetchCdnFact(birdKey, 'real');
+        const cdnResult = await fetchCdnFact(birdKey, 'real');
+        const cdnFact = cdnResult?.fact;
         const resolvedFactSource: BirdContentSource | undefined = cdnFact?.fact
           ? 'cdn'
           : factSource;
@@ -176,6 +177,7 @@ async function fetchRealBird(): Promise<BirdApiResult> {
           contentSource: 'cdn',
           factSource: resolvedFactSource,
           attribution: cdnFact?.attribution ?? wikipediaSummary?.attribution ?? undefined,
+          cacheStatus: cdnResult?.cacheStatus,
         };
       }
 
@@ -218,7 +220,8 @@ async function fetchFakeBird(): Promise<BirdApiResult | null> {
     return null;
   }
 
-  const cdnFact = await fetchCdnFact(selectedFakeBird.birdKey, 'fake');
+  const cdnResult = await fetchCdnFact(selectedFakeBird.birdKey, 'fake');
+  const cdnFact = cdnResult?.fact;
   if (!cdnFact?.fact || !cdnFact.summary || !cdnFact.description) {
     return null;
   }
@@ -233,6 +236,7 @@ async function fetchFakeBird(): Promise<BirdApiResult | null> {
     description: cdnFact.description,
     contentSource: 'cdn',
     factSource: 'cdn',
+    cacheStatus: cdnResult?.cacheStatus,
   };
 }
 
@@ -263,8 +267,8 @@ async function resolveHintContent(request: HintRequest): Promise<string | null> 
   const birdKey = slugifyBirdName(request.birdName);
 
   if (request.type === 'fact') {
-    const cdnFact = await fetchCdnFact(birdKey, 'fake');
-    return cdnFact?.fact ?? null;
+    const cdnResult = await fetchCdnFact(birdKey, 'fake');
+    return cdnResult?.fact?.fact ?? null;
   }
 
   return getCdnImageUrl(birdKey, 'full', 'fake');

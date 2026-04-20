@@ -68,9 +68,11 @@ describe('bird route', () => {
     vi.mocked(isCdnEnabled).mockReturnValue(true);
     vi.mocked(getRandomFakeBirdEntry).mockResolvedValue({ birdName: 'Blue Robin', birdKey: 'blue-robin' });
     vi.mocked(fetchCdnFact).mockResolvedValue({
-      fact: 'A fabricated but cached fact.',
-      summary: 'A fabricated but cached summary.',
-      description: 'A fabricated but cached description.',
+      fact: {
+        fact: 'A fabricated but cached fact.',
+        summary: 'A fabricated but cached summary.',
+        description: 'A fabricated but cached description.',
+      },
     });
 
     const response = await GET(new Request('http://localhost/api/bird') as never);
@@ -222,9 +224,11 @@ describe('bird route', () => {
     vi.spyOn(Date, 'now').mockReturnValueOnce(0).mockReturnValueOnce(5000);
     vi.mocked(isCdnEnabled).mockReturnValue(true);
     vi.mocked(fetchCdnFact).mockResolvedValue({
-      fact: 'A cached fake fact.',
-      summary: 'A cached fake summary.',
-      description: 'A cached fake description.',
+      fact: {
+        fact: 'A cached fake fact.',
+        summary: 'A cached fake summary.',
+        description: 'A cached fake description.',
+      },
     });
 
     const response = await POST(
@@ -318,9 +322,11 @@ describe('bird route', () => {
     vi.mocked(isCdnEnabled).mockReturnValue(true);
     vi.mocked(getRandomFakeBirdEntry).mockResolvedValue({ birdName: 'Blue Robin', birdKey: 'blue-robin' });
     vi.mocked(fetchCdnFact).mockResolvedValue({
-      fact: 'A fabricated but cached fact.',
-      summary: 'A fabricated but cached summary.',
-      description: 'A fabricated but cached description.',
+      fact: {
+        fact: 'A fabricated but cached fact.',
+        summary: 'A fabricated but cached summary.',
+        description: 'A fabricated but cached description.',
+      },
     });
 
     for (let index = 0; index < 60; index += 1) {
