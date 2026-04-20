@@ -21,12 +21,25 @@ The app presents a bird name and asks the player to guess whether it is real or 
 
 - Real birds are fetched from the eBird API through the server route at `src/app/api/bird/route.ts`
 - Fake birds are generated in `src/lib/server/name-generator.ts`
-- Score, seeds, streaks, earned badges, unlocked themes, unseen rewards, sound settings, and theme selection are stored in localStorage
-- Rewards and settings live in dedicated routes instead of the old menu page
+- Score, seeds, streaks, earned badges, unlocked themes, unseen rewards, sound settings, and theme selection are stored locally and can sync to an account when signed in
+- Rewards, settings, journal, birdhouse, leaderboard, and account flows live on dedicated routes
 
-## Current Real Bird Flow
+## Current Gameplay Loop
 
-The real-bird path is currently a hybrid of live APIs and CDN-backed content.
+Each round asks the player to classify a bird name as real or fake, then turns the result into progression and collection state.
+
+- Correct answers award seeds and contribute to streaks, badges, missions, and challenges
+- During a round, players can buy a `Field Note` hint for 10 seeds or a `Photo` hint for 40 seeds
+- Real birds can show image and fact content immediately after the round when media exists
+- Fake bird images stay hidden until the player unlocks them, either with the in-round photo hint or a post-round reveal
+- Revealed fake birds can be added to the Birdhouse; unrevealed fake birds keep the Birdhouse control locked with an inline explanation
+- The journal records encounters, accuracy, summaries, image unlocks, and revisit state for both real and fake birds
+
+## Current Bird Content Flow
+
+The app currently uses a hybrid content pipeline for both real and fake birds.
+
+### Real Birds
 
 1. The client requests `/api/bird` unless the current round is already cached in localStorage.
 2. The server calls eBird recent observations for a randomly selected location and chooses one bird from that response.
@@ -36,20 +49,32 @@ The real-bird path is currently a hybrid of live APIs and CDN-backed content.
 6. If the bird does not exist in the CDN manifest, the API returns Wikipedia-derived image and fact data only.
 7. The client preloads the primary image before reveal and tracks fact and image load analytics.
 
+### Fake Birds
+
+1. The server can source fake birds from the curated CDN-backed fake bird pipeline.
+2. Fake bird names, facts, summaries, and images are seeded offline rather than generated live in the browser.
+3. Fake bird images are available to the client, but the UI keeps them hidden until the player has unlocked them.
+4. Journal and Birdhouse behavior both respect the same permanent `imageRevealed` metadata.
+
 Important notes:
 
 - The runtime does not upload new real-bird data to R2. R2 is populated offline via `scripts/seed-cdn.ts` and `scripts/backfill-cdn-sciname.ts`.
-- Normal real-bird fetches are not rewritten by AI on the fly. OpenAI is currently used for offline seeding and for some hint-generation fallback paths, not for the standard real-bird GET flow.
+- Normal real-bird fetches are not rewritten by AI on the fly. OpenAI is currently used for offline seeding, fake-bird content generation, and some hint-generation fallback paths, not for the standard real-bird GET flow.
 - Today, real-bird selection still depends on eBird, and Wikipedia still acts as the non-CDN fallback source.
 
 ## Features
 
 - Responsive play experience with separate desktop and mobile navigation
+- Two-tier hint economy with `Field Note` and `Photo` hints
+- Answer-card and journal reveal flows for fake bird images, with permanent unlock persistence
+- Birdhouse collection gated by fake-bird image reveal state
+- Journal detail cards with encounter stats, saved notes, image unlocks, and collection actions
+- Optional account-backed progression sync on top of local-first play
 - Ten live visual themes with milestone and seed-based unlocks, plus additional themes marked coming soon
 - Streak tracking, seed rewards, milestone badges, and a trophy case tied to birds identified
 - Split sound controls for effects and music, including per-theme background music for live themes
 - Animated gameplay card transitions and celebration effects
-- Local persistence for progress and preferences
+- Local persistence for progress and preferences, with queued sync for signed-in players
 - Unit and component coverage for core gameplay and server-side helpers
 
 ## Testing
@@ -97,7 +122,7 @@ The app is structured for Next.js serverless deployment. Production runtime beha
 
 ## Supabase Setup
 
-Supabase is now the planned backing store for account auth and progression migration.
+Supabase powers account auth and progression sync for signed-in players. The game still works locally without an account, but signed-in sessions can merge and flush queued progress to the backend.
 
 - Create the schema by applying the SQL files in `supabase/migrations/`
 - Add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` to your environment
