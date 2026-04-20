@@ -21,6 +21,7 @@ import { defaultBirdScore, normalizeBirdScore } from '@/lib/utils/player-progres
 import { buildMilestoneSharePayload, buildRoundSharePayload } from '@/lib/utils/share-data';
 import type { HintState, ImageAttribution } from '@/types';
 import { FAKE_REVEAL_COST } from '@/lib/constants/hints';
+import { useFirstAppearance } from '@/hooks/useFirstAppearance';
 
 const FAKE_FIELD_NOTES = [
   'This bird was made up. We still love it, though!',
@@ -198,6 +199,7 @@ function FakeBirdRevealImage({
   seedsBalance: number;
 }) {
   const canReveal = Boolean(onReveal) && seedsBalance >= FAKE_REVEAL_COST;
+  const isFirst = useFirstAppearance('fake_reveal');
 
   return (
     <div className="min-w-0 w-full">
@@ -209,7 +211,7 @@ function FakeBirdRevealImage({
         disabled={!canReveal}
         className="group block w-full cursor-pointer disabled:pointer-events-none disabled:opacity-40"
       >
-        <div className="relative aspect-square overflow-hidden rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] transition-colors duration-150 group-hover:bg-[var(--color-surface)]">
+        <div className={`relative aspect-square overflow-hidden rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] transition-colors duration-150 group-hover:bg-[var(--color-surface)]${isFirst ? ' feature-unlock-glow' : ''}`}>
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,color-mix(in_srgb,var(--color-secondary)_12%,transparent),transparent_52%)]" />
           <div className="pointer-events-none absolute right-3 top-3 z-10">
             <span
@@ -357,10 +359,11 @@ export default function Answer({
   const currentImageKey = imageUrl ? `${journalBirdKey}:${imageUrl}` : null;
   const fakeImageUnlocked = !isReal && (fakeBirdImageRevealed || Boolean(hints.image));
   const fakeImageRevealedViaHint = !isReal && Boolean(hints.image) && !fakeBirdImageRevealed;
-  const shouldShowFakeReveal = !isReal && !fakeImageUnlocked && Boolean(revealFakeBirdImage);
+  const shouldShowFakeReveal = !isReal && !fakeImageUnlocked && Boolean(revealFakeBirdImage) && seedsBalance >= FAKE_REVEAL_COST;
   const isCurrentImageHidden = Boolean(currentImageKey) && hiddenImageKey === currentImageKey;
-  const showVisualSlot = (Boolean(imageUrl) || shouldShowFakeReveal) && !isCurrentImageHidden;
-  const hasImage = Boolean(imageUrl) && showVisualSlot && (isReal || fakeImageUnlocked);
+  const hasRevealableImage = Boolean(imageUrl) && (isReal || fakeImageUnlocked);
+  const showVisualSlot = (hasRevealableImage || shouldShowFakeReveal) && !isCurrentImageHidden;
+  const hasImage = hasRevealableImage && !isCurrentImageHidden;
   const handleLearnMore = useCallback((event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
     writePendingJournalTargetKey(journalBirdKey);
@@ -598,9 +601,9 @@ export default function Answer({
                   showLabel
                   onRequestSwap={setBirdhouseSwapTarget}
                 />
-              ) : (
+              ) : seedsBalance >= FAKE_REVEAL_COST ? (
                 <LockedBirdhouseButton onClick={handleLockedBirdhousePress} />
-              )}
+              ) : null}
             </motion.div>
           </div>
 
@@ -625,7 +628,6 @@ export default function Answer({
               </p>
               {regionLabel ? (
                 <p className="flex items-center gap-1.5 text-sm text-[var(--color-muted)]">
-                  <MapPin size={13} className="shrink-0" />
                   <span>Recently seen in {regionLabel}</span>
                 </p>
               ) : null}

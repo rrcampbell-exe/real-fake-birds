@@ -7,6 +7,7 @@ import BirdhouseToggleButton from '@/components/birdhouse/BirdhouseToggleButton'
 import SeedIcon from '@/components/icons/SeedIcon';
 import type { BirdJournalEntry, ImageAttribution } from '@/types';
 import { JOURNAL_FAKE_REVEAL_COST } from '@/lib/constants/hints';
+import { useFirstAppearance } from '@/hooks/useFirstAppearance';
 import { formatBirdName } from '@/lib/utils/format-bird-name';
 
 interface JournalBirdCardProps {
@@ -129,6 +130,7 @@ function HiddenFakeBirdRevealButton({
   canReveal: boolean;
   onReveal: () => void;
 }) {
+  const isFirst = useFirstAppearance('journal_fake_reveal');
   return (
     <button
       type="button"
@@ -138,7 +140,7 @@ function HiddenFakeBirdRevealButton({
       disabled={!canReveal}
       className="group block w-full cursor-pointer disabled:pointer-events-none disabled:opacity-40"
     >
-      <div className="relative aspect-[5/4] overflow-hidden rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] transition-colors duration-150 group-hover:bg-[var(--color-surface)]">
+      <div className={`relative aspect-[5/4] overflow-hidden rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] transition-colors duration-150 group-hover:bg-[var(--color-surface)]${isFirst ? ' feature-unlock-glow' : ''}`}>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,color-mix(in_srgb,var(--color-secondary)_12%,transparent),transparent_52%)]" />
         <div className="pointer-events-none absolute right-3 top-3 z-10">
           <span
@@ -302,7 +304,7 @@ export default function BirdCard({
               imageUrl={entry.metadata.imageUrl ?? entry.metadata.imageThumbUrl ?? ''}
               attribution={entry.metadata.attribution}
             />
-          ) : showFakeImageReveal ? (
+          ) : showFakeImageReveal && canAffordFakeImageReveal ? (
             <HiddenFakeBirdRevealButton
               canReveal={canAffordFakeImageReveal}
               onReveal={handleRevealFakeImage}

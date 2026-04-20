@@ -39,6 +39,32 @@
   --personal-best-pulse-opacity: 0.56;
 }
 
+@keyframes feature-unlock-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1.5px var(--color-secondary),
+      0 0 8px 2px color-mix(in srgb, var(--color-secondary) 28%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px var(--color-secondary),
+      0 0 16px 5px color-mix(in srgb, var(--color-secondary) 42%, transparent);
+  }
+}
+
+.feature-unlock-glow {
+  animation: feature-unlock-glow 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feature-unlock-glow {
+    animation: none;
+    box-shadow:
+      0 0 0 1.5px var(--color-secondary),
+      0 0 8px 2px color-mix(in srgb, var(--color-secondary) 28%, transparent);
+  }
+}
+
 button:not(:disabled) {
   cursor: pointer;
 }

@@ -8,6 +8,7 @@ import { AlertCircle, BookOpenText, ChevronDown, ImageIcon, LoaderCircle, Sparkl
 import { track } from '@/lib/analytics';
 import type { HintState, HintType } from '@/types';
 import { FACT_HINT_COST, IMAGE_HINT_COST } from '@/lib/constants/hints';
+import { useFirstAppearance } from '@/hooks/useFirstAppearance';
 import { formatNumber } from '@/lib/utils/number-format';
 import { formatBirdName } from '@/lib/utils/format-bird-name';
 
@@ -133,6 +134,7 @@ function FailedHintPreview({
 function HintOptionButton({
   cost,
   description,
+  featureKey,
   Icon,
   insufficientSeeds,
   loading,
@@ -142,6 +144,7 @@ function HintOptionButton({
 }: {
   cost: number;
   description: string;
+  featureKey?: string;
   Icon: typeof BookOpenText;
   insufficientSeeds: boolean;
   loading: boolean;
@@ -149,6 +152,7 @@ function HintOptionButton({
   requestLocked: boolean;
   title: string;
 }) {
+  const isFirst = useFirstAppearance(featureKey ?? '');
   const statusText = loading
     ? 'Fetching...'
     : requestLocked
@@ -165,7 +169,7 @@ function HintOptionButton({
       type="button"
       disabled={loading || insufficientSeeds || requestLocked}
       onClick={onRequest}
-      className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-4 text-left transition-all enabled:cursor-pointer enabled:hover:-translate-y-0.5 enabled:hover:border-[var(--color-secondary)] disabled:cursor-not-allowed"
+      className={`rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-4 text-left transition-all enabled:cursor-pointer enabled:hover:-translate-y-0.5 enabled:hover:border-[var(--color-secondary)] disabled:cursor-not-allowed${isFirst ? ' feature-unlock-glow' : ''}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1 pr-2">
@@ -203,6 +207,19 @@ export default function HintPanel({
 }: HintPanelProps) {
   const prefersReducedMotion = usePrefersReducedMotion();
   const [isManuallyExpanded, setIsManuallyExpanded] = useState<boolean | null>(null);
+
+  // Compute visibility conditions before calling hooks so the `enabled` flag is
+  // accurate from the very first render. This prevents the hook from writing to
+  // localStorage before the player can actually see the panel/option.
+  const hasAnyHintActivity = Boolean(
+    hints.fact || hints.image || hintLoading.fact || hintLoading.image || hintError,
+  );
+  // Glow 1: first time the hint panel itself becomes visible (seeds ≥ FACT_HINT_COST).
+  const panelIsFirst = useFirstAppearance('hint_panel', hasAnyHintActivity || seedsBalance >= FACT_HINT_COST);
+  // Glow 2: when photo hints first unlock (seeds ≥ IMAGE_HINT_COST), pulse the panel
+  // trigger button again so the player notices something new is available inside.
+  const panelPhotoFirst = useFirstAppearance('hint_panel_photo', seedsBalance >= IMAGE_HINT_COST);
+
   const hasPendingHintRequest = hintLoading.fact || hintLoading.image;
   const allHintsPurchased = Boolean(hints.fact) && Boolean(hints.image);
   const allHintsRequestedOrPurchased = (Boolean(hints.fact) || hintLoading.fact) && (Boolean(hints.image) || hintLoading.image);
@@ -211,6 +228,10 @@ export default function HintPanel({
     ?? autoExpanded;
 
   if ((allHintsPurchased || allHintsRequestedOrPurchased) && !hintError) {
+    return null;
+  }
+
+  if (!hasAnyHintActivity && seedsBalance < FACT_HINT_COST) {
     return null;
   }
 
@@ -225,7 +246,7 @@ export default function HintPanel({
           }
           setIsManuallyExpanded(!isExpanded);
         }}
-        className="flex w-full items-center justify-between rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-primary-light)] px-4 py-3 text-left transition-colors hover:bg-[var(--color-surface-hover)]"
+        className={`flex w-full items-center justify-between rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-primary-light)] px-4 py-3 text-left transition-colors hover:bg-[var(--color-surface-hover)]${!isExpanded && (panelIsFirst || panelPhotoFirst) ? ' feature-unlock-glow' : ''}`}
       >
         <span className="flex items-center gap-2 font-[family-name:var(--font-display)] text-sm font-semibold tracking-[0.02em]">
           <Sparkles size={16} />
@@ -246,7 +267,7 @@ export default function HintPanel({
             animate={{ opacity: 1, height: 'auto', y: 0 }}
             exit={{ opacity: 0, height: 0, y: -8 }}
             transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: [0.4, 0, 0.2, 1] }}
-            className="overflow-hidden"
+            className="[clip-path:inset(0_-24px_-24px_-24px)]"
           >
             <div className="mt-3 grid gap-3">
               {visibleHintOptions.map(({ type, title, description, cost, Icon }) => {
@@ -284,11 +305,17 @@ export default function HintPanel({
                   );
                 }
 
+                // Progressive disclosure: hide image option until player can afford it
+                if (type === 'image' && seedsBalance < IMAGE_HINT_COST) {
+                  return null;
+                }
+
                 return (
                   <HintOptionButton
                     key={type}
                     cost={cost}
                     description={description}
+                    featureKey={type === 'image' ? 'image_hint_option' : undefined}
                     Icon={Icon}
                     insufficientSeeds={insufficientSeeds}
                     loading={loading}
