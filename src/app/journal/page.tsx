@@ -27,6 +27,7 @@ import {
   writePendingJournalTargetKey,
 } from '@/lib/utils/bird-journal';
 import { applyJournalClassificationViewToSessionMissions, buildMissionRewardGrantEvents } from '@/lib/utils/missions';
+import { canLoadImage } from '@/lib/utils/image-availability';
 import { defaultBirdScore, normalizeBirdScore } from '@/lib/utils/player-progress';
 import { spendSeeds } from '@/lib/utils/seed-spend';
 
@@ -110,10 +111,27 @@ export default function JournalPage() {
   const storedScore = useStoredJson<typeof defaultBirdScore | null>('birdScore', defaultBirdScore);
   const score = normalizeBirdScore(storedScore);
 
-  const handleRevealFakeImage = (birdKey: string) => {
-    const entry = journal.find((journalEntry) => journalEntry.birdKey === birdKey);
+  const showJournalToast = (title: string, detail: string) => {
+    setJournalToastBatch({
+      id: Date.now(),
+      toasts: [{ id: 0, title, detail }],
+    });
+  };
 
-    if (!entry || entry.isReal || isBirdImageRevealed(entry) || score.seeds < JOURNAL_FAKE_REVEAL_COST || !spendSeeds(JOURNAL_FAKE_REVEAL_COST)) {
+  const handleRevealFakeImage = async (birdKey: string) => {
+    const entry = journal.find((journalEntry) => journalEntry.birdKey === birdKey);
+    const revealImageUrl = entry?.metadata.imageUrl ?? entry?.metadata.imageThumbUrl ?? '';
+
+    if (!entry || entry.isReal || isBirdImageRevealed(entry) || score.seeds < JOURNAL_FAKE_REVEAL_COST) {
+      return;
+    }
+
+    if (!revealImageUrl || !(await canLoadImage(revealImageUrl))) {
+      showJournalToast('Photo unavailable', 'That fake photo is unavailable right now, so no seeds were spent.');
+      return;
+    }
+
+    if (!spendSeeds(JOURNAL_FAKE_REVEAL_COST)) {
       return;
     }
 

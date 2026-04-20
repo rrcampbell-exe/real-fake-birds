@@ -185,6 +185,7 @@ export default function GameSection() {
     hintError,
     hintErrorType,
     hintLoading,
+    fakeImageNotice,
     seedsBalance,
     showQuestion,
     handleAnswer,
@@ -389,6 +390,7 @@ export default function GameSection() {
               onAction={handleAdvanceRound}
               revealFakeBirdImage={revealFakeBirdImage}
               fakeBirdImageRevealed={fakeBirdImageRevealed}
+              fakeImageNotice={fakeImageNotice}
               seedsBalance={seedsBalance}
             />
           }

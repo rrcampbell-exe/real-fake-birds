@@ -20,6 +20,7 @@ vi.mock('@/lib/server/cdn', () => ({
 
 vi.mock('@/lib/server/cdn-manifest', () => ({
   hasCdnAssets: vi.fn(),
+  hasFakeCdnAssets: vi.fn(),
 }));
 
 vi.mock('@/lib/server/utils/percent-of-time', () => ({
@@ -39,7 +40,7 @@ import { resetRateLimitStore } from '@/lib/server/rate-limiter';
 import { percentOfTime } from '@/lib/server/utils/percent-of-time';
 import { fetchWikipediaBirdSummary, fetchWikipediaFact, fetchWikipediaImage } from '@/lib/server/wikipedia';
 import { fetchCdnFact, getCdnImageUrl, isCdnEnabled } from '@/lib/server/cdn';
-import { hasCdnAssets } from '@/lib/server/cdn-manifest';
+import { hasCdnAssets, hasFakeCdnAssets } from '@/lib/server/cdn-manifest';
 import { GET, POST } from './route';
 
 describe('bird route', () => {
@@ -60,12 +61,14 @@ describe('bird route', () => {
       `https://cdn.example.com/birds/${birdType}/${birdKey}/${size === 'thumb' ? 'thumb.webp' : 'image.webp'}`
     ));
     vi.mocked(hasCdnAssets).mockReturnValue(false);
+    vi.mocked(hasFakeCdnAssets).mockReturnValue(true);
     resetRateLimitStore();
   });
 
   it('returns a CDN-backed fake bird when fake mode is selected', async () => {
     vi.mocked(percentOfTime).mockReturnValue(true);
     vi.mocked(isCdnEnabled).mockReturnValue(true);
+    vi.mocked(hasFakeCdnAssets).mockReturnValue(true);
     vi.mocked(getRandomFakeBirdEntry).mockResolvedValue({ birdName: 'Blue Robin', birdKey: 'blue-robin' });
     vi.mocked(fetchCdnFact).mockResolvedValue({
       fact: {
@@ -255,6 +258,7 @@ describe('bird route', () => {
   it('routes fake image requests through the CDN image URL', async () => {
     vi.spyOn(Date, 'now').mockReturnValueOnce(0).mockReturnValueOnce(7000);
     vi.mocked(isCdnEnabled).mockReturnValue(true);
+    vi.mocked(hasFakeCdnAssets).mockReturnValue(true);
 
     const response = await POST(
       new Request('http://localhost/api/bird', {
@@ -276,6 +280,29 @@ describe('bird route', () => {
       type: 'image',
       content: 'https://cdn.example.com/birds/fake/blue-ember-finch/image.webp',
     });
+  });
+
+  it('rejects fake image hints when the CDN manifest has no fake image asset', async () => {
+    vi.spyOn(Date, 'now').mockReturnValueOnce(0).mockReturnValueOnce(7000);
+    vi.mocked(isCdnEnabled).mockReturnValue(true);
+    vi.mocked(hasFakeCdnAssets).mockReturnValue(false);
+
+    const response = await POST(
+      new Request('http://localhost/api/bird', {
+        method: 'POST',
+        body: JSON.stringify({
+          birdName: 'Blue Ember Finch',
+          isReal: false,
+          type: 'image',
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }) as never
+    );
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({ error: 'hint_unavailable' });
   });
 
   it('returns an error when hint content is unavailable', async () => {

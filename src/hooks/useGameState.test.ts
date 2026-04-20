@@ -27,6 +27,10 @@ vi.mock('@/lib/utils/fetch-hint', () => ({
   default: vi.fn(),
 }));
 
+vi.mock('@/lib/utils/image-availability', () => ({
+  canLoadImage: vi.fn(),
+}));
+
 vi.mock('@/lib/utils/response-eval', () => ({
   default: vi.fn(),
 }));
@@ -46,6 +50,7 @@ vi.mock('@/lib/supabase/client', () => ({
 
 import fetchData from '@/lib/utils/fetch-data';
 import fetchHint from '@/lib/utils/fetch-hint';
+import { canLoadImage } from '@/lib/utils/image-availability';
 import responseEval from '@/lib/utils/response-eval';
 import { refundSeeds, spendSeeds } from '@/lib/utils/seed-spend';
 import { FACT_HINT_COST } from '@/lib/constants/hints';
@@ -126,6 +131,7 @@ describe('useGameState', () => {
       setRegionLabel('Algeria');
     });
 
+    vi.mocked(canLoadImage).mockResolvedValue(true);
     vi.mocked(spendSeeds).mockReturnValue(true);
   });
 
@@ -283,6 +289,116 @@ describe('useGameState', () => {
     expect(refundSeeds).toHaveBeenCalledWith(40);
     expect(result.current.hintError).toBe('Request failed. Your seeds were refunded.');
     expect(result.current.hintErrorType).toBe('image');
+  });
+
+  it('refunds seeds when a field note request fails', async () => {
+    vi.mocked(fetchHint).mockRejectedValue(new Error('hint_unavailable'));
+
+    const { result } = renderHook(() => useGameState());
+
+    await act(async () => {
+      await result.current.requestHint('fact');
+    });
+
+    expect(spendSeeds).toHaveBeenCalledWith(FACT_HINT_COST);
+    expect(refundSeeds).toHaveBeenCalledWith(FACT_HINT_COST);
+    expect(result.current.hintError).toBe('Request failed. Your seeds were refunded.');
+    expect(result.current.hintErrorType).toBe('fact');
+  });
+
+  it('refunds fake image hints when the CDN image cannot be loaded', async () => {
+    vi.mocked(fetchData).mockImplementation(
+      async (setIsReal, setIsLoading, setBirdData, setSciName, setRegionLabel) => {
+        setIsReal(false);
+        setIsLoading(false);
+        setBirdData('Blue Ember Finch');
+        setSciName(null);
+        setRegionLabel(null);
+      }
+    );
+    vi.mocked(fetchHint).mockResolvedValue({
+      type: 'image',
+      content: 'https://cdn.example.com/birds/fake/blue-ember-finch/image.webp',
+    });
+    vi.mocked(canLoadImage).mockResolvedValue(false);
+
+    const { result } = renderHook(() => useGameState());
+
+    await act(async () => {
+      await result.current.requestHint('image');
+    });
+
+    expect(refundSeeds).toHaveBeenCalledWith(40);
+    expect(result.current.hints.image).toBeNull();
+    expect(result.current.hintError).toBe('That photo hint is unavailable. Your seeds were refunded.');
+    expect(result.current.hintErrorType).toBe('image');
+  });
+
+  it('refunds real image hints when the image cannot be loaded', async () => {
+    vi.mocked(fetchHint).mockResolvedValue({
+      type: 'image',
+      content: 'https://images.example.com/blue-jay.jpg',
+    });
+    vi.mocked(canLoadImage).mockResolvedValue(false);
+
+    const { result } = renderHook(() => useGameState());
+
+    await act(async () => {
+      await result.current.requestHint('image');
+    });
+
+    expect(spendSeeds).toHaveBeenCalledWith(40);
+    expect(refundSeeds).toHaveBeenCalledWith(40);
+    expect(result.current.hints.image).toBeNull();
+    expect(result.current.hintError).toBe('That photo hint is unavailable. Your seeds were refunded.');
+    expect(result.current.hintErrorType).toBe('image');
+  });
+
+  it('does not spend seeds when a fake answer-card image is unavailable', async () => {
+    vi.mocked(fetchData).mockImplementation(
+      async (
+        setIsReal,
+        setIsLoading,
+        setBirdData,
+        setSciName,
+        setRegionLabel,
+        setFact,
+        setSummary,
+        setArticleUrl,
+        setImageUrl,
+      ) => {
+        setIsReal(false);
+        setIsLoading(false);
+        setBirdData('Blue Jay');
+        setSciName('Cyanocitta cristata');
+        setRegionLabel('Algeria');
+        setFact('A suspiciously convincing fake bird.');
+        setSummary('A fake bird with a missing reveal image.');
+        setArticleUrl(null);
+        setImageUrl('https://cdn.example.com/birds/fake/blue-jay/image.webp');
+      }
+    );
+    vi.mocked(canLoadImage).mockResolvedValue(false);
+
+    const { result } = renderHook(() => useGameState());
+    const event = {
+      preventDefault: vi.fn(),
+      currentTarget: { id: 'fake' },
+    } as unknown as React.MouseEvent<HTMLButtonElement>;
+
+    act(() => {
+      result.current.handleAnswer(event);
+    });
+
+    vi.mocked(spendSeeds).mockClear();
+
+    await act(async () => {
+      await result.current.revealFakeBirdImage();
+    });
+
+    expect(spendSeeds).not.toHaveBeenCalledWith(12);
+    expect(result.current.fakeBirdImageRevealed).toBe(false);
+    expect(result.current.fakeImageNotice).toBe('That fake photo is unavailable right now, so no seeds were spent.');
   });
 
   it('passes the purchased fact into later image requests', async () => {

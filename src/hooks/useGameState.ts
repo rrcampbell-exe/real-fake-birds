@@ -27,6 +27,7 @@ import { hasSupabaseEnv } from '@/lib/supabase/env';
 import { createProgressEventId, queueProgressEvent } from '@/lib/progress/progress-event-outbox';
 import fetchData from '@/lib/utils/fetch-data';
 import fetchHint from '@/lib/utils/fetch-hint';
+import { canLoadImage } from '@/lib/utils/image-availability';
 import responseEval from '@/lib/utils/response-eval';
 import { defaultBirdScore, BIRD_SCORE_STORAGE_KEY } from '@/lib/utils/player-progress';
 import { refundSeeds, spendSeeds } from '@/lib/utils/seed-spend';
@@ -108,6 +109,7 @@ export function useGameState(options?: UseGameStateOptions) {
   });
   const [fetchKey, setFetchKey] = useState(0);
   const [fakeBirdImageRevealed, setFakeBirdImageRevealed] = useState(false);
+  const [fakeImageNotice, setFakeImageNotice] = useState<string | null>(null);
   const [isSignedIn, setIsSignedIn] = useState(false);
   const flushTimeoutRef = useRef<number | null>(null);
   const birdScore = useStoredJson(BIRD_SCORE_STORAGE_KEY, defaultBirdScore);
@@ -150,6 +152,7 @@ export function useGameState(options?: UseGameStateOptions) {
     setHints(emptyHintState);
     setHintError(null);
     setHintErrorType(null);
+    setFakeImageNotice(null);
     setHintLoading({ fact: false, image: false });
     setFakeBirdImageRevealed(false);
     writeCurrentRoundJournalBirdKey(null);
@@ -466,6 +469,10 @@ export function useGameState(options?: UseGameStateOptions) {
           type === 'image' ? hints.fact?.content ?? undefined : undefined
         );
 
+        if (type === 'image' && !(await canLoadImage(hint.content))) {
+          throw new Error('hint_image_unavailable');
+        }
+
         setHints((current) => {
           const nextHints = {
             ...current,
@@ -482,10 +489,14 @@ export function useGameState(options?: UseGameStateOptions) {
           seeds_balance_after: birdScore.seeds - cost,
         });
         trackFirstPurchase(type === 'fact' ? 'hint_fact' : 'hint_image');
-      } catch {
+      } catch (error) {
         refundSeeds(cost);
         queueSeedRefund(cost);
-        setHintError('Request failed. Your seeds were refunded.');
+        setHintError(
+          error instanceof Error && error.message === 'hint_image_unavailable'
+            ? 'That photo hint is unavailable. Your seeds were refunded.'
+            : 'Request failed. Your seeds were refunded.'
+        );
         setHintErrorType(type);
       } finally {
         setHintLoading((current) => ({
@@ -497,8 +508,13 @@ export function useGameState(options?: UseGameStateOptions) {
     [birdData, birdScore.seeds, hasAnswered, hintLoading, hints, hintsKey, isError, isLoading, isReal, mode, queueSeedRefund, queueSeedSpend, regionLabel, sciName]
   );
 
-  const revealFakeBirdImage = useCallback(() => {
+  const revealFakeBirdImage = useCallback(async () => {
     if (!hasAnswered || isReal || !currentBirdKey || fakeBirdImageRevealed) {
+      return;
+    }
+
+    if (!imageUrl || !(await canLoadImage(imageUrl))) {
+      setFakeImageNotice('That fake photo is unavailable right now, so no seeds were spent.');
       return;
     }
 
@@ -506,6 +522,7 @@ export function useGameState(options?: UseGameStateOptions) {
       return;
     }
 
+    setFakeImageNotice(null);
     queueSeedSpend(FAKE_REVEAL_COST);
     setFakeBirdImageRevealed(true);
     revealBirdImage(currentBirdKey);
@@ -516,7 +533,7 @@ export function useGameState(options?: UseGameStateOptions) {
       source: 'answer_card',
     });
     trackFirstPurchase('fake_reveal');
-  }, [birdScore.seeds, currentBirdKey, fakeBirdImageRevealed, hasAnswered, isReal, queueSeedSpend]);
+  }, [birdScore.seeds, currentBirdKey, fakeBirdImageRevealed, hasAnswered, imageUrl, isReal, queueSeedSpend]);
 
   const tryAgain = useCallback(() => {
     resetRoundState();
@@ -555,6 +572,7 @@ export function useGameState(options?: UseGameStateOptions) {
     hintError,
     hintErrorType,
     hintLoading,
+    fakeImageNotice,
     seedsBalance: birdScore.seeds,
     showQuestion,
     handleAnswer,
