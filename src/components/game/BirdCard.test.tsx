@@ -1,24 +1,32 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import BirdCard from './BirdCard';
+
+const { playMock } = vi.hoisted(() => ({
+  playMock: vi.fn(),
+}));
 
 vi.mock('next/image', () => ({
   default: ({ alt, ...props }: React.ImgHTMLAttributes<HTMLImageElement>) => <img alt={alt ?? ''} {...props} />,
 }));
 
 vi.mock('@/hooks/useSound', () => ({
-  useSound: () => ({ play: vi.fn() }),
+  useSound: () => ({ play: playMock }),
 }));
 
 describe('BirdCard', () => {
+  beforeEach(() => {
+    playMock.mockReset();
+  });
+
   it('renders loading content in loading state', () => {
     render(
       <BirdCard
         birdName="Blue Robin"
         hintError={null}
         hintErrorType={null}
-        hintLoading={{ fact: false, description: false, image: false }}
-        hints={{ fact: null, description: null, image: null }}
+        hintLoading={{ fact: false, image: false }}
+        hints={{ fact: null, image: null }}
         onRequestHint={vi.fn()}
         state="loading"
         seedsBalance={0}
@@ -37,8 +45,8 @@ describe('BirdCard', () => {
         birdName="Blue Robin"
         hintError={null}
         hintErrorType={null}
-        hintLoading={{ fact: false, description: false, image: false }}
-        hints={{ fact: null, description: null, image: null }}
+        hintLoading={{ fact: false, image: false }}
+        hints={{ fact: null, image: null }}
         onRequestHint={vi.fn()}
         state="question"
         seedsBalance={100}
@@ -57,8 +65,8 @@ describe('BirdCard', () => {
         birdName="Blue Robin"
         hintError={null}
         hintErrorType={null}
-        hintLoading={{ fact: false, description: false, image: false }}
-        hints={{ fact: null, description: null, image: null }}
+        hintLoading={{ fact: false, image: false }}
+        hints={{ fact: null, image: null }}
         onRequestHint={vi.fn()}
         state="answer"
         seedsBalance={0}
@@ -70,16 +78,15 @@ describe('BirdCard', () => {
     expect(screen.getByText('Answer Screen')).toBeInTheDocument();
   });
 
-  it('moves the image hint into the main card surface and suppresses the description preview', () => {
+  it('moves the image hint into the main card surface and keeps the fact preview below the answer buttons', () => {
     render(
       <BirdCard
         birdName="Blue Robin"
         hintError={null}
         hintErrorType={null}
-        hintLoading={{ fact: false, description: false, image: false }}
+        hintLoading={{ fact: false, image: false }}
         hints={{
           fact: { type: 'fact', content: 'Bright blue feathers.' },
-          description: { type: 'description', content: 'A compact bird with a pale underside.' },
           image: { type: 'image', content: 'https://example.com/blue-robin.jpg' },
         }}
         onRequestHint={vi.fn()}
@@ -91,7 +98,6 @@ describe('BirdCard', () => {
 
     expect(screen.getByText('Blue Robin')).toBeInTheDocument();
     expect(screen.getByText('Bright blue feathers.')).toBeInTheDocument();
-    expect(screen.queryByText('A compact bird with a pale underside.')).not.toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Hint image for Blue Robin' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Real Bird' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Fake Bird' })).toBeInTheDocument();
@@ -103,8 +109,8 @@ describe('BirdCard', () => {
         birdName="Blue Robin"
         hintError={null}
         hintErrorType={null}
-        hintLoading={{ fact: false, description: false, image: true }}
-        hints={{ fact: null, description: null, image: null }}
+        hintLoading={{ fact: false, image: true }}
+        hints={{ fact: null, image: null }}
         onRequestHint={vi.fn()}
         state="question"
         seedsBalance={100}
@@ -113,7 +119,6 @@ describe('BirdCard', () => {
     );
 
     expect(screen.getByTestId('question-image-shimmer')).toBeInTheDocument();
-    expect(screen.queryByText('Physical Description')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Real Bird' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Fake Bird' })).toBeInTheDocument();
   });
@@ -124,10 +129,9 @@ describe('BirdCard', () => {
         birdName="Blue Robin"
         hintError={null}
         hintErrorType={null}
-        hintLoading={{ fact: false, description: false, image: false }}
+        hintLoading={{ fact: false, image: false }}
         hints={{
           fact: { type: 'fact', content: 'Bright blue feathers.' },
-          description: { type: 'description', content: 'A compact bird with a pale underside.' },
           image: null,
         }}
         onRequestHint={vi.fn()}
@@ -141,5 +145,85 @@ describe('BirdCard', () => {
     const factText = screen.getByText('Bright blue feathers.');
 
     expect(realButton.compareDocumentPosition(factText) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('plays the field note loading motif and resolve chime when a fact hint arrives', () => {
+    vi.useFakeTimers();
+
+    const { rerender } = render(
+      <BirdCard
+        birdName="Blue Robin"
+        hintError={null}
+        hintErrorType={null}
+        hintLoading={{ fact: true, image: false }}
+        hints={{ fact: null, image: null }}
+        onRequestHint={vi.fn()}
+        state="question"
+        seedsBalance={100}
+        onAnswer={vi.fn()}
+      />
+    );
+
+    expect(playMock).toHaveBeenCalledWith('hintFieldLoading');
+
+    vi.advanceTimersByTime(520);
+
+    expect(playMock.mock.calls.filter(([sound]) => sound === 'hintFieldLoading')).toHaveLength(2);
+
+    rerender(
+      <BirdCard
+        birdName="Blue Robin"
+        hintError={null}
+        hintErrorType={null}
+        hintLoading={{ fact: false, image: false }}
+        hints={{ fact: { type: 'fact', content: 'Bright blue feathers.' }, image: null }}
+        onRequestHint={vi.fn()}
+        state="question"
+        seedsBalance={100}
+        onAnswer={vi.fn()}
+      />
+    );
+
+    expect(playMock).toHaveBeenCalledWith('hintReveal');
+  });
+
+  it('waits for the image to load before playing the hint reveal chime', () => {
+    vi.useFakeTimers();
+
+    const { rerender } = render(
+      <BirdCard
+        birdName="Blue Robin"
+        hintError={null}
+        hintErrorType={null}
+        hintLoading={{ fact: false, image: true }}
+        hints={{ fact: null, image: null }}
+        onRequestHint={vi.fn()}
+        state="question"
+        seedsBalance={100}
+        onAnswer={vi.fn()}
+      />
+    );
+
+    expect(playMock).toHaveBeenCalledWith('hintImageLoading');
+
+    rerender(
+      <BirdCard
+        birdName="Blue Robin"
+        hintError={null}
+        hintErrorType={null}
+        hintLoading={{ fact: false, image: false }}
+        hints={{ fact: null, image: { type: 'image', content: 'https://example.com/blue-robin.jpg' } }}
+        onRequestHint={vi.fn()}
+        state="question"
+        seedsBalance={100}
+        onAnswer={vi.fn()}
+      />
+    );
+
+    expect(playMock).not.toHaveBeenCalledWith('hintReveal');
+
+    fireEvent.load(screen.getByRole('img', { name: 'Hint image for Blue Robin' }));
+
+    expect(playMock).toHaveBeenCalledWith('hintReveal');
   });
 });

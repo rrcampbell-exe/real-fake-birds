@@ -29,6 +29,9 @@ const SOUND_DEFS: Record<SoundKey, SoundDef> = {
   whoosh: { type: 'synth', synthFn: synthWhoosh },
   navTap: { type: 'synth', synthFn: synthNavTap },
   themeChange: { type: 'synth', synthFn: synthThemeChange },
+  hintFieldLoading: { type: 'synth', synthFn: synthHintFieldLoading },
+  hintImageLoading: { type: 'synth', synthFn: synthHintImageLoading },
+  hintReveal: { type: 'synth', synthFn: synthHintReveal },
   loadingLoop: { type: 'file', url: '/sounds/fx/loading.mp3' },
 };
 
@@ -99,6 +102,62 @@ function synthThemeChange(ctx: AudioContext, dest: AudioNode) {
     osc.connect(gain).connect(dest);
     osc.start(now + i * 0.1);
     osc.stop(now + i * 0.1 + 0.2);
+  });
+}
+
+function synthHintFieldLoading(ctx: AudioContext, dest: AudioNode) {
+  const now = ctx.currentTime;
+
+  [1320, 1180].forEach((freq, index) => {
+    const start = now + index * 0.18;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(freq, start);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.86, start + 0.06);
+    gain.gain.setValueAtTime(0.001, start);
+    gain.gain.linearRampToValueAtTime(0.045, start + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.09);
+    osc.connect(gain).connect(dest);
+    osc.start(start);
+    osc.stop(start + 0.1);
+  });
+}
+
+function synthHintImageLoading(ctx: AudioContext, dest: AudioNode) {
+  const now = ctx.currentTime;
+
+  [698.46, 880, 1046.5].forEach((freq, index) => {
+    const start = now + index * 0.08;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, start);
+    osc.frequency.linearRampToValueAtTime(freq * 1.08, start + 0.14);
+    gain.gain.setValueAtTime(0.001, start);
+    gain.gain.linearRampToValueAtTime(0.035, start + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.26);
+    osc.connect(gain).connect(dest);
+    osc.start(start);
+    osc.stop(start + 0.28);
+  });
+}
+
+function synthHintReveal(ctx: AudioContext, dest: AudioNode) {
+  const now = ctx.currentTime;
+
+  [659.25, 830.61].forEach((freq, index) => {
+    const start = now + index * 0.07;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, start);
+    gain.gain.setValueAtTime(0.001, start);
+    gain.gain.linearRampToValueAtTime(0.12, start + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.22);
+    osc.connect(gain).connect(dest);
+    osc.start(start);
+    osc.stop(start + 0.24);
   });
 }
 

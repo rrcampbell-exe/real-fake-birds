@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import type { HintState, HintType } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,18 +9,27 @@ import { useSound } from '@/hooks/useSound';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { formatBirdName } from '@/lib/utils/format-bird-name';
 
+const FIELD_HINT_LOADING_INTERVAL_MS = 520;
+const IMAGE_HINT_LOADING_INTERVAL_MS = 900;
+
 function QuestionImageHintSurface({
   birdName,
   imageUrl,
   loading,
+  onImageReady,
 }: {
   birdName: string;
   imageUrl: string | null;
   loading: boolean;
+  onImageReady?: () => void;
 }) {
   const displayBirdName = formatBirdName(birdName);
   const [imageStatus, setImageStatus] = useState<'idle' | 'loaded'>('idle');
   const showShimmer = loading || (Boolean(imageUrl) && imageStatus !== 'loaded');
+
+  useEffect(() => {
+    setImageStatus('idle');
+  }, [imageUrl]);
 
   return (
     <div className="w-full space-y-3">
@@ -40,7 +49,10 @@ function QuestionImageHintSurface({
             width={800}
             height={800}
             className={`block h-full w-full object-cover transition-opacity duration-200 ${imageStatus === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
-            onLoad={() => setImageStatus('loaded')}
+            onLoad={() => {
+              setImageStatus('loaded');
+              onImageReady?.();
+            }}
           />
         ) : null}
       </div>
@@ -111,6 +123,9 @@ export default function BirdCard({
   const { play } = useSound();
   const prefersReducedMotion = usePrefersReducedMotion();
   const displayBirdName = formatBirdName(birdName);
+  const [factRevealPending, setFactRevealPending] = useState(false);
+  const [imageRevealPending, setImageRevealPending] = useState(false);
+  const [imageHintLoaded, setImageHintLoaded] = useState(false);
   const hasHintPreview = Boolean(
     hints.fact
     || hints.image
@@ -128,6 +143,78 @@ export default function BirdCard({
   if (hasFactHintPreview) {
     externalizedHintTypes.push('fact');
   }
+
+  useEffect(() => {
+    if (!hintLoading.fact) {
+      return;
+    }
+
+    setFactRevealPending(true);
+    play('hintFieldLoading');
+
+    const timerId = window.setInterval(() => {
+      play('hintFieldLoading');
+    }, FIELD_HINT_LOADING_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, [hintLoading.fact, play]);
+
+  useEffect(() => {
+    if (hintLoading.image) {
+      setImageRevealPending(true);
+      setImageHintLoaded(false);
+    }
+  }, [hintLoading.image]);
+
+  useEffect(() => {
+    if (hintErrorType === 'fact' && hintError) {
+      setFactRevealPending(false);
+    }
+
+    if (hintErrorType === 'image' && hintError) {
+      setImageRevealPending(false);
+      setImageHintLoaded(false);
+    }
+  }, [hintError, hintErrorType]);
+
+  useEffect(() => {
+    if (!factRevealPending || hintLoading.fact || !hints.fact) {
+      return;
+    }
+
+    play('hintReveal');
+    setFactRevealPending(false);
+  }, [factRevealPending, hintLoading.fact, hints.fact, play]);
+
+  useEffect(() => {
+    const shouldPlayImageLoading = hintLoading.image || (imageRevealPending && Boolean(hints.image?.content) && !imageHintLoaded);
+    if (!shouldPlayImageLoading) {
+      return;
+    }
+
+    play('hintImageLoading');
+
+    const timerId = window.setInterval(() => {
+      play('hintImageLoading');
+    }, IMAGE_HINT_LOADING_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, [hintLoading.image, hints.image?.content, imageHintLoaded, imageRevealPending, play]);
+
+  const handleImageHintReady = () => {
+    setImageHintLoaded(true);
+
+    if (!imageRevealPending) {
+      return;
+    }
+
+    play('hintReveal');
+    setImageRevealPending(false);
+  };
 
   const handleAnswer = (e: React.MouseEvent<HTMLButtonElement>) => {
     play('tap');
@@ -174,6 +261,7 @@ export default function BirdCard({
                     birdName={birdName}
                     imageUrl={hints.image?.content ?? null}
                     loading={hintLoading.image}
+                    onImageReady={handleImageHintReady}
                   />
                 ) : (
                   <h2 className="font-[family-name:var(--font-display)] text-3xl font-bold text-center leading-tight md:text-4xl">
