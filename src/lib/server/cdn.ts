@@ -1,5 +1,6 @@
 import type { ImageAttribution } from '@/types';
-import { slugifyBirdName } from '@/lib/utils/slugify';
+
+export type CdnBirdType = 'real' | 'fake';
 
 export interface CdnFact {
   fact?: string;
@@ -18,34 +19,42 @@ export function isCdnEnabled(): boolean {
   return Boolean(getCdnBaseUrl());
 }
 
-export function getCdnImageUrl(birdKey: string, size: 'full' | 'thumb' = 'full'): string {
+export function getCdnImageUrl(
+  birdKey: string,
+  size: 'full' | 'thumb' = 'full',
+  birdType: CdnBirdType = 'real'
+): string {
   const baseUrl = getCdnBaseUrl();
   if (!baseUrl) {
     throw new Error('CDN_BASE_URL is not configured');
   }
 
   const filename = size === 'thumb' ? 'thumb.webp' : 'image.webp';
-  return `${baseUrl}/birds/real/${birdKey}/${filename}`;
+  return `${baseUrl}/birds/${birdType}/${birdKey}/${filename}`;
 }
 
-export function getCdnFactUrl(birdKey: string): string {
+export function getCdnFactUrl(birdKey: string, birdType: CdnBirdType = 'real'): string {
   const baseUrl = getCdnBaseUrl();
   if (!baseUrl) {
     throw new Error('CDN_BASE_URL is not configured');
   }
 
-  return `${baseUrl}/birds/real/${birdKey}/fact.json`;
+  return `${baseUrl}/birds/${birdType}/${birdKey}/fact.json`;
 }
 
 const CDN_FACT_TIMEOUT_MS = 3000;
 
-export async function fetchCdnFact(birdName: string): Promise<CdnFact | null> {
+export interface CdnFactResult {
+  fact: CdnFact;
+  cacheStatus?: string;
+}
+
+export async function fetchCdnFact(birdKey: string, birdType: CdnBirdType = 'real'): Promise<CdnFactResult | null> {
   if (!getCdnBaseUrl()) {
     return null;
   }
 
-  const birdKey = slugifyBirdName(birdName);
-  const url = getCdnFactUrl(birdKey);
+  const url = getCdnFactUrl(birdKey, birdType);
 
   try {
     const controller = new AbortController();
@@ -58,7 +67,9 @@ export async function fetchCdnFact(birdName: string): Promise<CdnFact | null> {
       return null;
     }
 
-    return (await response.json()) as CdnFact;
+    const cacheStatus = response.headers.get('cf-cache-status') ?? undefined;
+    const fact = (await response.json()) as CdnFact;
+    return { fact, cacheStatus };
   } catch {
     return null;
   }

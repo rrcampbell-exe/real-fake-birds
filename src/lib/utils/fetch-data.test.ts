@@ -131,7 +131,17 @@ describe('fetchData', () => {
     expect(setIsLoading).toHaveBeenCalledWith(false);
     expect(setBirdData).toHaveBeenCalledWith('Copper Heron');
     expect(setIsError).not.toHaveBeenCalled();
-    expect(trackMock).not.toHaveBeenCalled();
+    expect(trackMock).toHaveBeenCalledWith(
+      'bird_content_loaded',
+      expect.objectContaining({
+        source: 'none',
+        content_type: 'fact',
+        load_stage: 'api',
+        outcome: 'success',
+        is_real: false,
+        cache_status: 'none',
+      })
+    );
   });
 
   it('tracks a successful fact load for real birds separately from image loading', async () => {

@@ -22,6 +22,7 @@ export interface BirdResponse {
   contentSource?: BirdContentSource;
   factSource?: BirdContentSource;
   attribution?: ImageAttribution;
+  cacheStatus?: string;
 }
 
 export interface BirdErrorResponse {
@@ -43,6 +44,7 @@ export interface BirdJournalMetadata {
   contentSource?: string;
   attribution?: ImageAttribution;
   classificationRevealed?: boolean;
+  imageRevealed?: boolean;
 }
 
 export interface BirdJournalEntry {

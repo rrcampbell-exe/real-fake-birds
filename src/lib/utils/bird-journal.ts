@@ -4,7 +4,6 @@ import type { BirdJournalEntry, BirdJournalMetadata, BirdJournalStore } from '@/
 export const BIRD_JOURNAL_STORAGE_KEY = 'birdJournal';
 export const BIRD_JOURNAL_DIRTY_KEYS_STORAGE_KEY = 'birdJournalDirtyKeys';
 export const CURRENT_ROUND_JOURNAL_BIRD_KEY = 'currentRoundJournalBirdKey';
-export const CURRENT_ROUND_JOURNAL_REVEAL_KEY = 'currentRoundJournalRevealKey';
 export const PENDING_JOURNAL_TARGET_KEY = 'pendingJournalTargetKey';
 
 const defaultBirdJournal: BirdJournalStore = {};
@@ -38,6 +37,9 @@ function normalizeMetadata(metadata: BirdJournalMetadata | null | undefined): Bi
       : undefined,
     classificationRevealed: typeof metadata.classificationRevealed === 'boolean'
       ? metadata.classificationRevealed
+      : undefined,
+    imageRevealed: typeof metadata.imageRevealed === 'boolean'
+      ? metadata.imageRevealed
       : undefined,
   };
 }
@@ -195,14 +197,6 @@ export function writeCurrentRoundJournalBirdKey(birdKey: string | null): void {
   writeStoredStringValue(CURRENT_ROUND_JOURNAL_BIRD_KEY, birdKey);
 }
 
-export function readCurrentRoundJournalRevealKey(): string | null {
-  return readStoredStringValue(CURRENT_ROUND_JOURNAL_REVEAL_KEY);
-}
-
-export function writeCurrentRoundJournalRevealKey(birdKey: string | null): void {
-  writeStoredStringValue(CURRENT_ROUND_JOURNAL_REVEAL_KEY, birdKey);
-}
-
 export function readPendingJournalTargetKey(): string | null {
   return readStoredStringValue(PENDING_JOURNAL_TARGET_KEY);
 }
@@ -241,17 +235,8 @@ export function getDirtyBirdJournalEntries(): BirdJournalEntry[] {
     .filter((entry): entry is BirdJournalEntry => Boolean(entry));
 }
 
-export function isJournalEntryMaskedForCurrentRound(options: {
-  entry: Pick<BirdJournalEntry, 'birdKey'>;
-  currentRoundBirdKey: string | null;
-  currentRoundRevealKey: string | null;
-}): boolean {
-  return options.entry.birdKey === options.currentRoundBirdKey
-    && options.currentRoundRevealKey !== options.currentRoundBirdKey;
-}
-
-export function isBirdClassificationRevealed(entry: Pick<BirdJournalEntry, 'metadata'> | null | undefined): boolean {
-  return Boolean(entry?.metadata.classificationRevealed);
+export function isBirdImageRevealed(entry: Pick<BirdJournalEntry, 'metadata'> | null | undefined): boolean {
+  return Boolean(entry?.metadata.imageRevealed);
 }
 
 export function recordBirdEncounter(options: {
@@ -273,7 +258,7 @@ export function recordBirdEncounter(options: {
     lastSeenAt: new Date().toISOString(),
     metadata: normalizeMetadata({
       ...existingEntry?.metadata,
-      classificationRevealed: isBirdClassificationRevealed(existingEntry),
+      imageRevealed: isBirdImageRevealed(existingEntry),
       ...options.metadata,
     }),
   };
@@ -287,7 +272,7 @@ export function recordBirdEncounter(options: {
   return nextEntry;
 }
 
-export function revealBirdClassification(birdKey: string): BirdJournalEntry | null {
+export function revealBirdImage(birdKey: string): BirdJournalEntry | null {
   const journal = readBirdJournal();
   const entry = journal[birdKey];
 
@@ -299,7 +284,7 @@ export function revealBirdClassification(birdKey: string): BirdJournalEntry | nu
     ...entry,
     metadata: normalizeMetadata({
       ...entry.metadata,
-      classificationRevealed: true,
+      imageRevealed: true,
     }),
   };
 
@@ -330,7 +315,7 @@ export function mergeBirdJournalStores(localJournal: BirdJournalStore, remoteJou
         : remoteEntry.lastSeenAt,
       metadata: normalizeMetadata({
         ...(useLocalMetadata ? localEntry?.metadata : remoteEntry.metadata),
-        classificationRevealed: isBirdClassificationRevealed(localEntry) || isBirdClassificationRevealed(remoteEntry),
+        imageRevealed: isBirdImageRevealed(localEntry) || isBirdImageRevealed(remoteEntry),
       }),
     };
   }

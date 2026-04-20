@@ -197,4 +197,25 @@ describe('BirdhouseToggleButton', () => {
     );
     expect(screen.getByRole('button')).toBeInTheDocument();
   });
+
+  it('calls onLockedClick instead of toggling birdhouse when locked', () => {
+    const onLockedClick = vi.fn();
+    const { add, remove } = vi.mocked(useBirdhouse)();
+
+    render(
+      <BirdhouseToggleButton
+        birdKey="real:jay"
+        birdName="Blue Jay"
+        isReal={true}
+        isLocked
+        onLockedClick={onLockedClick}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button'));
+
+    expect(onLockedClick).toHaveBeenCalledTimes(1);
+    expect(add).not.toHaveBeenCalled();
+    expect(remove).not.toHaveBeenCalled();
+  });
 });

@@ -4,10 +4,22 @@ vi.mock('@/lib/server/name-generator', () => ({
   nameGenerator: vi.fn(),
 }));
 
+vi.mock('@/lib/server/fake-birds', () => ({
+  getRandomFakeBirdEntry: vi.fn(),
+}));
+
 vi.mock('@/lib/server/openai', () => ({
-  generateFakeFact: vi.fn(),
-  generateFakeImage: vi.fn(),
   generateRealBirdFact: vi.fn(),
+}));
+
+vi.mock('@/lib/server/cdn', () => ({
+  isCdnEnabled: vi.fn(),
+  getCdnImageUrl: vi.fn(),
+  fetchCdnFact: vi.fn(),
+}));
+
+vi.mock('@/lib/server/cdn-manifest', () => ({
+  hasCdnAssets: vi.fn(),
 }));
 
 vi.mock('@/lib/server/utils/percent-of-time', () => ({
@@ -21,10 +33,13 @@ vi.mock('@/lib/server/wikipedia', () => ({
 }));
 
 import { nameGenerator } from '@/lib/server/name-generator';
-import { generateFakeImage, generateRealBirdFact } from '@/lib/server/openai';
+import { getRandomFakeBirdEntry } from '@/lib/server/fake-birds';
+import { generateRealBirdFact } from '@/lib/server/openai';
 import { resetRateLimitStore } from '@/lib/server/rate-limiter';
 import { percentOfTime } from '@/lib/server/utils/percent-of-time';
 import { fetchWikipediaBirdSummary, fetchWikipediaFact, fetchWikipediaImage } from '@/lib/server/wikipedia';
+import { fetchCdnFact, getCdnImageUrl, isCdnEnabled } from '@/lib/server/cdn';
+import { hasCdnAssets } from '@/lib/server/cdn-manifest';
 import { GET, POST } from './route';
 
 describe('bird route', () => {
@@ -33,22 +48,46 @@ describe('bird route', () => {
     vi.unstubAllGlobals();
     vi.stubEnv('CDN_BASE_URL', '');
     vi.mocked(nameGenerator).mockReset();
-    vi.mocked(generateFakeImage).mockReset();
+    vi.mocked(getRandomFakeBirdEntry).mockReset();
     vi.mocked(generateRealBirdFact).mockReset();
     vi.mocked(percentOfTime).mockReset();
     vi.mocked(fetchWikipediaBirdSummary).mockReset();
     vi.mocked(fetchWikipediaFact).mockReset();
     vi.mocked(fetchWikipediaImage).mockReset();
+    vi.mocked(isCdnEnabled).mockReturnValue(false);
+    vi.mocked(fetchCdnFact).mockResolvedValue(null);
+    vi.mocked(getCdnImageUrl).mockImplementation((birdKey, size = 'full', birdType = 'real') => (
+      `https://cdn.example.com/birds/${birdType}/${birdKey}/${size === 'thumb' ? 'thumb.webp' : 'image.webp'}`
+    ));
+    vi.mocked(hasCdnAssets).mockReturnValue(false);
     resetRateLimitStore();
   });
 
-  it('returns a fake bird immediately when fake mode is selected', async () => {
+  it('returns a CDN-backed fake bird when fake mode is selected', async () => {
     vi.mocked(percentOfTime).mockReturnValue(true);
-    vi.mocked(nameGenerator).mockResolvedValue({ birdName: 'Blue Robin', isReal: false });
+    vi.mocked(isCdnEnabled).mockReturnValue(true);
+    vi.mocked(getRandomFakeBirdEntry).mockResolvedValue({ birdName: 'Blue Robin', birdKey: 'blue-robin' });
+    vi.mocked(fetchCdnFact).mockResolvedValue({
+      fact: {
+        fact: 'A fabricated but cached fact.',
+        summary: 'A fabricated but cached summary.',
+        description: 'A fabricated but cached description.',
+      },
+    });
 
     const response = await GET(new Request('http://localhost/api/bird') as never);
 
-    await expect(response.json()).resolves.toEqual({ birdName: 'Blue Robin', isReal: false });
+    await expect(response.json()).resolves.toEqual({
+      birdName: 'Blue Robin',
+      isReal: false,
+      fact: 'A fabricated but cached fact.',
+      summary: 'A fabricated but cached summary.',
+      imageUrl: 'https://cdn.example.com/birds/fake/blue-robin/image.webp',
+      imageThumbUrl: 'https://cdn.example.com/birds/fake/blue-robin/thumb.webp',
+      description: 'A fabricated but cached description.',
+      contentSource: 'cdn',
+      factSource: 'cdn',
+    });
   });
 
   it('returns a real bird with sciName from eBird data', async () => {
@@ -181,9 +220,41 @@ describe('bird route', () => {
     });
   });
 
-  it('routes fake image requests through the image generator', async () => {
+  it('routes fake fact requests through the CDN fact payload', async () => {
+    vi.spyOn(Date, 'now').mockReturnValueOnce(0).mockReturnValueOnce(5000);
+    vi.mocked(isCdnEnabled).mockReturnValue(true);
+    vi.mocked(fetchCdnFact).mockResolvedValue({
+      fact: {
+        fact: 'A cached fake fact.',
+        summary: 'A cached fake summary.',
+        description: 'A cached fake description.',
+      },
+    });
+
+    const response = await POST(
+      new Request('http://localhost/api/bird', {
+        method: 'POST',
+        body: JSON.stringify({
+          birdName: 'Blue Ember Finch',
+          isReal: false,
+          type: 'fact',
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }) as never
+    );
+
+    expect(fetchCdnFact).toHaveBeenCalledWith('blue-ember-finch', 'fake');
+    await expect(response.json()).resolves.toEqual({
+      type: 'fact',
+      content: 'A cached fake fact.',
+    });
+  });
+
+  it('routes fake image requests through the CDN image URL', async () => {
     vi.spyOn(Date, 'now').mockReturnValueOnce(0).mockReturnValueOnce(7000);
-    vi.mocked(generateFakeImage).mockResolvedValue('https://images.example.com/fake.png');
+    vi.mocked(isCdnEnabled).mockReturnValue(true);
 
     const response = await POST(
       new Request('http://localhost/api/bird', {
@@ -200,13 +271,10 @@ describe('bird route', () => {
       }) as never
     );
 
-    expect(generateFakeImage).toHaveBeenCalledWith(
-      'Blue Ember Finch',
-      'Its chest is striped amber and its tail feathers flare like coals.'
-    );
+    expect(getCdnImageUrl).toHaveBeenCalledWith('blue-ember-finch', 'full', 'fake');
     await expect(response.json()).resolves.toEqual({
       type: 'image',
-      content: 'https://images.example.com/fake.png',
+      content: 'https://cdn.example.com/birds/fake/blue-ember-finch/image.webp',
     });
   });
 
@@ -251,7 +319,15 @@ describe('bird route', () => {
 
   it('returns 429 when the GET rate limit is exceeded', async () => {
     vi.mocked(percentOfTime).mockReturnValue(true);
-    vi.mocked(nameGenerator).mockResolvedValue({ birdName: 'Blue Robin', isReal: false });
+    vi.mocked(isCdnEnabled).mockReturnValue(true);
+    vi.mocked(getRandomFakeBirdEntry).mockResolvedValue({ birdName: 'Blue Robin', birdKey: 'blue-robin' });
+    vi.mocked(fetchCdnFact).mockResolvedValue({
+      fact: {
+        fact: 'A fabricated but cached fact.',
+        summary: 'A fabricated but cached summary.',
+        description: 'A fabricated but cached description.',
+      },
+    });
 
     for (let index = 0; index < 60; index += 1) {
       const response = await GET(

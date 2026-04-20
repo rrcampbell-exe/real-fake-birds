@@ -114,4 +114,17 @@ describe('buildRoundSharePayload – additional branches', () => {
     });
     expect(payload.text).not.toContain('streak');
   });
+
+  it('strips parentheticals from bird names in share copy', () => {
+    const payload = buildRoundSharePayload({
+      birdName: 'Virgin Islands (U.S.) Oracle Grouse',
+      isReal: false,
+      isCorrect: true,
+      currentStreak: 2,
+      earnedBadgeName: null,
+    });
+
+    expect(payload.text).toContain('Virgin Islands Oracle Grouse');
+    expect(payload.text).not.toContain('(U.S.)');
+  });
 });

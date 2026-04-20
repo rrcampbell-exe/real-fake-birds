@@ -1,0 +1,926 @@
+[
+  {
+    "bird_key": "fake:1st-french-pueblo-pelican",
+    "bird_name": "1st French Pueblo Pelican"
+  },
+  {
+    "bird_key": "fake:affair-guinea-fowl",
+    "bird_name": "Affair Guinea Fowl"
+  },
+  {
+    "bird_key": "fake:american-godwit",
+    "bird_name": "American  Godwit"
+  },
+  {
+    "bird_key": "fake:american-chathams-blue-albatross",
+    "bird_name": "American Chathams Blue Albatross"
+  },
+  {
+    "bird_key": "fake:american-sycamore-sandpiper",
+    "bird_name": "American Sycamore Sandpiper"
+  },
+  {
+    "bird_key": "fake:antique-bronze-honeyguide",
+    "bird_name": "Antique Bronze Honeyguide"
+  },
+  {
+    "bird_key": "fake:apple-albatross",
+    "bird_name": "Apple Albatross"
+  },
+  {
+    "bird_key": "fake:atlantic-mulberry-wood-bellied-murre",
+    "bird_name": "Atlantic Mulberry Wood-bellied Murre"
+  },
+  {
+    "bird_key": "fake:au-chico-coverted-darter",
+    "bird_name": "Au Chico-coverted Darter"
+  },
+  {
+    "bird_key": "fake:avocado-heron",
+    "bird_name": "Avocado Heron"
+  },
+  {
+    "bird_key": "fake:beautiful-saint-vincent-and-the-grenadines-cola-petrel",
+    "bird_name": "Beautiful Saint Vincent and the Grenadines Cola Petrel"
+  },
+  {
+    "bird_key": "fake:big-stone-roadrunner",
+    "bird_name": "Big Stone Roadrunner"
+  },
+  {
+    "bird_key": "fake:black-cardinal",
+    "bird_name": "Black Cardinal"
+  },
+  {
+    "bird_key": "fake:black-courser",
+    "bird_name": "Black Courser"
+  },
+  {
+    "bird_key": "fake:black-flycatcher",
+    "bird_name": "Black Flycatcher"
+  },
+  {
+    "bird_key": "fake:black-rose-grebe",
+    "bird_name": "Black Rose Grebe"
+  },
+  {
+    "bird_key": "fake:black-naped-jay",
+    "bird_name": "Black-naped Jay"
+  },
+  {
+    "bird_key": "fake:black-winged-mockingbird",
+    "bird_name": "Black-winged Mockingbird"
+  },
+  {
+    "bird_key": "fake:blacksided-cuba-hurricane-darter",
+    "bird_name": "Blacksided Cuba Hurricane Darter"
+  },
+  {
+    "bird_key": "fake:blue-diamond-ostrich",
+    "bird_name": "Blue Diamond Ostrich"
+  },
+  {
+    "bird_key": "fake:blue-northern-america-olivetone-grouse",
+    "bird_name": "Blue Northern America Olivetone Grouse"
+  },
+  {
+    "bird_key": "fake:blumine-whydah",
+    "bird_name": "Blumine Whydah"
+  },
+  {
+    "bird_key": "fake:botswana-seance-stork",
+    "bird_name": "Botswana Seance Stork"
+  },
+  {
+    "bird_key": "fake:british-indian-ocean-territory-elm-bustard",
+    "bird_name": "British Indian Ocean Territory Elm Bustard"
+  },
+  {
+    "bird_key": "fake:buccaneer-swallow",
+    "bird_name": "Buccaneer Swallow"
+  },
+  {
+    "bird_key": "fake:butterfly-bush-coverted-kestrel",
+    "bird_name": "Butterfly Bush-coverted Kestrel"
+  },
+  {
+    "bird_key": "fake:cafe-royale-sparrow",
+    "bird_name": "Cafe Royale Sparrow"
+  },
+  {
+    "bird_key": "fake:calypso-stonechat",
+    "bird_name": "Calypso Stonechat"
+  },
+  {
+    "bird_key": "fake:calypso-horned-cockatoo",
+    "bird_name": "Calypso-horned Cockatoo"
+  },
+  {
+    "bird_key": "fake:camarone-oystercatcher",
+    "bird_name": "Camarone Oystercatcher"
+  },
+  {
+    "bird_key": "fake:cameroon-rope-bellied-kiwi",
+    "bird_name": "Cameroon Rope-bellied Kiwi"
+  },
+  {
+    "bird_key": "fake:canada-kumera-kingfisher",
+    "bird_name": "Canada Kumera Kingfisher"
+  },
+  {
+    "bird_key": "fake:canada-kumera-crowned-wheatear",
+    "bird_name": "Canada Kumera-crowned Wheatear"
+  },
+  {
+    "bird_key": "fake:canadian-verdun-green-coucal",
+    "bird_name": "Canadian Verdun Green Coucal"
+  },
+  {
+    "bird_key": "fake:cardinal-pink-falcon",
+    "bird_name": "Cardinal Pink Falcon"
+  },
+  {
+    "bird_key": "fake:caribbean-noddy",
+    "bird_name": "Caribbean  Noddy"
+  },
+  {
+    "bird_key": "fake:caribbean-starling",
+    "bird_name": "Caribbean  Starling"
+  },
+  {
+    "bird_key": "fake:caribbean-black-headed-eagle",
+    "bird_name": "Caribbean Black-headed Eagle"
+  },
+  {
+    "bird_key": "fake:caribbean-japanese-laurel-legged-lorikeet",
+    "bird_name": "Caribbean Japanese Laurel-legged Lorikeet"
+  },
+  {
+    "bird_key": "fake:caribbean-orchid-pearl-robin",
+    "bird_name": "Caribbean Orchid Pearl Robin"
+  },
+  {
+    "bird_key": "fake:christalle-wheatear",
+    "bird_name": "Christalle Wheatear"
+  },
+  {
+    "bird_key": "fake:cloud-burst-harrier",
+    "bird_name": "Cloud Burst Harrier"
+  },
+  {
+    "bird_key": "fake:clover-plover",
+    "bird_name": "Clover Plover"
+  },
+  {
+    "bird_key": "fake:clover-teal",
+    "bird_name": "Clover Teal"
+  },
+  {
+    "bird_key": "fake:colombian-black-throated-kiwi",
+    "bird_name": "Colombian Black-throated Kiwi"
+  },
+  {
+    "bird_key": "fake:como-throated-mockingbird",
+    "bird_name": "Como-throated Mockingbird"
+  },
+  {
+    "bird_key": "fake:copper-rust-parrot",
+    "bird_name": "Copper Rust Parrot"
+  },
+  {
+    "bird_key": "fake:corduroy-grebe",
+    "bird_name": "Corduroy Grebe"
+  },
+  {
+    "bird_key": "fake:costa-rican-pesto-stilt",
+    "bird_name": "Costa Rican Pesto Stilt"
+  },
+  {
+    "bird_key": "fake:crested-pochard",
+    "bird_name": "Crested  Pochard"
+  },
+  {
+    "bird_key": "fake:cuba-pine-green-buzzard",
+    "bird_name": "Cuba Pine Green Buzzard"
+  },
+  {
+    "bird_key": "fake:dead-kite",
+    "bird_name": "Dead  Kite"
+  },
+  {
+    "bird_key": "fake:deep-koamaru-catbird",
+    "bird_name": "Deep Koamaru Catbird"
+  },
+  {
+    "bird_key": "fake:deep-koamaru-courser",
+    "bird_name": "Deep Koamaru Courser"
+  },
+  {
+    "bird_key": "fake:dingley-hummingbird",
+    "bird_name": "Dingley Hummingbird"
+  },
+  {
+    "bird_key": "fake:disco-drongo",
+    "bird_name": "Disco Drongo"
+  },
+  {
+    "bird_key": "fake:disco-raven",
+    "bird_name": "Disco Raven"
+  },
+  {
+    "bird_key": "fake:disco-winged-woodpecker",
+    "bird_name": "Disco-winged Woodpecker"
+  },
+  {
+    "bird_key": "fake:eastern-africa-murre",
+    "bird_name": "Eastern Africa  Murre"
+  },
+  {
+    "bird_key": "fake:eastern-africa-astronaut-winged-ibis",
+    "bird_name": "Eastern Africa Astronaut-winged Ibis"
+  },
+  {
+    "bird_key": "fake:eastern-africa-jade-siskin",
+    "bird_name": "Eastern Africa Jade Siskin"
+  },
+  {
+    "bird_key": "fake:eastern-africa-kumera-meadowlark",
+    "bird_name": "Eastern Africa Kumera Meadowlark"
+  },
+  {
+    "bird_key": "fake:egypt-plum-footed-bufflehead",
+    "bird_name": "Egypt Plum-footed Bufflehead"
+  },
+  {
+    "bird_key": "fake:elm-bishop",
+    "bird_name": "Elm Bishop"
+  },
+  {
+    "bird_key": "fake:emerald-throated-heron",
+    "bird_name": "Emerald-throated Heron"
+  },
+  {
+    "bird_key": "fake:eminence-swan",
+    "bird_name": "Eminence Swan"
+  },
+  {
+    "bird_key": "fake:equatorial-guinea-bilbao-toucan",
+    "bird_name": "Equatorial Guinea Bilbao Toucan"
+  },
+  {
+    "bird_key": "fake:eucalyptus-nuthatch",
+    "bird_name": "Eucalyptus Nuthatch"
+  },
+  {
+    "bird_key": "fake:extinct-limeade-vented-auk",
+    "bird_name": "Extinct Limeade-vented Auk"
+  },
+  {
+    "bird_key": "fake:faced-mousebird",
+    "bird_name": "Faced  Mousebird"
+  },
+  {
+    "bird_key": "fake:familiar-peru-tan-catbird",
+    "bird_name": "Familiar Peru Tan Catbird"
+  },
+  {
+    "bird_key": "fake:fern-frond-throated-merganser",
+    "bird_name": "Fern Frond-throated Merganser"
+  },
+  {
+    "bird_key": "fake:finlandia-petrel",
+    "bird_name": "Finlandia Petrel"
+  },
+  {
+    "bird_key": "fake:finn-horned-gannet",
+    "bird_name": "Finn-horned Gannet"
+  },
+  {
+    "bird_key": "fake:finn-tailed-chickadee",
+    "bird_name": "Finn-tailed Chickadee"
+  },
+  {
+    "bird_key": "fake:flax-smoke-petrel",
+    "bird_name": "Flax Smoke Petrel"
+  },
+  {
+    "bird_key": "fake:forest-green-falcon",
+    "bird_name": "Forest Green Falcon"
+  },
+  {
+    "bird_key": "fake:french-apple-headed-ibis",
+    "bird_name": "French Apple-headed Ibis"
+  },
+  {
+    "bird_key": "fake:french-southern-territories-deep-fir-catbird",
+    "bird_name": "French Southern Territories Deep Fir Catbird"
+  },
+  {
+    "bird_key": "fake:french-southern-territories-waikawa-gray-cockatoo",
+    "bird_name": "French Southern Territories Waikawa Gray Cockatoo"
+  },
+  {
+    "bird_key": "fake:fun-blue-billed-curlew",
+    "bird_name": "Fun Blue-billed Curlew"
+  },
+  {
+    "bird_key": "fake:gabonese-parrot",
+    "bird_name": "Gabonese  Parrot"
+  },
+  {
+    "bird_key": "fake:gambian-spicy-mix-stork",
+    "bird_name": "Gambian Spicy Mix Stork"
+  },
+  {
+    "bird_key": "fake:giant-chambray-grebe",
+    "bird_name": "Giant Chambray Grebe"
+  },
+  {
+    "bird_key": "fake:great-olive-drab-tailed-shearwater",
+    "bird_name": "Great Olive Drab-tailed Shearwater"
+  },
+  {
+    "bird_key": "fake:green-pea-bellied-oilbird",
+    "bird_name": "Green Pea-bellied Oilbird"
+  },
+  {
+    "bird_key": "fake:grenadian-eggplant-skua",
+    "bird_name": "Grenadian Eggplant Skua"
+  },
+  {
+    "bird_key": "fake:haiti-pheasant",
+    "bird_name": "Haiti Pheasant"
+  },
+  {
+    "bird_key": "fake:haros-south-america-rhino-kiwi",
+    "bird_name": "Haro's South America Rhino Kiwi"
+  },
+  {
+    "bird_key": "fake:heath-bee-eater",
+    "bird_name": "Heath Bee-eater"
+  },
+  {
+    "bird_key": "fake:henrys-scarlet-metallic-sunburst-horned-curlew",
+    "bird_name": "Henry's Scarlet Metallic Sunburst-horned Curlew"
+  },
+  {
+    "bird_key": "fake:highland-dotterel",
+    "bird_name": "Highland Dotterel"
+  },
+  {
+    "bird_key": "fake:himalaya-emu",
+    "bird_name": "Himalaya Emu"
+  },
+  {
+    "bird_key": "fake:horned-goblin-puffin",
+    "bird_name": "Horned Goblin Puffin"
+  },
+  {
+    "bird_key": "fake:immortal-caribbean-livid-brown-coverted-courser",
+    "bird_name": "Immortal Caribbean Livid Brown-coverted Courser"
+  },
+  {
+    "bird_key": "fake:indian-cloud-burst-coucal",
+    "bird_name": "Indian Cloud Burst Coucal"
+  },
+  {
+    "bird_key": "fake:indian-daisy-bush-eider",
+    "bird_name": "Indian Daisy Bush Eider"
+  },
+  {
+    "bird_key": "fake:indian-scarlet-gum-swan",
+    "bird_name": "Indian Scarlet Gum Swan"
+  },
+  {
+    "bird_key": "fake:indian-tan-sunbittern",
+    "bird_name": "Indian Tan Sunbittern"
+  },
+  {
+    "bird_key": "fake:ivorian-junco",
+    "bird_name": "Ivorian  Junco"
+  },
+  {
+    "bird_key": "fake:jambalaya-grebe",
+    "bird_name": "Jambalaya Grebe"
+  },
+  {
+    "bird_key": "fake:japanese-laurel-redstart",
+    "bird_name": "Japanese Laurel Redstart"
+  },
+  {
+    "bird_key": "fake:jelly-bean-falcon",
+    "bird_name": "Jelly Bean Falcon"
+  },
+  {
+    "bird_key": "fake:jelly-bean-legged-pochard",
+    "bird_name": "Jelly Bean-legged Pochard"
+  },
+  {
+    "bird_key": "fake:jeschkes-seaweed-redpoll",
+    "bird_name": "Jeschke's Seaweed Redpoll"
+  },
+  {
+    "bird_key": "fake:jungle-green-jay",
+    "bird_name": "Jungle Green Jay"
+  },
+  {
+    "bird_key": "fake:juniper-shoveler",
+    "bird_name": "Juniper Shoveler"
+  },
+  {
+    "bird_key": "fake:kashmir-blue-crowned-tern",
+    "bird_name": "Kashmir Blue-crowned Tern"
+  },
+  {
+    "bird_key": "fake:kenyan-rook",
+    "bird_name": "Kenyan  Rook"
+  },
+  {
+    "bird_key": "fake:kilamanjaro-junco",
+    "bird_name": "Kilamanjaro Junco"
+  },
+  {
+    "bird_key": "fake:killarney-jacana",
+    "bird_name": "Killarney Jacana"
+  },
+  {
+    "bird_key": "fake:kokoda-coverted-brant",
+    "bird_name": "Kokoda-coverted Brant"
+  },
+  {
+    "bird_key": "fake:la-palma-legged-gull",
+    "bird_name": "La Palma-legged Gull"
+  },
+  {
+    "bird_key": "fake:large-honey-flower-cassowary",
+    "bird_name": "Large Honey Flower Cassowary"
+  },
+  {
+    "bird_key": "fake:larsens-chathams-blue-guinea-fowl",
+    "bird_name": "Larsen's Chathams Blue Guinea Fowl"
+  },
+  {
+    "bird_key": "fake:larsens-western-africa-falcon-kingbird",
+    "bird_name": "Larsen's Western Africa Falcon Kingbird"
+  },
+  {
+    "bird_key": "fake:legged-flamingo",
+    "bird_name": "Legged  Flamingo"
+  },
+  {
+    "bird_key": "fake:lesotho-royal-purple-eyed-bunting",
+    "bird_name": "Lesotho Royal Purple-eyed Bunting"
+  },
+  {
+    "bird_key": "fake:liber-caribbean-green-ibis",
+    "bird_name": "Liber Caribbean Green Ibis"
+  },
+  {
+    "bird_key": "fake:liberia-twilight-lavender-coucal",
+    "bird_name": "Liberia Twilight Lavender Coucal"
+  },
+  {
+    "bird_key": "fake:libyan-sandpiper",
+    "bird_name": "Libyan  Sandpiper"
+  },
+  {
+    "bird_key": "fake:limeade-flycatcher",
+    "bird_name": "Limeade Flycatcher"
+  },
+  {
+    "bird_key": "fake:limeade-tanager",
+    "bird_name": "Limeade Tanager"
+  },
+  {
+    "bird_key": "fake:living-eggplant-woodhoopoe",
+    "bird_name": "Living Eggplant Woodhoopoe"
+  },
+  {
+    "bird_key": "fake:lochinvar-parrot",
+    "bird_name": "Lochinvar Parrot"
+  },
+  {
+    "bird_key": "fake:lonely-honduran-buzzard",
+    "bird_name": "Lonely Honduran  Buzzard"
+  },
+  {
+    "bird_key": "fake:loulou-frigatebird",
+    "bird_name": "Loulou Frigatebird"
+  },
+  {
+    "bird_key": "fake:loulou-horned-guinea-fowl",
+    "bird_name": "Loulou-horned Guinea Fowl"
+  },
+  {
+    "bird_key": "fake:lucky-point-tanager",
+    "bird_name": "Lucky Point Tanager"
+  },
+  {
+    "bird_key": "fake:madras-longtail",
+    "bird_name": "Madras Longtail"
+  },
+  {
+    "bird_key": "fake:male-morocco-brown-siskin",
+    "bird_name": "Male Morocco Brown Siskin"
+  },
+  {
+    "bird_key": "fake:malian-hornbill",
+    "bird_name": "Malian  Hornbill"
+  },
+  {
+    "bird_key": "fake:malian-seaweed-junco",
+    "bird_name": "Malian Seaweed Junco"
+  },
+  {
+    "bird_key": "fake:mallard-frigatebird",
+    "bird_name": "Mallard Frigatebird"
+  },
+  {
+    "bird_key": "fake:mauritius-waxwing",
+    "bird_name": "Mauritius  Waxwing"
+  },
+  {
+    "bird_key": "fake:merry-guatemala-buttered-rum-breasted-skylark",
+    "bird_name": "Merry Guatemala Buttered Rum-breasted Skylark"
+  },
+  {
+    "bird_key": "fake:middle-africa-gigas-bishop",
+    "bird_name": "Middle Africa Gigas Bishop"
+  },
+  {
+    "bird_key": "fake:middle-africa-olive-headed-jay",
+    "bird_name": "Middle Africa Olive-headed Jay"
+  },
+  {
+    "bird_key": "fake:middle-africa-tolopea-bellied-kestrel",
+    "bird_name": "Middle Africa Tolopea-bellied Kestrel"
+  },
+  {
+    "bird_key": "fake:midnight-pearl-honeyguide",
+    "bird_name": "Midnight Pearl Honeyguide"
+  },
+  {
+    "bird_key": "fake:midnight-pearl-headed-turnstone",
+    "bird_name": "Midnight Pearl-headed Turnstone"
+  },
+  {
+    "bird_key": "fake:ming-wagtail",
+    "bird_name": "Ming Wagtail"
+  },
+  {
+    "bird_key": "fake:montana-martinique-junco",
+    "bird_name": "Montana Martinique Junco"
+  },
+  {
+    "bird_key": "fake:morins-female-gambia-livid-brown-murre",
+    "bird_name": "Morin's Female Gambia Livid Brown Murre"
+  },
+  {
+    "bird_key": "fake:mournful-curlew",
+    "bird_name": "Mournful  Curlew"
+  },
+  {
+    "bird_key": "fake:moyas-auk",
+    "bird_name": "Moya's  Auk"
+  },
+  {
+    "bird_key": "fake:namibian-elm-coverted-pelican",
+    "bird_name": "Namibian Elm-coverted Pelican"
+  },
+  {
+    "bird_key": "fake:navy-blue-eyed-vireo",
+    "bird_name": "Navy Blue-eyed Vireo"
+  },
+  {
+    "bird_key": "fake:northern-africa-blue-diamond-crowned-rail",
+    "bird_name": "Northern Africa Blue Diamond-crowned Rail"
+  },
+  {
+    "bird_key": "fake:northern-mauritania-clover-kingbird",
+    "bird_name": "Northern Mauritania Clover Kingbird"
+  },
+  {
+    "bird_key": "fake:occasional-mayotte-roadrunner",
+    "bird_name": "Occasional Mayotte  Roadrunner"
+  },
+  {
+    "bird_key": "fake:old-gambia-cosmic-buzzard",
+    "bird_name": "Old Gambia Cosmic Buzzard"
+  },
+  {
+    "bird_key": "fake:olive-nightjar",
+    "bird_name": "Olive Nightjar"
+  },
+  {
+    "bird_key": "fake:olivetone-oilbird",
+    "bird_name": "Olivetone Oilbird"
+  },
+  {
+    "bird_key": "fake:olivetone-naped-frigatebird",
+    "bird_name": "Olivetone-naped Frigatebird"
+  },
+  {
+    "bird_key": "fake:only-limeade-harrier",
+    "bird_name": "Only Limeade Harrier"
+  },
+  {
+    "bird_key": "fake:outer-space-nuthatch",
+    "bird_name": "Outer Space Nuthatch"
+  },
+  {
+    "bird_key": "fake:paraguay-limeade-heron",
+    "bird_name": "Paraguay Limeade Heron"
+  },
+  {
+    "bird_key": "fake:parsley-egret",
+    "bird_name": "Parsley Egret"
+  },
+  {
+    "bird_key": "fake:pesto-wheatear",
+    "bird_name": "Pesto Wheatear"
+  },
+  {
+    "bird_key": "fake:pine-green-shoveler",
+    "bird_name": "Pine Green Shoveler"
+  },
+  {
+    "bird_key": "fake:pine-tree-stilt",
+    "bird_name": "Pine Tree Stilt"
+  },
+  {
+    "bird_key": "fake:polyandrous-potters-clay-footed-sandpiper",
+    "bird_name": "Polyandrous Potters Clay-footed Sandpiper"
+  },
+  {
+    "bird_key": "fake:poorest-blue-gem-booby",
+    "bird_name": "Poorest Blue Gem Booby"
+  },
+  {
+    "bird_key": "fake:puerto-rican-apple-billed-waxwing",
+    "bird_name": "Puerto Rican Apple-billed Waxwing"
+  },
+  {
+    "bird_key": "fake:purple-grackle",
+    "bird_name": "Purple Grackle"
+  },
+  {
+    "bird_key": "fake:purple-motmot",
+    "bird_name": "Purple Motmot"
+  },
+  {
+    "bird_key": "fake:pygmy-fern-green-owl",
+    "bird_name": "Pygmy Fern Green Owl"
+  },
+  {
+    "bird_key": "fake:ragtime-temptress-mockingbird",
+    "bird_name": "Ragtime Temptress Mockingbird"
+  },
+  {
+    "bird_key": "fake:raw-umber-grackle",
+    "bird_name": "Raw Umber Grackle"
+  },
+  {
+    "bird_key": "fake:raw-umber-scoter",
+    "bird_name": "Raw Umber Scoter"
+  },
+  {
+    "bird_key": "fake:raw-umber-whimbrel",
+    "bird_name": "Raw Umber Whimbrel"
+  },
+  {
+    "bird_key": "fake:red-oxide-auk",
+    "bird_name": "Red Oxide Auk"
+  },
+  {
+    "bird_key": "fake:resolution-blue-oystercatcher",
+    "bird_name": "Resolution Blue Oystercatcher"
+  },
+  {
+    "bird_key": "fake:runion-corduroy-noddy",
+    "bird_name": "Réunion Corduroy Noddy"
+  },
+  {
+    "bird_key": "fake:ringed-sand-dune-murre",
+    "bird_name": "Ringed Sand Dune Murre"
+  },
+  {
+    "bird_key": "fake:river-bed-billed-curlew",
+    "bird_name": "River Bed-billed Curlew"
+  },
+  {
+    "bird_key": "fake:saddle-pochard",
+    "bird_name": "Saddle Pochard"
+  },
+  {
+    "bird_key": "fake:saint-martin-french-part-black-coucal",
+    "bird_name": "Saint Martin (French part) Black Coucal"
+  },
+  {
+    "bird_key": "fake:scarlet-gum-godwit",
+    "bird_name": "Scarlet Gum Godwit"
+  },
+  {
+    "bird_key": "fake:scarpa-flow-roadrunner",
+    "bird_name": "Scarpa Flow Roadrunner"
+  },
+  {
+    "bird_key": "fake:scarpa-flow-naped-sparrow",
+    "bird_name": "Scarpa Flow-naped Sparrow"
+  },
+  {
+    "bird_key": "fake:seaweed-flanked-flycatcher",
+    "bird_name": "Seaweed-flanked Flycatcher"
+  },
+  {
+    "bird_key": "fake:senegal-goblin-jacana",
+    "bird_name": "Senegal Goblin Jacana"
+  },
+  {
+    "bird_key": "fake:simons-eastern-africa-jumbo-yellowhammer",
+    "bird_name": "Simon's Eastern Africa Jumbo Yellowhammer"
+  },
+  {
+    "bird_key": "fake:single-dingley-chough",
+    "bird_name": "Single Dingley Chough"
+  },
+  {
+    "bird_key": "fake:sized-trendy-pink-plover",
+    "bird_name": "Sized Trendy Pink Plover"
+  },
+  {
+    "bird_key": "fake:slate-gray-turnstone",
+    "bird_name": "Slate Gray Turnstone"
+  },
+  {
+    "bird_key": "fake:south-africa-seance-cormorant",
+    "bird_name": "South Africa Seance Cormorant"
+  },
+  {
+    "bird_key": "fake:south-america-black-gannet",
+    "bird_name": "South America Black Gannet"
+  },
+  {
+    "bird_key": "fake:south-america-heath-footed-gull",
+    "bird_name": "South America Heath-footed Gull"
+  },
+  {
+    "bird_key": "fake:south-america-royal-heath-horned-drongo",
+    "bird_name": "South America Royal Heath-horned Drongo"
+  },
+  {
+    "bird_key": "fake:southern-africa-brant",
+    "bird_name": "Southern Africa  Brant"
+  },
+  {
+    "bird_key": "fake:spicy-mix-woodlark",
+    "bird_name": "Spicy Mix Woodlark"
+  },
+  {
+    "bird_key": "fake:stately-yukon-gold-bustard",
+    "bird_name": "Stately Yukon Gold Bustard"
+  },
+  {
+    "bird_key": "fake:storm-gray-cockatoo",
+    "bird_name": "Storm Gray Cockatoo"
+  },
+  {
+    "bird_key": "fake:stromboli-avocet",
+    "bird_name": "Stromboli Avocet"
+  },
+  {
+    "bird_key": "fake:surfie-green-cockatoo",
+    "bird_name": "Surfie Green Cockatoo"
+  },
+  {
+    "bird_key": "fake:surinamer-black-footed-fulmar",
+    "bird_name": "Surinamer Black-footed Fulmar"
+  },
+  {
+    "bird_key": "fake:swaziland-verdigris-heron",
+    "bird_name": "Swaziland Verdigris Heron"
+  },
+  {
+    "bird_key": "fake:sycamore-avocet",
+    "bird_name": "Sycamore Avocet"
+  },
+  {
+    "bird_key": "fake:tailed-peru-eggplant-nightjar",
+    "bird_name": "Tailed Peru Eggplant Nightjar"
+  },
+  {
+    "bird_key": "fake:tamarillo-billed-tanager",
+    "bird_name": "Tamarillo-billed Tanager"
+  },
+  {
+    "bird_key": "fake:tamarillo-horned-bishop",
+    "bird_name": "Tamarillo-horned Bishop"
+  },
+  {
+    "bird_key": "fake:tawny-port-breasted-egret",
+    "bird_name": "Tawny Port-breasted Egret"
+  },
+  {
+    "bird_key": "fake:thievish-south-america-pine-green-rook",
+    "bird_name": "Thievish South America Pine Green Rook"
+  },
+  {
+    "bird_key": "fake:togo-black-finch",
+    "bird_name": "Togo Black Finch"
+  },
+  {
+    "bird_key": "fake:topaz-billed-snipe",
+    "bird_name": "Topaz-billed Snipe"
+  },
+  {
+    "bird_key": "fake:topaz-throated-thrush",
+    "bird_name": "Topaz-throated Thrush"
+  },
+  {
+    "bird_key": "fake:trendy-pink-skylark",
+    "bird_name": "Trendy Pink Skylark"
+  },
+  {
+    "bird_key": "fake:turkey-rich-gold-billed-vulture",
+    "bird_name": "Turkey Rich Gold-billed Vulture"
+  },
+  {
+    "bird_key": "fake:tyrian-purple-wren",
+    "bird_name": "Tyrian Purple Wren"
+  },
+  {
+    "bird_key": "fake:uruguay-green-house-mousebird",
+    "bird_name": "Uruguay Green House Mousebird"
+  },
+  {
+    "bird_key": "fake:valentino-waxwing",
+    "bird_name": "Valentino Waxwing"
+  },
+  {
+    "bird_key": "fake:vida-loca-mockingbird",
+    "bird_name": "Vida Loca Mockingbird"
+  },
+  {
+    "bird_key": "fake:vin-rouge-duck",
+    "bird_name": "Vin Rouge Duck"
+  },
+  {
+    "bird_key": "fake:violet-eggplant-cuckoo",
+    "bird_name": "Violet Eggplant Cuckoo"
+  },
+  {
+    "bird_key": "fake:violet-eggplant-martin",
+    "bird_name": "Violet Eggplant Martin"
+  },
+  {
+    "bird_key": "fake:virgin-islands-british-black-tailed-cormorant",
+    "bird_name": "Virgin Islands (British) Black-tailed Cormorant"
+  },
+  {
+    "bird_key": "fake:viridian-green-pheasant",
+    "bird_name": "Viridian Green Pheasant"
+  },
+  {
+    "bird_key": "fake:vivid-violet-murre",
+    "bird_name": "Vivid Violet Murre"
+  },
+  {
+    "bird_key": "fake:voodoo-skua",
+    "bird_name": "Voodoo Skua"
+  },
+  {
+    "bird_key": "fake:wards-nicaraguan-darter",
+    "bird_name": "Ward's Nicaraguan  Darter"
+  },
+  {
+    "bird_key": "fake:western-africa-beaver-eyed-jacana",
+    "bird_name": "Western Africa Beaver-eyed Jacana"
+  },
+  {
+    "bird_key": "fake:whiskered-black-auklet",
+    "bird_name": "Whiskered Black Auklet"
+  },
+  {
+    "bird_key": "fake:white-bay-of-many-loon",
+    "bird_name": "White Bay of Many Loon"
+  },
+  {
+    "bird_key": "fake:white-ultramarine-brant",
+    "bird_name": "White Ultramarine Brant"
+  },
+  {
+    "bird_key": "fake:wine-berry-bellied-pelican",
+    "bird_name": "Wine Berry-bellied Pelican"
+  },
+  {
+    "bird_key": "fake:wintergreen-dream-footed-woodhoopoe",
+    "bird_name": "Wintergreen Dream-footed Woodhoopoe"
+  },
+  {
+    "bird_key": "fake:yellow-metal-flamingo",
+    "bird_name": "Yellow Metal Flamingo"
+  },
+  {
+    "bird_key": "fake:youngs-apple-grebe",
+    "bird_name": "Young's Apple Grebe"
+  }
+]

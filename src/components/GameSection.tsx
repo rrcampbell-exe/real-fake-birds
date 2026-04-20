@@ -186,10 +186,11 @@ export default function GameSection() {
     hintErrorType,
     hintLoading,
     seedsBalance,
-    specialHintAction,
     showQuestion,
     handleAnswer,
     requestHint,
+    revealFakeBirdImage,
+    fakeBirdImageRevealed,
     tryAgain,
   } = useGameState({
     onRoundResolved: (result) => {
@@ -357,7 +358,6 @@ export default function GameSection() {
           hintLoading={hintLoading}
           hints={hints}
           onRequestHint={requestHint}
-          specialHintAction={specialHintAction}
           state={cardState}
           seedsBalance={seedsBalance}
           onAnswer={handleAnswer}
@@ -387,6 +387,9 @@ export default function GameSection() {
               justBrokeBestStreak={Boolean(roundAnimation?.result.justBrokeBestStreak)}
               isNewBirdEncounter={isNewBirdEncounter}
               onAction={handleAdvanceRound}
+              revealFakeBirdImage={revealFakeBirdImage}
+              fakeBirdImageRevealed={fakeBirdImageRevealed}
+              seedsBalance={seedsBalance}
             />
           }
         />

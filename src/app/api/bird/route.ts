@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { BirdApiResult, BirdContentSource, HintRequest, HintType } from '@/types';
 import { locations } from '@/lib/server/constants/locations';
 import { nameGenerator } from '@/lib/server/name-generator';
-import { generateFakeFact, generateFakeImage, generateRealBirdFact } from '@/lib/server/openai';
+import { generateRealBirdFact } from '@/lib/server/openai';
 import { percentOfTime } from '@/lib/server/utils/percent-of-time';
 import { fetchWikipediaBirdSummary, fetchWikipediaFact, fetchWikipediaImage } from '@/lib/server/wikipedia';
 import { consumeRateLimit, getRateLimitKey } from '@/lib/server/rate-limiter';
 import { isCdnEnabled, getCdnImageUrl, fetchCdnFact } from '@/lib/server/cdn';
 import { hasCdnAssets } from '@/lib/server/cdn-manifest';
+import { getRandomFakeBirdEntry } from '@/lib/server/fake-birds';
 import { slugifyBirdName } from '@/lib/utils/slugify';
 
 const EBIRD_TIMEOUT_MS = 8000;
@@ -154,7 +155,8 @@ async function fetchRealBird(): Promise<BirdApiResult> {
 
       // When CDN assets exist, use them as primary and keep Wikipedia as fallback.
       if (cdnEnabled) {
-        const cdnFact = await fetchCdnFact(birdName);
+        const cdnResult = await fetchCdnFact(birdKey, 'real');
+        const cdnFact = cdnResult?.fact;
         const resolvedFactSource: BirdContentSource | undefined = cdnFact?.fact
           ? 'cdn'
           : factSource;
@@ -175,6 +177,7 @@ async function fetchRealBird(): Promise<BirdApiResult> {
           contentSource: 'cdn',
           factSource: resolvedFactSource,
           attribution: cdnFact?.attribution ?? wikipediaSummary?.attribution ?? undefined,
+          cacheStatus: cdnResult?.cacheStatus,
         };
       }
 
@@ -207,6 +210,36 @@ async function fetchRealBird(): Promise<BirdApiResult> {
   }
 }
 
+async function fetchFakeBird(): Promise<BirdApiResult | null> {
+  if (!isCdnEnabled()) {
+    return null;
+  }
+
+  const selectedFakeBird = await getRandomFakeBirdEntry();
+  if (!selectedFakeBird) {
+    return null;
+  }
+
+  const cdnResult = await fetchCdnFact(selectedFakeBird.birdKey, 'fake');
+  const cdnFact = cdnResult?.fact;
+  if (!cdnFact?.fact || !cdnFact.summary || !cdnFact.description) {
+    return null;
+  }
+
+  return {
+    birdName: selectedFakeBird.birdName,
+    isReal: false,
+    fact: cdnFact.fact,
+    summary: cdnFact.summary,
+    imageUrl: getCdnImageUrl(selectedFakeBird.birdKey, 'full', 'fake'),
+    imageThumbUrl: getCdnImageUrl(selectedFakeBird.birdKey, 'thumb', 'fake'),
+    description: cdnFact.description,
+    contentSource: 'cdn',
+    factSource: 'cdn',
+    cacheStatus: cdnResult?.cacheStatus,
+  };
+}
+
 async function resolveHintContent(request: HintRequest): Promise<string | null> {
   if (request.isReal) {
     if (request.type === 'fact') {
@@ -227,11 +260,18 @@ async function resolveHintContent(request: HintRequest): Promise<string | null> 
     return fetchWikipediaImage(request.birdName, request.sciName);
   }
 
-  if (request.type === 'fact') {
-    return generateFakeFact(request.birdName);
+  if (!isCdnEnabled()) {
+    return null;
   }
 
-  return generateFakeImage(request.birdName, request.factHintContent);
+  const birdKey = slugifyBirdName(request.birdName);
+
+  if (request.type === 'fact') {
+    const cdnResult = await fetchCdnFact(birdKey, 'fake');
+    return cdnResult?.fact?.fact ?? null;
+  }
+
+  return getCdnImageUrl(birdKey, 'full', 'fake');
 }
 
 function getClientIp(request: NextRequest): string | null {
@@ -258,8 +298,10 @@ export async function GET(request: NextRequest) {
   const fakeBird = percentOfTime(47);
 
   if (fakeBird) {
-    const result = await nameGenerator();
-    return NextResponse.json(result);
+    const result = await fetchFakeBird();
+    if (result) {
+      return NextResponse.json(result);
+    }
   }
 
   const result = await fetchRealBird();
