@@ -3,7 +3,7 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import { ArrowRight, BookOpen, Bird, Birdhouse, GraduationCap, MapPin, Sparkles } from 'lucide-react';
+import { ArrowRight, BookOpen, Bird, Birdhouse, GraduationCap, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import BirdhouseSwapSheet from '@/components/birdhouse/BirdhouseSwapSheet';
@@ -392,7 +392,6 @@ export default function Answer({
   const [hiddenImageKey, setHiddenImageKey] = useState<string | null>(null);
   const currentImageKey = imageUrl ? `${journalBirdKey}:${imageUrl}` : null;
   const fakeImageUnlocked = !isReal && (fakeBirdImageRevealed || Boolean(hints.image));
-  const fakeImageRevealedViaHint = !isReal && Boolean(hints.image) && !fakeBirdImageRevealed;
   const shouldShowFakeReveal = !isReal && !fakeImageUnlocked && Boolean(revealFakeBirdImage) && seedsBalance >= FAKE_REVEAL_COST;
   const isCurrentImageHidden = Boolean(currentImageKey) && hiddenImageKey === currentImageKey;
   const hasRevealableImage = Boolean(imageUrl) && (isReal || fakeImageUnlocked);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import type { HintState, HintType } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -23,13 +23,26 @@ function QuestionImageHintSurface({
   loading: boolean;
   onImageReady?: () => void;
 }) {
+  const { play } = useSound();
   const displayBirdName = formatBirdName(birdName);
   const [imageStatus, setImageStatus] = useState<'idle' | 'loaded'>('idle');
   const showShimmer = loading || (Boolean(imageUrl) && imageStatus !== 'loaded');
 
   useEffect(() => {
-    setImageStatus('idle');
-  }, [imageUrl]);
+    if (loading || !imageUrl || imageStatus === 'loaded') {
+      return;
+    }
+
+    play('hintImageLoading');
+
+    const timerId = window.setInterval(() => {
+      play('hintImageLoading');
+    }, IMAGE_HINT_LOADING_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, [imageStatus, imageUrl, loading, play]);
 
   return (
     <div className="w-full space-y-3">
@@ -123,9 +136,8 @@ export default function BirdCard({
   const { play } = useSound();
   const prefersReducedMotion = usePrefersReducedMotion();
   const displayBirdName = formatBirdName(birdName);
-  const [factRevealPending, setFactRevealPending] = useState(false);
-  const [imageRevealPending, setImageRevealPending] = useState(false);
-  const [imageHintLoaded, setImageHintLoaded] = useState(false);
+  const factRevealPendingRef = useRef(false);
+  const imageRevealPendingRef = useRef(false);
   const hasHintPreview = Boolean(
     hints.fact
     || hints.image
@@ -149,7 +161,7 @@ export default function BirdCard({
       return;
     }
 
-    setFactRevealPending(true);
+    factRevealPendingRef.current = true;
     play('hintFieldLoading');
 
     const timerId = window.setInterval(() => {
@@ -163,57 +175,46 @@ export default function BirdCard({
 
   useEffect(() => {
     if (hintLoading.image) {
-      setImageRevealPending(true);
-      setImageHintLoaded(false);
+      imageRevealPendingRef.current = true;
+
+      play('hintImageLoading');
+
+      const timerId = window.setInterval(() => {
+        play('hintImageLoading');
+      }, IMAGE_HINT_LOADING_INTERVAL_MS);
+
+      return () => {
+        window.clearInterval(timerId);
+      };
     }
-  }, [hintLoading.image]);
+  }, [hintLoading.image, play]);
 
   useEffect(() => {
     if (hintErrorType === 'fact' && hintError) {
-      setFactRevealPending(false);
+      factRevealPendingRef.current = false;
     }
 
     if (hintErrorType === 'image' && hintError) {
-      setImageRevealPending(false);
-      setImageHintLoaded(false);
+      imageRevealPendingRef.current = false;
     }
   }, [hintError, hintErrorType]);
 
   useEffect(() => {
-    if (!factRevealPending || hintLoading.fact || !hints.fact) {
+    if (!factRevealPendingRef.current || hintLoading.fact || !hints.fact) {
       return;
     }
 
     play('hintReveal');
-    setFactRevealPending(false);
-  }, [factRevealPending, hintLoading.fact, hints.fact, play]);
-
-  useEffect(() => {
-    const shouldPlayImageLoading = hintLoading.image || (imageRevealPending && Boolean(hints.image?.content) && !imageHintLoaded);
-    if (!shouldPlayImageLoading) {
-      return;
-    }
-
-    play('hintImageLoading');
-
-    const timerId = window.setInterval(() => {
-      play('hintImageLoading');
-    }, IMAGE_HINT_LOADING_INTERVAL_MS);
-
-    return () => {
-      window.clearInterval(timerId);
-    };
-  }, [hintLoading.image, hints.image?.content, imageHintLoaded, imageRevealPending, play]);
+    factRevealPendingRef.current = false;
+  }, [hintLoading.fact, hints.fact, play]);
 
   const handleImageHintReady = () => {
-    setImageHintLoaded(true);
-
-    if (!imageRevealPending) {
+    if (!imageRevealPendingRef.current) {
       return;
     }
 
     play('hintReveal');
-    setImageRevealPending(false);
+    imageRevealPendingRef.current = false;
   };
 
   const handleAnswer = (e: React.MouseEvent<HTMLButtonElement>) => {

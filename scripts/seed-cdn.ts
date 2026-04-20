@@ -1156,28 +1156,6 @@ function readExistingFakeBirdBlock(): string {
   return existing.slice(fakeBlockStart);
 }
 
-function readExistingHelperBlock(): string {
-  const manifestPath = join(__dirname, '..', 'src', 'lib', 'server', 'cdn-manifest.ts');
-
-  if (!existsSync(manifestPath)) {
-    return '';
-  }
-
-  const existing = readFileSync(manifestPath, 'utf-8');
-
-  // If there's a fake bird block, helpers live after it — they're included in readExistingFakeBirdBlock
-  if (existing.includes('CDN_FAKE_BIRDS')) {
-    return '';
-  }
-
-  // Otherwise extract just the helper functions
-  const helperStart = existing.indexOf('export function');
-  if (helperStart === -1) {
-    return '';
-  }
-  return existing.slice(helperStart);
-}
-
 function generateManifest(keys: string[]): void {
   const sorted = [...keys].sort();
 
