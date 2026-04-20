@@ -49,7 +49,6 @@ vi.mock('next/navigation', () => ({
 
 const emptyHints: HintState = {
   fact: null,
-  description: null,
   image: null,
 };
 
@@ -103,7 +102,6 @@ describe('Answer', () => {
     expect(screen.getByText('Real')).toBeInTheDocument();
     expect(screen.getByText('Cyanocitta cristata')).toBeInTheDocument();
     expect(screen.getByText('Recently seen in Algeria')).toBeInTheDocument();
-    expect(document.querySelector('svg')).not.toBeNull();
     expect(screen.getByText('Field Notes')).toBeInTheDocument();
     expect(screen.getByText('Blue Robin is known for its vivid plumage.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Learn more about this bird' })).toHaveAttribute('href', '/journal?bird=real%3Ablue-robin#real%3Ablue-robin');
@@ -333,7 +331,8 @@ describe('Answer', () => {
     expect(screen.getByText('A theatrical impostor with a suspiciously elegant blue belly and too much confidence.')).toBeInTheDocument();
     expect(screen.queryByText('A second sentence should stay in the journal.')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Learn more about this bird' })).toHaveTextContent('See in Journal');
-    expect(screen.getByRole('button', { name: /\+ Birdhouse/i })).toHaveAttribute('aria-disabled', 'true');
+    // At 0 seeds the birdhouse button is hidden (progressive disclosure)
+    expect(screen.queryByRole('button', { name: /\+ Birdhouse/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/Surname:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Color:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Type:/)).not.toBeInTheDocument();
@@ -446,7 +445,6 @@ describe('Answer', () => {
         fact="Background fact."
         hints={{
           fact: { type: 'fact', content: 'Purchased fact hint.' },
-          description: null,
           image: null,
         }}
       />

@@ -85,22 +85,22 @@ describe('HintPanel', () => {
   });
 
   it('shows an insufficient seeds state for unaffordable hints', () => {
+    // After buying the image hint (40 seeds) the player has 5 seeds left,
+    // so the fact hint button is visible but disabled (insufficient seeds).
     render(
       <HintPanel
         birdName="Blue Jay"
         hintError={null}
         hintErrorType={null}
         hintLoading={{ fact: false, image: false }}
-        hints={{ fact: null, image: null }}
+        hints={{ fact: null, image: { type: 'image', content: 'https://images.example.com/bird.jpg' } }}
         onRequestHint={vi.fn()}
         seedsBalance={5}
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /get a hint/i }));
-
     expect(screen.getByRole('button', { name: /field note/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /photo/i })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /photo/i })).not.toBeInTheDocument();
   });
 
   it('shows a richer loading preview while hints are being fetched', () => {
