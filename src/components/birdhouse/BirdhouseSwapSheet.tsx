@@ -11,6 +11,7 @@ import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useSound } from '@/hooks/useSound';
 import { pushBirdhouseToAccount } from '@/lib/auth/account-session';
 import { BIRDHOUSE_FAKE_CAP, BIRDHOUSE_REAL_CAP } from '@/lib/utils/birdhouse';
+import { formatBirdName } from '@/lib/utils/format-bird-name';
 
 interface BirdhouseSwapSheetProps {
   incomingBird: {
@@ -48,6 +49,7 @@ export default function BirdhouseSwapSheet({ incomingBird, isOpen, onClose }: Bi
   const collection = incomingBird.isReal ? birdhouse.real : birdhouse.fake;
   const cap = incomingBird.isReal ? BIRDHOUSE_REAL_CAP : BIRDHOUSE_FAKE_CAP;
   const title = incomingBird.isReal ? 'Real Birdhouse Full' : 'Fake Birdhouse Full';
+  const displayIncomingBirdName = formatBirdName(incomingBird.birdName);
 
   const handleSwap = (outgoingBirdKey: string) => {
     swap(incomingBird.birdKey, outgoingBirdKey, incomingBird.isReal);
@@ -89,7 +91,7 @@ export default function BirdhouseSwapSheet({ incomingBird, isOpen, onClose }: Bi
                 </div>
                 <h2 id="birdhouse-swap-title" className="font-[family-name:var(--font-display)] text-2xl font-bold text-[var(--color-text)]">{title}</h2>
                 <p className="max-w-lg text-sm leading-6 text-[var(--color-muted)]">
-                  Your birdhouse holds up to {cap} birds. Release one to make room for {incomingBird.birdName}. Released birds stay in your journal.
+                  Your birdhouse holds up to {cap} birds. Release one to make room for {displayIncomingBirdName}. Released birds stay in your journal.
                 </p>
               </div>
               <button
@@ -111,6 +113,8 @@ export default function BirdhouseSwapSheet({ incomingBird, isOpen, onClose }: Bi
                     return null;
                   }
 
+                  const displayBirdName = formatBirdName(entry.birdName);
+
                   return (
                     <button
                       key={birdKey}
@@ -120,7 +124,7 @@ export default function BirdhouseSwapSheet({ incomingBird, isOpen, onClose }: Bi
                     >
                       <div className="min-w-0 flex-1">
                         <p className="flex min-h-[3rem] items-center font-[family-name:var(--font-display)] text-base font-bold text-[var(--color-text)]">
-                          {entry.birdName}
+                          {displayBirdName}
                         </p>
                       </div>
                       <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--color-surface-border)] px-2.5 py-1 text-xs font-semibold text-[var(--color-secondary)]">

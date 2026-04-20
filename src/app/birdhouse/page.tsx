@@ -9,6 +9,7 @@ import { useBirdJournal } from '@/hooks/useBirdJournal';
 import { usePageProgressSync } from '@/hooks/usePageProgressSync';
 import { useScreenViewed } from '@/hooks/useScreenViewed';
 import { writeBirdhouseLastVisitedAt } from '@/lib/utils/birdhouse';
+import { formatBirdName } from '@/lib/utils/format-bird-name';
 import BirdhouseToggleButton from '@/components/birdhouse/BirdhouseToggleButton';
 
 type BirdhouseTab = 'real' | 'fake';
@@ -132,7 +133,10 @@ export default function BirdhousePage() {
       ) : null}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {entries.map((entry) => (
+        {entries.map((entry) => {
+          const displayBirdName = formatBirdName(entry.birdName);
+
+          return (
           <article
             key={entry.birdKey}
             className="group relative overflow-hidden rounded-[1.8rem] border border-[var(--color-surface-border)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]"
@@ -141,7 +145,7 @@ export default function BirdhousePage() {
               <div className="relative aspect-[3/4]">
                 <Image
                   src={entry.metadata.imageUrl}
-                  alt={entry.birdName}
+                  alt={displayBirdName}
                   fill
                   sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
                   className="object-cover object-center transition duration-500 group-hover:scale-[1.03]"
@@ -153,7 +157,7 @@ export default function BirdhousePage() {
               <div className="flex aspect-[3/4] flex-col justify-end bg-[linear-gradient(160deg,color-mix(in_srgb,var(--color-secondary)_32%,transparent),color-mix(in_srgb,var(--color-primary)_78%,black_22%))] p-5">
                 <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/70">Fictional Favorite</p>
                 <h2 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-bold leading-tight text-white">
-                  {entry.birdName}
+                  {displayBirdName}
                 </h2>
               </div>
             )}
@@ -174,10 +178,12 @@ export default function BirdhousePage() {
                   {entry.isReal ? 'Real Bird' : 'Fake Bird'}
                 </p>
                 <h2 className={`mt-2 font-[family-name:var(--font-display)] text-2xl font-bold leading-tight ${entry.isReal && entry.metadata.imageUrl ? 'text-white' : 'text-[var(--color-text)]'}`}>
-                  {entry.birdName}
+                  {displayBirdName}
                 </h2>
                 <p className={`mt-2 text-sm leading-6 ${entry.isReal && entry.metadata.imageUrl ? 'text-white/78' : 'text-[var(--color-muted)]'}`}>
-                  {entry.metadata.regionLabel ?? entry.metadata.sciName ?? 'A Birdhouse keeper from your collection.'}
+                  {entry.isReal
+                    ? (entry.metadata.regionLabel ?? entry.metadata.sciName ?? 'A Birdhouse keeper from your collection.')
+                    : 'Full notes live in the Journal.'}
                 </p>
                 <Link
                   href={`/journal?bird=${encodeURIComponent(entry.birdKey)}`}
@@ -188,7 +194,8 @@ export default function BirdhousePage() {
               </div>
             </div>
           </article>
-        ))}
+          );
+        })}
 
         <EmptySlots filled={entries.length} total={activeCap} />
       </section>
