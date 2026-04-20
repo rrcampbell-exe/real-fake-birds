@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 import BirdCard from './BirdCard';
 
 vi.mock('@/components/birdhouse/BirdhouseToggleButton', () => ({
-  default: ({ birdName }: { birdName: string }) => <button type="button">Birdhouse {birdName}</button>,
+  default: ({ birdName, isLocked, onLockedClick }: { birdName: string; isLocked?: boolean; onLockedClick?: () => void }) => (
+    <button type="button" onClick={isLocked ? onLockedClick : undefined}>Birdhouse {birdName}</button>
+  ),
 }));
 
 describe('Journal BirdCard', () => {
@@ -36,24 +38,15 @@ describe('Journal BirdCard', () => {
     },
   };
 
-  it('masks stats for concealed birds and offers a reveal button', () => {
-    const onRevealClassification = vi.fn();
-
-    render(
-      <BirdCard
-        entry={concealedEntry}
-        isMaskedForCurrentRound
-        canAffordReveal
-        onRevealForCurrentRound={onRevealClassification}
-      />
-    );
-
-    expect(screen.getByRole('button', { name: /reveal for 32/i })).toBeInTheDocument();
-    expect(screen.getByText('Seen ??? times')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /reveal for 32 seeds/i }));
-    expect(onRevealClassification).toHaveBeenCalledWith('real:blue-jay');
-  });
+  const concealedFakeEntry = {
+    ...concealedEntry,
+    birdKey: 'fake:blue-jay',
+    isReal: false,
+    metadata: {
+      ...concealedEntry.metadata,
+      imageRevealed: false,
+    },
+  };
 
   it('shows full stats for revealed birds', () => {
     const onOpenDetails = vi.fn();
@@ -63,9 +56,8 @@ describe('Journal BirdCard', () => {
         entry={{
           ...concealedEntry,
         }}
-        isMaskedForCurrentRound={false}
-        canAffordReveal
-        onRevealForCurrentRound={vi.fn()}
+        canAffordFakeImageReveal
+        onRevealFakeImage={vi.fn()}
         onOpenDetails={onOpenDetails}
       />
     );
@@ -96,9 +88,8 @@ describe('Journal BirdCard', () => {
     render(
       <BirdCard
         entry={entryWithBothImageSizes}
-        isMaskedForCurrentRound={false}
-        canAffordReveal
-        onRevealForCurrentRound={vi.fn()}
+        canAffordFakeImageReveal
+        onRevealFakeImage={vi.fn()}
         isLinkedTarget
       />
     );
@@ -113,9 +104,8 @@ describe('Journal BirdCard', () => {
     render(
       <BirdCard
         entry={concealedEntry}
-        isMaskedForCurrentRound={false}
-        canAffordReveal
-        onRevealForCurrentRound={vi.fn()}
+        canAffordFakeImageReveal
+        onRevealFakeImage={vi.fn()}
         isLinkedTarget
       />
     );
@@ -128,9 +118,8 @@ describe('Journal BirdCard', () => {
     const { rerender } = render(
       <BirdCard
         entry={concealedEntry}
-        isMaskedForCurrentRound={false}
-        canAffordReveal
-        onRevealForCurrentRound={vi.fn()}
+        canAffordFakeImageReveal
+        onRevealFakeImage={vi.fn()}
       />
     );
 
@@ -139,9 +128,8 @@ describe('Journal BirdCard', () => {
     rerender(
       <BirdCard
         entry={concealedEntry}
-        isMaskedForCurrentRound={false}
-        canAffordReveal
-        onRevealForCurrentRound={vi.fn()}
+        canAffordFakeImageReveal
+        onRevealFakeImage={vi.fn()}
         isLinkedTarget
       />
     );
@@ -155,9 +143,8 @@ describe('Journal BirdCard', () => {
     render(
       <BirdCard
         entry={concealedEntry}
-        isMaskedForCurrentRound={false}
-        canAffordReveal
-        onRevealForCurrentRound={vi.fn()}
+        canAffordFakeImageReveal
+        onRevealFakeImage={vi.fn()}
         isLinkedTarget
       />
     );
@@ -170,9 +157,8 @@ describe('Journal BirdCard', () => {
     render(
       <BirdCard
         entry={concealedEntry}
-        isMaskedForCurrentRound={false}
-        canAffordReveal
-        onRevealForCurrentRound={vi.fn()}
+        canAffordFakeImageReveal
+        onRevealFakeImage={vi.fn()}
         isLinkedTarget
       />
     );
@@ -182,5 +168,41 @@ describe('Journal BirdCard', () => {
     expect(screen.queryByRole('img', { name: 'Blue Jay' })).not.toBeInTheDocument();
     expect(screen.queryByText('Image unavailable')).not.toBeInTheDocument();
     expect(screen.queryByText('Tap to retry')).not.toBeInTheDocument();
+  });
+
+  it('hides unrevealed fake bird images and offers a journal reveal action', () => {
+    const onRevealFakeImage = vi.fn();
+
+    render(
+      <BirdCard
+        entry={concealedFakeEntry}
+        canAffordFakeImageReveal
+        onRevealFakeImage={onRevealFakeImage}
+        isLinkedTarget
+      />
+    );
+
+    expect(screen.queryByRole('img', { name: 'Blue Jay' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reveal hidden fake bird image' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reveal hidden fake bird image' }));
+
+    expect(onRevealFakeImage).toHaveBeenCalledWith('fake:blue-jay');
+  });
+
+  it('shows a reveal-required toast when birdhouse is pressed for an unrevealed fake bird', () => {
+    render(
+      <BirdCard
+        entry={concealedFakeEntry}
+        canAffordFakeImageReveal
+        onRevealFakeImage={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Birdhouse Blue Jay' }));
+
+    expect(screen.getByText('Reveal Required')).toBeInTheDocument();
+    expect(screen.getByText('Reveal this fake bird for 15 seeds before adding it to your Birdhouse.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reveal hidden fake bird image' })).toBeInTheDocument();
   });
 });

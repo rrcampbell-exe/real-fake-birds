@@ -10,23 +10,22 @@ import BirdhouseSwapSheet from '@/components/birdhouse/BirdhouseSwapSheet';
 import BirdCard from '@/components/journal/BirdCard';
 import JournalControls, { type JournalFilter, type JournalSort } from '@/components/journal/JournalControls';
 import { flushQueuedProgressEventsForSignedInUser } from '@/lib/auth/account-session';
-import { track, trackClientError } from '@/lib/analytics';
+import { track, trackClientError, trackFirstPurchase } from '@/lib/analytics';
 import { useBirdhouse } from '@/hooks/useBirdhouse';
 import { useBirdJournal } from '@/hooks/useBirdJournal';
 import { usePageProgressSync } from '@/hooks/usePageProgressSync';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useScreenViewed } from '@/hooks/useScreenViewed';
 import { useStoredJson } from '@/hooks/useStoredValue';
-import { REVEAL_BIRD_COST } from '@/lib/constants/hints';
+import { JOURNAL_FAKE_REVEAL_COST } from '@/lib/constants/hints';
 import { queueProgressEvent } from '@/lib/progress/progress-event-outbox';
 import { getTodayMissionDate } from '@/lib/utils/daily-mission-date';
 import {
   CURRENT_ROUND_JOURNAL_BIRD_KEY,
-  CURRENT_ROUND_JOURNAL_REVEAL_KEY,
-  isJournalEntryMaskedForCurrentRound,
+  isBirdImageRevealed,
   readPendingJournalTargetKey,
+  revealBirdImage,
   writePendingJournalTargetKey,
-  writeCurrentRoundJournalRevealKey,
 } from '@/lib/utils/bird-journal';
 import { applyJournalClassificationViewToSessionMissions, buildMissionRewardGrantEvents } from '@/lib/utils/missions';
 import { defaultBirdScore, normalizeBirdScore } from '@/lib/utils/player-progress';
@@ -111,15 +110,23 @@ export default function JournalPage() {
   const { isInBirdhouse } = useBirdhouse();
   const storedScore = useStoredJson<typeof defaultBirdScore | null>('birdScore', defaultBirdScore);
   const currentRoundBirdKey = useStoredJson<string | null>(CURRENT_ROUND_JOURNAL_BIRD_KEY, null);
-  const currentRoundRevealKey = useStoredJson<string | null>(CURRENT_ROUND_JOURNAL_REVEAL_KEY, null);
   const score = normalizeBirdScore(storedScore);
 
-  const handleRevealForCurrentRound = (birdKey: string) => {
-    if (birdKey !== currentRoundBirdKey || score.seeds < REVEAL_BIRD_COST || !spendSeeds(REVEAL_BIRD_COST)) {
+  const handleRevealFakeImage = (birdKey: string) => {
+    const entry = journal.find((journalEntry) => journalEntry.birdKey === birdKey);
+
+    if (!entry || entry.isReal || isBirdImageRevealed(entry) || score.seeds < JOURNAL_FAKE_REVEAL_COST || !spendSeeds(JOURNAL_FAKE_REVEAL_COST)) {
       return;
     }
 
-    writeCurrentRoundJournalRevealKey(birdKey);
+    revealBirdImage(birdKey);
+    track('fake_bird_image_revealed', {
+      bird_key: birdKey,
+      cost: JOURNAL_FAKE_REVEAL_COST,
+      seeds_balance_after: score.seeds - JOURNAL_FAKE_REVEAL_COST,
+      source: 'journal',
+    });
+    trackFirstPurchase('fake_reveal');
   };
 
   const handleOpenDetails = (birdKey: string) => {
@@ -204,22 +211,16 @@ export default function JournalPage() {
 
   const filteredJournal = useMemo(() => {
     const nextJournal = journal.filter((entry) => {
-      const isMasked = isJournalEntryMaskedForCurrentRound({
-        entry,
-        currentRoundBirdKey,
-        currentRoundRevealKey,
-      });
-
       if (filter === 'real') {
-        return !isMasked && entry.isReal;
+        return entry.isReal;
       }
 
       if (filter === 'fake') {
-        return !isMasked && !entry.isReal;
+        return !entry.isReal;
       }
 
       if (filter === 'birdhouse') {
-        return !isMasked && isInBirdhouse(entry.birdKey);
+        return isInBirdhouse(entry.birdKey);
       }
 
       return true;
@@ -260,7 +261,7 @@ export default function JournalPage() {
 
       return right.lastSeenAt.localeCompare(left.lastSeenAt);
     });
-  }, [currentRoundBirdKey, currentRoundRevealKey, debouncedSearchQuery, filter, isInBirdhouse, journal, sort]);
+  }, [debouncedSearchQuery, filter, isInBirdhouse, journal, sort]);
 
   useEffect(() => {
     const timerId = window.setTimeout(() => {
@@ -353,16 +354,20 @@ export default function JournalPage() {
     }
 
     let innerFrameId = 0;
+    let clearLinkedBirdTimeoutId = 0;
     const frameId = window.requestAnimationFrame(() => {
       innerFrameId = window.requestAnimationFrame(() => {
         target.scrollIntoView({ behavior: linkedBirdScrollBehavior, block: 'start' });
-        setLinkedBirdKey(null);
+        clearLinkedBirdTimeoutId = window.setTimeout(() => {
+          setLinkedBirdKey(null);
+        }, 300);
       });
     });
 
     return () => {
       window.cancelAnimationFrame(frameId);
       window.cancelAnimationFrame(innerFrameId);
+      window.clearTimeout(clearLinkedBirdTimeoutId);
     };
   }, [filteredJournal, linkedBirdKey, linkedBirdScrollBehavior]);
 
@@ -472,13 +477,8 @@ export default function JournalPage() {
             key={entry.birdKey}
             entry={entry}
             isLinkedTarget={entry.birdKey === linkedBirdKey}
-            isMaskedForCurrentRound={isJournalEntryMaskedForCurrentRound({
-              entry,
-              currentRoundBirdKey,
-              currentRoundRevealKey,
-            })}
-            canAffordReveal={score.seeds >= REVEAL_BIRD_COST}
-            onRevealForCurrentRound={handleRevealForCurrentRound}
+            canAffordFakeImageReveal={score.seeds >= JOURNAL_FAKE_REVEAL_COST}
+            onRevealFakeImage={handleRevealFakeImage}
             onOpenDetails={handleOpenDetails}
             onRequestBirdhouseSwap={setBirdhouseSwapTarget}
           />

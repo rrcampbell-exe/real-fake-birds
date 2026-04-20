@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Answer from './Answer';
 import type { HintState } from '@/types';
-import { CURRENT_ROUND_JOURNAL_REVEAL_KEY, PENDING_JOURNAL_TARGET_KEY } from '@/lib/utils/bird-journal';
+import { PENDING_JOURNAL_TARGET_KEY } from '@/lib/utils/bird-journal';
 
 const { confettiMock, playMock, pushMock } = vi.hoisted(() => ({
   confettiMock: vi.fn(),
@@ -49,6 +49,7 @@ vi.mock('next/navigation', () => ({
 
 const emptyHints: HintState = {
   fact: null,
+  description: null,
   image: null,
 };
 
@@ -102,9 +103,10 @@ describe('Answer', () => {
     expect(screen.getByText('Real')).toBeInTheDocument();
     expect(screen.getByText('Cyanocitta cristata')).toBeInTheDocument();
     expect(screen.getByText('Recently seen in Algeria')).toBeInTheDocument();
+    expect(document.querySelector('svg')).not.toBeNull();
     expect(screen.getByText('Field Notes')).toBeInTheDocument();
     expect(screen.getByText('Blue Robin is known for its vivid plumage.')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Learn more about this bird' })).toHaveAttribute('href', '/journal?bird=real%3Ablue-robin');
+    expect(screen.getByRole('link', { name: 'Learn more about this bird' })).toHaveAttribute('href', '/journal?bird=real%3Ablue-robin#real%3Ablue-robin');
     expect(screen.getByRole('button', { name: 'Add Blue Robin to Birdhouse' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Next Bird' }));
@@ -311,9 +313,7 @@ describe('Answer', () => {
     vi.useRealTimers();
   });
 
-  it('shows a themed fake field note without exposing fake bird metadata', () => {
-    vi.spyOn(Math, 'random').mockReturnValue(0);
-
+  it('shows the first fake field-note sentence and a journal link without exposing fake metadata', () => {
     render(
       <Answer
         {...defaultProps}
@@ -322,7 +322,7 @@ describe('Answer', () => {
         regionLabel={null}
         sciName={null}
         fact={null}
-        summary={null}
+        summary="A theatrical impostor with a suspiciously elegant blue belly and too much confidence. A second sentence should stay in the journal."
         articleUrl={null}
         imageUrl={null}
         description={null}
@@ -330,12 +330,92 @@ describe('Answer', () => {
     );
 
     expect(screen.getByText('Fake Field Notes')).toBeInTheDocument();
-    expect(screen.getByText('This bird was made up. We still love it, though!')).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Learn more about this bird' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /add campbell's striped algerian blue-bellied robin to birdhouse/i })).toBeInTheDocument();
+    expect(screen.getByText('A theatrical impostor with a suspiciously elegant blue belly and too much confidence.')).toBeInTheDocument();
+    expect(screen.queryByText('A second sentence should stay in the journal.')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Learn more about this bird' })).toHaveTextContent('See in Journal');
+    expect(screen.getByRole('button', { name: /\+ Birdhouse/i })).toHaveAttribute('aria-disabled', 'true');
     expect(screen.queryByText(/Surname:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Color:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Type:/)).not.toBeInTheDocument();
+  });
+
+  it('keeps the fake reveal CTA in the image slot and leaves birdhouse locked until reveal', () => {
+    render(
+      <Answer
+        {...defaultProps}
+        isReal={false}
+        regionLabel={null}
+        sciName={null}
+        fact="Invented fact."
+        summary="A glossy imposter with an implausibly dramatic tail fan."
+        imageUrl="https://example.com/fake-bird.jpg"
+        description={null}
+        revealFakeBirdImage={vi.fn()}
+        fakeBirdImageRevealed={false}
+        seedsBalance={18}
+      />
+    );
+
+    const revealButton = screen.getByRole('button', { name: 'Reveal hidden fake bird image' });
+    const notesHeading = screen.getByText('Fake Field Notes');
+
+    expect(revealButton.compareDocumentPosition(notesHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole('button', { name: /\+ Birdhouse/i })).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByText('Tap to Reveal')).toBeInTheDocument();
+    expect(screen.getByText('Click to Reveal')).toBeInTheDocument();
+    expect(screen.getByLabelText('Reveal costs 12 seeds')).toBeInTheDocument();
+    expect(screen.getByText('A glossy imposter with an implausibly dramatic tail fan.')).toBeInTheDocument();
+  });
+
+  it('shows a helper toast when birdhouse is pressed before a fake bird is revealed', () => {
+    vi.useFakeTimers();
+
+    render(
+      <Answer
+        {...defaultProps}
+        isReal={false}
+        regionLabel={null}
+        sciName={null}
+        fact={null}
+        summary="A glossy imposter with an implausibly dramatic tail fan."
+        articleUrl={null}
+        imageUrl="https://example.com/fake-bird.jpg"
+        description={null}
+        revealFakeBirdImage={vi.fn()}
+        fakeBirdImageRevealed={false}
+        seedsBalance={18}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /\+ Birdhouse/i }));
+
+    expect(screen.getByText('Reveal Required')).toBeInTheDocument();
+    expect(screen.getByText('Reveal this fake bird for 12 seeds before adding it to your Birdhouse.')).toBeInTheDocument();
+
+    vi.advanceTimersByTime(10000);
+
+    expect(screen.getByText('Reveal Required')).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it('replaces the reveal control with the birdhouse action once a fake bird is unlocked', () => {
+    render(
+      <Answer
+        {...defaultProps}
+        isReal={false}
+        regionLabel={null}
+        sciName={null}
+        fact="Invented fact."
+        summary="A glossy imposter with an implausibly dramatic tail fan."
+        imageUrl="https://example.com/fake-bird.jpg"
+        description={null}
+        fakeBirdImageRevealed
+        seedsBalance={18}
+      />
+    );
+
+    expect(screen.queryByRole('button', { name: 'Reveal' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add Blue Robin to Birdhouse' })).toBeInTheDocument();
   });
 
   it('can select a different fake field note copy', () => {
@@ -366,6 +446,7 @@ describe('Answer', () => {
         fact="Background fact."
         hints={{
           fact: { type: 'fact', content: 'Purchased fact hint.' },
+          description: null,
           image: null,
         }}
       />
@@ -391,7 +472,27 @@ describe('Answer', () => {
   it('shows a learn-more journal link for the specific bird', () => {
     render(<Answer {...defaultProps} isNewBirdEncounter />);
 
-    expect(screen.getByRole('link', { name: 'Learn more about this bird' })).toHaveAttribute('href', '/journal?bird=real%3Ablue-robin');
+    expect(screen.getByRole('link', { name: 'Learn more about this bird' })).toHaveAttribute('href', '/journal?bird=real%3Ablue-robin#real%3Ablue-robin');
+  });
+
+  it('uses the same journal link flow for fake birds', () => {
+    render(
+      <Answer
+        {...defaultProps}
+        isReal={false}
+        regionLabel={null}
+        sciName={null}
+        fact={null}
+        summary="A glossy imposter with an implausibly dramatic tail fan."
+        articleUrl={null}
+        description={null}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('link', { name: 'Learn more about this bird' }));
+
+    expect(localStorage.getItem(PENDING_JOURNAL_TARGET_KEY)).toBe(JSON.stringify('fake:blue-robin'));
+    expect(pushMock).toHaveBeenCalledWith('/journal?bird=fake%3Ablue-robin#fake%3Ablue-robin', { scroll: false });
   });
 
   it('marks the current bird as revealed before opening the journal link', () => {
@@ -399,9 +500,8 @@ describe('Answer', () => {
 
     fireEvent.click(screen.getByRole('link', { name: 'Learn more about this bird' }));
 
-    expect(localStorage.getItem(CURRENT_ROUND_JOURNAL_REVEAL_KEY)).toBe(JSON.stringify('real:blue-robin'));
     expect(localStorage.getItem(PENDING_JOURNAL_TARGET_KEY)).toBe(JSON.stringify('real:blue-robin'));
-    expect(pushMock).toHaveBeenCalledWith('/journal?bird=real%3Ablue-robin', { scroll: false });
+    expect(pushMock).toHaveBeenCalledWith('/journal?bird=real%3Ablue-robin#real%3Ablue-robin', { scroll: false });
   });
 
   it('marks the current bird as revealed when the image link is clicked', () => {
@@ -409,8 +509,7 @@ describe('Answer', () => {
 
     fireEvent.click(screen.getByRole('link', { name: 'Learn more about this bird' }));
 
-    expect(localStorage.getItem(CURRENT_ROUND_JOURNAL_REVEAL_KEY)).toBe(JSON.stringify('real:blue-robin'));
     expect(localStorage.getItem(PENDING_JOURNAL_TARGET_KEY)).toBe(JSON.stringify('real:blue-robin'));
-    expect(pushMock).toHaveBeenCalledWith('/journal?bird=real%3Ablue-robin', { scroll: false });
+    expect(pushMock).toHaveBeenCalledWith('/journal?bird=real%3Ablue-robin#real%3Ablue-robin', { scroll: false });
   });
 });

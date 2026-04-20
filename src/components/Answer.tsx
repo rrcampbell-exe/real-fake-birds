@@ -1,24 +1,26 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import Image from 'next/image';
-import { ArrowRight, GraduationCap } from 'lucide-react';
+import { ArrowRight, BookOpen, Bird, Birdhouse, GraduationCap, MapPin, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import BirdhouseSwapSheet from '@/components/birdhouse/BirdhouseSwapSheet';
 import BirdhouseToggleButton from '@/components/birdhouse/BirdhouseToggleButton';
+import SeedIcon from '@/components/icons/SeedIcon';
 import { useSound } from '@/hooks/useSound';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useStoredJson } from '@/hooks/useStoredValue';
 import ShareButton from '@/components/ShareButton';
 import { track } from '@/lib/analytics';
 import { isMajorStreakCheckpoint } from '@/lib/constants/streaks';
-import { deriveBirdKey, writeCurrentRoundJournalRevealKey, writePendingJournalTargetKey } from '@/lib/utils/bird-journal';
+import { deriveBirdKey, writePendingJournalTargetKey } from '@/lib/utils/bird-journal';
+import { formatBirdName } from '@/lib/utils/format-bird-name';
 import { defaultBirdScore, normalizeBirdScore } from '@/lib/utils/player-progress';
 import { buildMilestoneSharePayload, buildRoundSharePayload } from '@/lib/utils/share-data';
 import type { HintState, ImageAttribution } from '@/types';
+import { FAKE_REVEAL_COST } from '@/lib/constants/hints';
 
 const FAKE_FIELD_NOTES = [
   'This bird was made up. We still love it, though!',
@@ -72,11 +74,12 @@ interface AnswerImageProps {
   onUnavailable: () => void;
 }
 
-function AnswerImage({ birdData, imageUrl, fallbackImageUrl, contentSource, journalHref, isNewBirdEncounter, onLearnMore, onUnavailable }: AnswerImageProps) {
+const AnswerImage = memo(function AnswerImage({ birdData, imageUrl, fallbackImageUrl, contentSource, journalHref, isNewBirdEncounter, onLearnMore, onUnavailable }: AnswerImageProps) {
   const [imageStatus, setImageStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
   const [activeSrc, setActiveSrc] = useState(imageUrl);
   const [usedFallback, setUsedFallback] = useState(false);
   const mountedAt = useRef(0);
+  const displayBirdName = formatBirdName(birdData);
 
   useEffect(() => {
     mountedAt.current = Date.now();
@@ -101,14 +104,14 @@ function AnswerImage({ birdData, imageUrl, fallbackImageUrl, contentSource, jour
             className="absolute inset-0 bg-[linear-gradient(110deg,var(--color-surface-hover)_8%,color-mix(in_srgb,var(--color-surface)_65%,white_35%)_18%,var(--color-surface-hover)_33%)] bg-[length:200%_100%] animate-[shimmer_1.25s_linear_infinite]"
           />
         ) : null}
-        <Image
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src={activeSrc}
-          alt={birdData}
-          fill
-          sizes="(max-width: 768px) 50vw, 160px"
-          className={`object-cover object-center transition-opacity duration-200 ${imageStatus === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
+          alt={displayBirdName}
+          className={`absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-200 ${imageStatus === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
           loading="eager"
-          unoptimized
+          decoding="async"
+          fetchPriority="high"
           onLoad={() => {
             setImageStatus('loaded');
             track('bird_content_loaded', {
@@ -157,7 +160,9 @@ function AnswerImage({ birdData, imageUrl, fallbackImageUrl, contentSource, jour
       </Link>
     </div>
   );
-}
+});
+
+AnswerImage.displayName = 'AnswerImage';
 
 function ImageAttributionText({ attribution }: { attribution?: ImageAttribution | null }) {
   if (!attribution?.artist) {
@@ -182,6 +187,103 @@ function ImageAttributionText({ attribution }: { attribution?: ImageAttribution 
         )
       ) : null}
     </div>
+  );
+}
+
+function FakeBirdRevealImage({
+  onReveal,
+  seedsBalance,
+}: {
+  onReveal?: () => void;
+  seedsBalance: number;
+}) {
+  const canReveal = Boolean(onReveal) && seedsBalance >= FAKE_REVEAL_COST;
+
+  return (
+    <div className="min-w-0 w-full">
+      <button
+        type="button"
+        aria-label="Reveal hidden fake bird image"
+        title={`Reveal this fake bird for ${FAKE_REVEAL_COST} seeds`}
+        onClick={onReveal}
+        disabled={!canReveal}
+        className="group block w-full cursor-pointer disabled:pointer-events-none disabled:opacity-40"
+      >
+        <div className="relative aspect-square overflow-hidden rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] transition-colors duration-150 group-hover:bg-[var(--color-surface)]">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,color-mix(in_srgb,var(--color-secondary)_12%,transparent),transparent_52%)]" />
+          <div className="pointer-events-none absolute right-3 top-3 z-10">
+            <span
+              aria-label={`Reveal costs ${FAKE_REVEAL_COST} seeds`}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-surface-border)] bg-[color-mix(in_srgb,var(--color-surface)_94%,white_6%)] px-2.5 py-1 text-[0.62rem] font-bold text-[var(--color-text)] shadow-[var(--shadow-button)]"
+            >
+              <span>{FAKE_REVEAL_COST}</span>
+              <SeedIcon size={13} className="shrink-0" />
+            </span>
+          </div>
+          <div className="relative z-10 flex h-full items-center justify-center text-[var(--color-muted)] transition-transform duration-150 group-hover:scale-[1.03] group-hover:text-[var(--color-text)]">
+            <Bird className="h-28 w-28 md:h-14 md:w-14 lg:h-16 lg:w-16" strokeWidth={1.8} />
+          </div>
+          <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center">
+            <span className="inline-flex max-w-[calc(100%-1rem)] items-center gap-1.5 whitespace-nowrap rounded-full border border-[var(--color-surface-border)] bg-[color-mix(in_srgb,var(--color-surface)_96%,white_4%)] px-3 py-1 text-[0.65rem] font-semibold text-[var(--color-text)] shadow-[var(--shadow-button)] md:text-[0.62rem]">
+              <Sparkles size={12} strokeWidth={2.3} />
+              <span className="sm:hidden">Tap to Reveal</span>
+              <span className="hidden sm:inline">Click to Reveal</span>
+            </span>
+          </div>
+        </div>
+      </button>
+    </div>
+  );
+}
+
+function LockedBirdhouseNotice({
+  detail,
+  prefersReducedMotion,
+}: {
+  detail: string;
+  prefersReducedMotion: boolean;
+}) {
+  return (
+    <motion.div
+      initial={prefersReducedMotion ? false : { opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.18, ease: 'easeOut' }}
+      className="w-full rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3 shadow-[var(--shadow-card)]"
+      role="status"
+      aria-live="polite"
+    >
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary-light)] text-[var(--color-secondary)]">
+          <Birdhouse size={15} strokeWidth={2.2} />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-secondary)]">
+            Reveal Required
+          </p>
+          <p className="mt-1 text-sm font-medium leading-5 text-[var(--color-text)]">{detail}</p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function LockedBirdhouseButton({
+  onClick,
+}: {
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-disabled="true"
+      title={`Reveal this fake bird for ${FAKE_REVEAL_COST} seeds to unlock Birdhouse`}
+      className="inline-flex cursor-help items-center justify-end gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--color-muted)] opacity-55 transition hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+    >
+      <span className="whitespace-nowrap">+ Birdhouse</span>
+      <Birdhouse size={16} strokeWidth={2} />
+    </button>
   );
 }
 
@@ -210,6 +312,9 @@ interface AnswerProps {
   isNewBirdEncounter?: boolean;
   actionLabel?: string;
   onAction: () => void;
+  revealFakeBirdImage?: () => void;
+  fakeBirdImageRevealed?: boolean;
+  seedsBalance?: number;
 }
 
 export default function Answer({
@@ -218,6 +323,7 @@ export default function Answer({
   regionLabel,
   sciName,
   fact,
+  summary,
   imageUrl,
   fallbackImageUrl,
   contentSource,
@@ -233,6 +339,9 @@ export default function Answer({
   isNewBirdEncounter = false,
   actionLabel = 'Next Bird',
   onAction,
+  revealFakeBirdImage,
+  fakeBirdImageRevealed = false,
+  seedsBalance = 0,
 }: AnswerProps) {
   const { play } = useSound();
   const router = useRouter();
@@ -240,21 +349,39 @@ export default function Answer({
   const score = normalizeBirdScore(useStoredJson<typeof defaultBirdScore | null>('birdScore', defaultBirdScore));
   const isMajorStreak = isMajorStreakCheckpoint(score.currentStreak);
   const displayedFact = getAnswerFact(hints.fact?.content ?? fact);
+  const displayBirdName = formatBirdName(birdData);
   const journalBirdKey = deriveBirdKey(birdData, isReal);
-  const journalHref = `/journal?bird=${encodeURIComponent(journalBirdKey)}`;
+  const encodedJournalBirdKey = encodeURIComponent(journalBirdKey);
+  const journalHref = `/journal?bird=${encodedJournalBirdKey}#${encodedJournalBirdKey}`;
   const [hiddenImageKey, setHiddenImageKey] = useState<string | null>(null);
   const currentImageKey = imageUrl ? `${journalBirdKey}:${imageUrl}` : null;
-  const hasImage = isReal && Boolean(imageUrl) && hiddenImageKey !== currentImageKey;
-  const handleLearnMore = (event: React.MouseEvent<HTMLAnchorElement>) => {
+  const fakeImageUnlocked = !isReal && (fakeBirdImageRevealed || Boolean(hints.image));
+  const shouldShowFakeReveal = !isReal && !fakeImageUnlocked && Boolean(revealFakeBirdImage);
+  const isCurrentImageHidden = Boolean(currentImageKey) && hiddenImageKey === currentImageKey;
+  const showVisualSlot = (Boolean(imageUrl) || shouldShowFakeReveal) && !isCurrentImageHidden;
+  const hasImage = Boolean(imageUrl) && showVisualSlot && (isReal || fakeImageUnlocked);
+  const handleLearnMore = useCallback((event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
-    writeCurrentRoundJournalRevealKey(journalBirdKey);
     writePendingJournalTargetKey(journalBirdKey);
     void router.push(journalHref, { scroll: false });
-  };
+  }, [journalBirdKey, journalHref, router]);
+  const handleAnswerImageUnavailable = useCallback(() => {
+    setHiddenImageKey(currentImageKey);
+  }, [currentImageKey]);
   const [fakeFieldNote] = useState(getRandomFakeFieldNote);
+  const fakeFieldLead = getAnswerFact(summary) ?? displayedFact ?? fakeFieldNote;
   const [isNextBirdVisible, setIsNextBirdVisible] = useState(false);
   const [isWiggling, setIsWiggling] = useState(false);
   const [birdhouseSwapTarget, setBirdhouseSwapTarget] = useState<{ birdKey: string; birdName: string; isReal: boolean } | null>(null);
+  const [lockedBirdhouseToast, setLockedBirdhouseToast] = useState<{ title: string; detail: string } | null>(null);
+
+  const handleLockedBirdhousePress = () => {
+    play('tap');
+    setLockedBirdhouseToast({
+      title: 'Reveal Required',
+      detail: `Reveal this fake bird for ${FAKE_REVEAL_COST} seeds before adding it to your Birdhouse.`,
+    });
+  };
 
   const sharePayload = isMilestone && earnedBadgeName
     ? buildMilestoneSharePayload({
@@ -358,24 +485,44 @@ export default function Answer({
         </button>
       </div>
 
+      <AnimatePresence initial={false}>
+        {lockedBirdhouseToast ? (
+          <LockedBirdhouseNotice
+            key={lockedBirdhouseToast.detail}
+            detail={lockedBirdhouseToast.detail}
+            prefersReducedMotion={prefersReducedMotion}
+          />
+        ) : null}
+      </AnimatePresence>
+
       <div className="w-full space-y-4">
         <div
-          className={hasImage
+          className={showVisualSlot
             ? 'grid grid-cols-[1fr_7rem] items-start gap-4 md:grid-cols-[10rem_minmax(0,1fr)_auto]'
             : 'grid items-start gap-3 grid-cols-[minmax(0,1fr)_auto]'}
         >
-          {hasImage ? (
-            <AnswerImage
-              key={imageUrl}
-              birdData={birdData}
-              imageUrl={imageUrl ?? ''}
-              fallbackImageUrl={fallbackImageUrl}
-              contentSource={contentSource}
-              journalHref={journalHref}
-              isNewBirdEncounter={isNewBirdEncounter}
-              onLearnMore={handleLearnMore}
-              onUnavailable={() => setHiddenImageKey(currentImageKey)}
-            />
+          {showVisualSlot ? (
+            hasImage ? (
+              <AnswerImage
+                key={currentImageKey ?? imageUrl ?? 'answer-image'}
+                birdData={birdData}
+                imageUrl={imageUrl ?? ''}
+                fallbackImageUrl={fallbackImageUrl}
+                contentSource={contentSource}
+                journalHref={journalHref}
+                isNewBirdEncounter={isNewBirdEncounter}
+                onLearnMore={handleLearnMore}
+                onUnavailable={handleAnswerImageUnavailable}
+              />
+            ) : (
+              <FakeBirdRevealImage
+                onReveal={() => {
+                  play('collect');
+                  revealFakeBirdImage?.();
+                }}
+                seedsBalance={seedsBalance}
+              />
+            )
           ) : (
             <div className="min-w-0 space-y-1">
               {isNewBirdEncounter ? (
@@ -387,7 +534,7 @@ export default function Answer({
                 </span>
               ) : null}
               <h2 className="font-[family-name:var(--font-display)] text-xl font-bold leading-tight text-[var(--color-text)] md:text-2xl">
-                {birdData}
+                {displayBirdName}
               </h2>
               {sciName ? (
                 <p className="text-sm italic text-[var(--color-muted)]">{sciName}</p>
@@ -428,27 +575,41 @@ export default function Answer({
               transition={prefersReducedMotion ? { duration: 0 } : { delay: 0.26 }}
               className="mt-auto"
             >
-              <BirdhouseToggleButton
-                birdKey={journalBirdKey}
-                birdName={birdData}
-                isReal={isReal}
-                iconSize={16}
-                size="sm"
-                showLabel
-                onRequestSwap={setBirdhouseSwapTarget}
-              />
+              {isReal ? (
+                <BirdhouseToggleButton
+                  birdKey={journalBirdKey}
+                  birdName={birdData}
+                  isReal={isReal}
+                  iconSize={16}
+                  size="sm"
+                  showLabel
+                  onRequestSwap={setBirdhouseSwapTarget}
+                />
+              ) : fakeImageUnlocked ? (
+                <BirdhouseToggleButton
+                  birdKey={journalBirdKey}
+                  birdName={birdData}
+                  isReal={isReal}
+                  iconSize={16}
+                  size="sm"
+                  showLabel
+                  onRequestSwap={setBirdhouseSwapTarget}
+                />
+              ) : (
+                <LockedBirdhouseButton onClick={handleLockedBirdhousePress} />
+              )}
             </motion.div>
           </div>
 
-          {hasImage ? (
+          {showVisualSlot ? (
             <div className="col-span-2 min-w-0 space-y-1 md:col-span-3 md:col-start-1 md:row-start-2">
               <h2 className="font-[family-name:var(--font-display)] text-xl font-bold leading-tight text-[var(--color-text)] md:text-2xl">
-                {birdData}
+                {displayBirdName}
               </h2>
               {sciName ? (
                 <p className="text-sm italic text-[var(--color-muted)]">{sciName}</p>
               ) : null}
-              <ImageAttributionText attribution={attribution} />
+              {hasImage ? <ImageAttributionText attribution={attribution} /> : null}
             </div>
           ) : null}
         </div>
@@ -460,7 +621,10 @@ export default function Answer({
                 Field Notes
               </p>
               {regionLabel ? (
-                <p className="text-sm text-[var(--color-muted)]">Recently seen in {regionLabel}</p>
+                <p className="flex items-center gap-1.5 text-sm text-[var(--color-muted)]">
+                  <MapPin size={13} className="shrink-0" />
+                  <span>Recently seen in {regionLabel}</span>
+                </p>
               ) : null}
             </div>
 
@@ -483,7 +647,17 @@ export default function Answer({
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
               Fake Field Notes
             </p>
-            <p className="text-sm leading-6 text-[var(--color-text)]">{fakeFieldNote}</p>
+            <p className="text-sm leading-6 text-[var(--color-text)]">{fakeFieldLead}</p>
+            <Link
+              href={journalHref}
+              scroll={false}
+              onClick={handleLearnMore}
+              aria-label="Learn more about this bird"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+            >
+              <BookOpen size={13} strokeWidth={2} />
+              See in Journal
+            </Link>
           </div>
         )}
       </div>

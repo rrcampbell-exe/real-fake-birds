@@ -3,20 +3,15 @@ import {
   clearDirtyBirdJournalKeys,
   deriveBirdKey,
   getDirtyBirdJournalEntries,
-  isBirdClassificationRevealed,
-  isJournalEntryMaskedForCurrentRound,
   markDirtyBirdJournalKeys,
   mergeBirdJournalStores,
   normalizeBirdJournalStore,
   readBirdJournal,
   readCurrentRoundJournalBirdKey,
-  readCurrentRoundJournalRevealKey,
   readDirtyBirdJournalKeys,
   recordBirdEncounter,
-  revealBirdClassification,
   writeBirdJournal,
   writeCurrentRoundJournalBirdKey,
-  writeCurrentRoundJournalRevealKey,
 } from '@/lib/utils/bird-journal';
 
 vi.mock('@/hooks/useStoredValue', () => ({
@@ -68,7 +63,6 @@ describe('bird-journal utilities', () => {
     expect(secondEntry.metadata.regionLabel).toBe('North America');
     expect(secondEntry.metadata.sciName).toBe('Cyanocitta cristata');
     expect(readBirdJournal()[secondEntry.birdKey]).toEqual(secondEntry);
-    expect(isBirdClassificationRevealed(secondEntry)).toBe(false);
   });
 
   it('records a seen outcome without changing correct or incorrect counts', () => {
@@ -81,25 +75,6 @@ describe('bird-journal utilities', () => {
     expect(entry.seenCount).toBe(1);
     expect(entry.correctCount).toBe(0);
     expect(entry.incorrectCount).toBe(0);
-  });
-
-  it('can reveal a concealed bird classification permanently', () => {
-    const entry = recordBirdEncounter({
-      birdName: 'Blue Jay',
-      isReal: true,
-      outcome: 'seen',
-      metadata: {},
-    });
-
-    const revealedEntry = revealBirdClassification(entry.birdKey);
-
-    expect(revealedEntry).not.toBeNull();
-    expect(isBirdClassificationRevealed(revealedEntry)).toBe(true);
-    expect(isBirdClassificationRevealed(readBirdJournal()[entry.birdKey])).toBe(true);
-  });
-
-  it('returns null when revealing a bird key that does not exist', () => {
-    expect(revealBirdClassification('real:nonexistent')).toBeNull();
   });
 
   it('tracks dirty bird journal entries for incremental sync', () => {
@@ -257,7 +232,7 @@ describe('bird-journal utilities', () => {
       seenCount: 2,
       correctCount: 1,
       incorrectCount: 1,
-      metadata: { sciName: 'Cyanocitta cristata', classificationRevealed: true },
+      metadata: { sciName: 'Cyanocitta cristata' },
     });
     expect(merged['fake:striped-robin']).toMatchObject({
       birdName: 'Striped Robin',
@@ -304,12 +279,6 @@ describe('bird-journal utilities', () => {
       expect(readCurrentRoundJournalBirdKey()).toBeNull();
     });
 
-    it('reads and writes current round journal reveal key', () => {
-      expect(readCurrentRoundJournalRevealKey()).toBeNull();
-      writeCurrentRoundJournalRevealKey('real:blue-jay');
-      expect(readCurrentRoundJournalRevealKey()).toBe('real:blue-jay');
-    });
-
     it('returns null for non-string parsed value', () => {
       localStorage.setItem('currentRoundJournalBirdKey', JSON.stringify(42));
       expect(readCurrentRoundJournalBirdKey()).toBeNull();
@@ -318,47 +287,6 @@ describe('bird-journal utilities', () => {
     it('returns null for invalid JSON', () => {
       localStorage.setItem('currentRoundJournalBirdKey', '{bad');
       expect(readCurrentRoundJournalBirdKey()).toBeNull();
-    });
-  });
-
-  describe('isJournalEntryMaskedForCurrentRound', () => {
-    it('returns true when bird key matches round bird key but not reveal key', () => {
-      expect(isJournalEntryMaskedForCurrentRound({
-        entry: { birdKey: 'real:jay' },
-        currentRoundBirdKey: 'real:jay',
-        currentRoundRevealKey: null,
-      })).toBe(true);
-    });
-
-    it('returns false when reveal key matches bird key', () => {
-      expect(isJournalEntryMaskedForCurrentRound({
-        entry: { birdKey: 'real:jay' },
-        currentRoundBirdKey: 'real:jay',
-        currentRoundRevealKey: 'real:jay',
-      })).toBe(false);
-    });
-
-    it('returns false when entry bird key does not match current round', () => {
-      expect(isJournalEntryMaskedForCurrentRound({
-        entry: { birdKey: 'real:robin' },
-        currentRoundBirdKey: 'real:jay',
-        currentRoundRevealKey: null,
-      })).toBe(false);
-    });
-  });
-
-  describe('isBirdClassificationRevealed', () => {
-    it('returns false for null/undefined entry', () => {
-      expect(isBirdClassificationRevealed(null)).toBe(false);
-      expect(isBirdClassificationRevealed(undefined)).toBe(false);
-    });
-
-    it('returns false when classificationRevealed is not set', () => {
-      expect(isBirdClassificationRevealed({ metadata: {} })).toBe(false);
-    });
-
-    it('returns true when classificationRevealed is true', () => {
-      expect(isBirdClassificationRevealed({ metadata: { classificationRevealed: true } })).toBe(true);
     });
   });
 
