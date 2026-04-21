@@ -5,8 +5,64 @@ export const BIRD_JOURNAL_STORAGE_KEY = 'birdJournal';
 export const BIRD_JOURNAL_DIRTY_KEYS_STORAGE_KEY = 'birdJournalDirtyKeys';
 export const CURRENT_ROUND_JOURNAL_BIRD_KEY = 'currentRoundJournalBirdKey';
 export const PENDING_JOURNAL_TARGET_KEY = 'pendingJournalTargetKey';
+export const BIRD_JOURNAL_MAX_SERIALIZED_BYTES = 2_000_000;
 
 const defaultBirdJournal: BirdJournalStore = {};
+
+function getSerializedByteLength(value: string): number {
+  if (typeof TextEncoder !== 'undefined') {
+    return new TextEncoder().encode(value).length;
+  }
+
+  return value.length;
+}
+
+function pruneJournalForStorageLimit(journal: BirdJournalStore): BirdJournalStore {
+  let nextJournal = normalizeBirdJournalStore(journal);
+  let serialized = JSON.stringify(nextJournal);
+
+  if (getSerializedByteLength(serialized) <= BIRD_JOURNAL_MAX_SERIALIZED_BYTES) {
+    return nextJournal;
+  }
+
+  const oldestEntries = Object.values(nextJournal)
+    .sort((left, right) => left.lastSeenAt.localeCompare(right.lastSeenAt));
+  let prunedEntries = 0;
+
+  for (const entry of oldestEntries) {
+    const currentEntry = nextJournal[entry.birdKey];
+    if (!currentEntry || (!currentEntry.metadata.summary && !currentEntry.metadata.description)) {
+      continue;
+    }
+
+    nextJournal = {
+      ...nextJournal,
+      [entry.birdKey]: {
+        ...currentEntry,
+        metadata: {
+          ...currentEntry.metadata,
+          summary: undefined,
+          description: undefined,
+        },
+      },
+    };
+    prunedEntries += 1;
+    serialized = JSON.stringify(nextJournal);
+
+    if (getSerializedByteLength(serialized) <= BIRD_JOURNAL_MAX_SERIALIZED_BYTES) {
+      break;
+    }
+  }
+
+  if (prunedEntries > 0) {
+    console.warn('Pruned verbose bird journal metadata to stay within localStorage limits.', {
+      prunedEntryCount: prunedEntries,
+      maxBytes: BIRD_JOURNAL_MAX_SERIALIZED_BYTES,
+    });
+  }
+
+  return nextJournal;
+}
 
 function isFiniteCount(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0;
@@ -105,7 +161,7 @@ export function readBirdJournal(): BirdJournalStore {
 }
 
 export function writeBirdJournal(journalLike: BirdJournalStore, notify = true): BirdJournalStore {
-  const journal = normalizeBirdJournalStore(journalLike);
+  const journal = pruneJournalForStorageLimit(normalizeBirdJournalStore(journalLike));
   localStorage.setItem(BIRD_JOURNAL_STORAGE_KEY, JSON.stringify(journal));
 
   if (notify) {

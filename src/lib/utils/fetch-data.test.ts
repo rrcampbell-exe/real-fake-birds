@@ -22,7 +22,7 @@ describe('fetchData', () => {
     vi.useFakeTimers();
     localStorage.setItem(
       'birdData:classic',
-      JSON.stringify({ birdName: 'Blue Finch', isReal: true, regionLabel: 'Algeria', sciName: 'Fringilla caerulea' })
+      JSON.stringify({ birdName: 'Blue Finch', isReal: true, regionLabel: 'Algeria', sciName: 'Fringilla caerulea', cachedAt: Date.now() })
     );
 
     const setIsReal = vi.fn();
@@ -107,19 +107,13 @@ describe('fetchData', () => {
     await fetchPromise;
 
     expect(fetchMock).toHaveBeenCalledWith('/api/bird', { signal: undefined });
-    expect(localStorage.getItem('birdData:classic')).toBe(
-      JSON.stringify({
-        birdName: 'Copper Heron',
-        isReal: false,
-        regionLabel: undefined,
-        sciName: undefined,
-        fact: 'Invented fact should still cache if present.',
-          summary: undefined,
-          articleUrl: undefined,
-          imageUrl: undefined,
-          description: undefined,
-      })
-    );
+    const cachedBirdData = JSON.parse(localStorage.getItem('birdData:classic') ?? '{}') as Record<string, unknown>;
+    expect(cachedBirdData).toMatchObject({
+      birdName: 'Copper Heron',
+      isReal: false,
+      fact: 'Invented fact should still cache if present.',
+    });
+    expect(typeof cachedBirdData.cachedAt).toBe('number');
     expect(setIsReal).toHaveBeenCalledWith(false);
     expect(setSciName).toHaveBeenCalledWith(null);
     expect(setRegionLabel).toHaveBeenCalledWith(null);
@@ -258,6 +252,42 @@ describe('fetchData', () => {
     expect(localStorage.getItem('birdData:classic')).toBeNull();
   });
 
+  it('discards stale cached bird data older than 24 hours', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-20T12:00:00.000Z'));
+    const fetchMock = vi.fn().mockResolvedValue({
+      json: vi.fn().mockResolvedValue({
+        birdName: 'Fresh Finch',
+        isReal: true,
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    localStorage.setItem(
+      'birdData:classic',
+      JSON.stringify({ birdName: 'Stale Finch', isReal: true, cachedAt: Date.now() - 86_400_001 })
+    );
+
+    const fetchPromise = fetchData(
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+    );
+    await vi.runAllTimersAsync();
+    await fetchPromise;
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem('birdData:classic')).toContain('Fresh Finch');
+  });
+
   it('handles thrown fetch failures', async () => {
     const fetchMock = vi.fn().mockRejectedValue(new Error('network down'));
     vi.stubGlobal('fetch', fetchMock);
@@ -304,7 +334,7 @@ describe('fetchData', () => {
     vi.useFakeTimers();
     localStorage.setItem(
       'birdData:classic',
-      JSON.stringify({ birdName: 'Blue Finch', isReal: true, regionLabel: 'Algeria', sciName: 'Fringilla caerulea' })
+      JSON.stringify({ birdName: 'Blue Finch', isReal: true, regionLabel: 'Algeria', sciName: 'Fringilla caerulea', cachedAt: Date.now() })
     );
 
     const controller = new AbortController();

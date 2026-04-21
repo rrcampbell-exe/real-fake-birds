@@ -2,6 +2,7 @@ import { track } from '@/lib/analytics';
 import type { BirdErrorResponse, BirdResponse, GameMode, ImageAttribution } from '@/types';
 
 const BIRD_DATA_STORAGE_KEY = 'birdData';
+const BIRD_CACHE_TTL_MS = 86_400_000;
 
 const BIRD_REVEAL_DELAY_MS = 1000;
 const CACHED_BIRD_REVEAL_DELAY_MS = 300;
@@ -11,6 +12,10 @@ function preloadImage(url: string | undefined | null): void {
     const img = new window.Image();
     img.src = url;
   }
+}
+
+interface CachedBirdResponse extends BirdResponse {
+  cachedAt: number;
 }
 
 function getBirdDataStorageKey(mode: GameMode): string {
@@ -69,27 +74,34 @@ const fetchData = async (
   const storageKey = getBirdDataStorageKey(mode);
   const cached = localStorage.getItem(storageKey);
   if (cached) {
-    const { birdName, isReal, sciName, regionLabel, fact, summary, articleUrl, imageUrl, description, imageThumbUrl, fallbackImageUrl, contentSource, attribution } = JSON.parse(cached) as BirdResponse;
-    setIsReal(isReal);
-    setSciName(sciName ?? null);
-    setRegionLabel(regionLabel ?? null);
-    setFact(fact ?? null);
-    setSummary(summary ?? null);
-    setArticleUrl(articleUrl ?? null);
-    setImageUrl(imageUrl ?? null);
-    setDescription(description ?? null);
-    setImageThumbUrl?.(imageThumbUrl ?? null);
-    setFallbackImageUrl?.(fallbackImageUrl ?? null);
-    setContentSource?.(contentSource ?? null);
-    setAttribution?.(attribution ?? null);
-    preloadImage(imageUrl);
-    const delayCompleted = await waitForRevealDelay(CACHED_BIRD_REVEAL_DELAY_MS, signal);
-    if (!delayCompleted || signal?.aborted) {
+    const parsedCached = JSON.parse(cached) as Partial<CachedBirdResponse>;
+    const cachedAt = typeof parsedCached.cachedAt === 'number' ? parsedCached.cachedAt : 0;
+
+    if ((Date.now() - cachedAt) <= BIRD_CACHE_TTL_MS) {
+      const { birdName, isReal, sciName, regionLabel, fact, summary, articleUrl, imageUrl, description, imageThumbUrl, fallbackImageUrl, contentSource, attribution } = parsedCached as CachedBirdResponse;
+      setIsReal(isReal);
+      setSciName(sciName ?? null);
+      setRegionLabel(regionLabel ?? null);
+      setFact(fact ?? null);
+      setSummary(summary ?? null);
+      setArticleUrl(articleUrl ?? null);
+      setImageUrl(imageUrl ?? null);
+      setDescription(description ?? null);
+      setImageThumbUrl?.(imageThumbUrl ?? null);
+      setFallbackImageUrl?.(fallbackImageUrl ?? null);
+      setContentSource?.(contentSource ?? null);
+      setAttribution?.(attribution ?? null);
+      preloadImage(imageUrl);
+      const delayCompleted = await waitForRevealDelay(CACHED_BIRD_REVEAL_DELAY_MS, signal);
+      if (!delayCompleted || signal?.aborted) {
+        return;
+      }
+      setIsLoading(false);
+      setBirdData(birdName);
       return;
     }
-    setIsLoading(false);
-    setBirdData(birdName);
-    return;
+
+    localStorage.removeItem(storageKey);
   }
 
   try {
@@ -119,6 +131,7 @@ const fetchData = async (
       contentSource: data.contentSource,
       factSource: data.factSource,
       attribution: data.attribution,
+      cachedAt: Date.now(),
     };
     localStorage.setItem(storageKey, JSON.stringify(birdData));
 

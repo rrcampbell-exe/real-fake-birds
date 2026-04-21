@@ -1,6 +1,7 @@
 import type { ProgressEvent } from './progress-events';
 
 export const PROGRESS_EVENT_OUTBOX_STORAGE_KEY = 'progressEventOutbox';
+export const MAX_PROGRESS_EVENT_OUTBOX_SIZE = 500;
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined';
@@ -25,12 +26,23 @@ export function readProgressEventOutbox(): ProgressEvent[] {
 }
 
 function writeProgressEventOutbox(events: ProgressEvent[]): ProgressEvent[] {
-  if (!isBrowser()) {
-    return events;
+  const nextEvents = events.length > MAX_PROGRESS_EVENT_OUTBOX_SIZE
+    ? events.slice(events.length - MAX_PROGRESS_EVENT_OUTBOX_SIZE)
+    : events;
+
+  if (nextEvents.length !== events.length) {
+    console.warn('Progress event outbox exceeded the maximum size. Oldest events were discarded.', {
+      droppedEventCount: events.length - nextEvents.length,
+      maxSize: MAX_PROGRESS_EVENT_OUTBOX_SIZE,
+    });
   }
 
-  window.localStorage.setItem(PROGRESS_EVENT_OUTBOX_STORAGE_KEY, JSON.stringify(events));
-  return events;
+  if (!isBrowser()) {
+    return nextEvents;
+  }
+
+  window.localStorage.setItem(PROGRESS_EVENT_OUTBOX_STORAGE_KEY, JSON.stringify(nextEvents));
+  return nextEvents;
 }
 
 export function queueProgressEvent(event: ProgressEvent): ProgressEvent[] {

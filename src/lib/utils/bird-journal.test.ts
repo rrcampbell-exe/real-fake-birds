@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  BIRD_JOURNAL_MAX_SERIALIZED_BYTES,
   clearDirtyBirdJournalKeys,
   deriveBirdKey,
   getDirtyBirdJournalEntries,
@@ -189,6 +190,38 @@ describe('bird-journal utilities', () => {
   it('writes journal with notify=false', () => {
     writeBirdJournal({ 'real:jay': { birdKey: 'real:jay', birdName: 'Jay', isReal: true, seenCount: 1, correctCount: 1, incorrectCount: 0, lastSeenAt: '2026-01-01', metadata: {} } }, false);
     expect(readBirdJournal()['real:jay']).toBeDefined();
+  });
+
+  it('prunes oldest verbose journal metadata when storage size grows too large', () => {
+    const largeText = 'a'.repeat(400_000);
+    const oversizedJournal = Object.fromEntries(
+      Array.from({ length: 4 }, (_, index) => {
+        const birdKey = `real:bird-${index}`;
+        return [birdKey, {
+          birdKey,
+          birdName: `Bird ${index}`,
+          isReal: true,
+          seenCount: 1,
+          correctCount: 1,
+          incorrectCount: 0,
+          lastSeenAt: `2026-01-0${index + 1}T00:00:00.000Z`,
+          metadata: {
+            imageUrl: `https://example.com/${birdKey}.webp`,
+            summary: largeText,
+            description: largeText,
+          },
+        }];
+      })
+    );
+
+    writeBirdJournal(oversizedJournal, false);
+
+    const stored = readBirdJournal();
+    const serializedLength = new TextEncoder().encode(JSON.stringify(stored)).length;
+    expect(serializedLength).toBeLessThanOrEqual(BIRD_JOURNAL_MAX_SERIALIZED_BYTES);
+    expect(stored['real:bird-0']?.metadata.summary).toBeUndefined();
+    expect(stored['real:bird-0']?.metadata.description).toBeUndefined();
+    expect(stored['real:bird-3']?.metadata.imageUrl).toBe('https://example.com/real:bird-3.webp');
   });
 
   it('merges local and remote stores conservatively', () => {
