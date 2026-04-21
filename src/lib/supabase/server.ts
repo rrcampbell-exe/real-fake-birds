@@ -32,3 +32,13 @@ export function createSupabaseAdminClient(): SupabaseClient {
     },
   });
 }
+
+export function createSupabaseAuthClient(): SupabaseClient {
+  return createClient(getSupabaseUrl(), getSupabaseAnonKey(), {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+}

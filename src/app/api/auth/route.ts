@@ -19,8 +19,10 @@ import { validateUsername } from '@/lib/auth/username';
 import { deriveBirdKey } from '@/lib/utils/bird-journal';
 import { getDailyMissionStreaks } from '@/lib/utils/daily-mission-history';
 import { getCurrentWeekStart, getWeekEndTimestamp } from '@/lib/utils/weekly-leaderboard';
+import { ensureAccountProfileFromUserMetadata } from '@/lib/auth/account-profile';
 import { hasSupabaseEnv } from '@/lib/supabase/env';
-import { createSupabaseAdminClient, createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseAdminClient, createSupabaseAuthClient, createSupabaseServerClient } from '@/lib/supabase/server';
+import { consumeRateLimit, getRateLimitKey } from '@/lib/server/rate-limiter';
 import type {
   BirdhouseStore,
   BirdJournalEntry,
@@ -31,7 +33,7 @@ import type {
   WeeklyPlacementSummary,
 } from '@/types';
 
-type AuthAction = 'validate-username' | 'register-account' | 'get-account-state' | 'get-leaderboard' | 'resolve-sign-in-identifier' | 'save-profile' | 'save-avatar-palette' | 'sync-local-progress' | 'sync-bird-journal' | 'sync-birdhouse' | 'pull-account-progress' | 'purchase-theme' | 'apply-progress-events' | 'sync-daily-mission-completion';
+type AuthAction = 'validate-username' | 'register-account' | 'get-account-state' | 'get-leaderboard' | 'sign-in-with-username' | 'save-profile' | 'save-avatar-palette' | 'sync-local-progress' | 'sync-bird-journal' | 'sync-birdhouse' | 'pull-account-progress' | 'purchase-theme' | 'apply-progress-events' | 'sync-daily-mission-completion';
 type RewardAuthAction = 'claim-mission-reward' | 'claim-mission-set-bonus' | 'purchase-streak-insurance';
 
 interface ValidateUsernameRequest {
@@ -54,9 +56,10 @@ interface GetLeaderboardRequest {
   action: AuthAction;
 }
 
-interface ResolveSignInIdentifierRequest {
+interface SignInWithUsernameRequest {
   action: AuthAction;
-  identifier: string;
+  username: string;
+  password: string;
 }
 
 interface PullAccountProgressRequest {
@@ -119,6 +122,17 @@ interface SyncBirdhouseRequest {
 }
 
 const BIRD_JOURNAL_PULL_LIMIT = 10_000;
+const MAX_SYNC_JOURNAL_ENTRIES = 10_000;
+const MAX_PROGRESS_EVENT_BATCH_SIZE = 500;
+const MAX_AUTH_REQUEST_BYTES = 262_144;
+const MAX_AUTH_EMAIL_LENGTH = 254;
+const MAX_AUTH_PASSWORD_LENGTH = 128;
+const USERNAME_VALIDATION_WINDOW_MS = 60_000;
+const USERNAME_VALIDATION_MAX_REQUESTS = 20;
+const REGISTER_WINDOW_MS = 900_000;
+const REGISTER_MAX_REQUESTS = 5;
+const USERNAME_SIGN_IN_WINDOW_MS = 60_000;
+const USERNAME_SIGN_IN_MAX_REQUESTS = 10;
 
 interface SyncDailyMissionCompletionRequest {
   action: AuthAction;
@@ -135,6 +149,7 @@ export function shouldClearServerStreakInsurance(
 interface AuthenticatedRequestContext {
   userId: string;
   email: string | null;
+  user: NonNullable<Awaited<ReturnType<Awaited<ReturnType<typeof createSupabaseServerClient>>['auth']['getUser']>>['data']['user']>;
 }
 
 function isValidateUsernameRequest(value: unknown): value is ValidateUsernameRequest {
@@ -176,13 +191,15 @@ function isGetLeaderboardRequest(value: unknown): value is GetLeaderboardRequest
   return candidate.action === 'get-leaderboard';
 }
 
-function isResolveSignInIdentifierRequest(value: unknown): value is ResolveSignInIdentifierRequest {
+function isSignInWithUsernameRequest(value: unknown): value is SignInWithUsernameRequest {
   if (!value || typeof value !== 'object') {
     return false;
   }
 
-  const candidate = value as Partial<ResolveSignInIdentifierRequest>;
-  return candidate.action === 'resolve-sign-in-identifier' && typeof candidate.identifier === 'string';
+  const candidate = value as Partial<SignInWithUsernameRequest>;
+  return candidate.action === 'sign-in-with-username'
+    && typeof candidate.username === 'string'
+    && typeof candidate.password === 'string';
 }
 
 function isPullAccountProgressRequest(value: unknown): value is PullAccountProgressRequest {
@@ -257,6 +274,7 @@ function isApplyProgressEventsRequest(value: unknown): value is ApplyProgressEve
   const candidate = value as Partial<ApplyProgressEventsRequest>;
   return candidate.action === 'apply-progress-events'
     && Array.isArray(candidate.events)
+    && candidate.events.length <= MAX_PROGRESS_EVENT_BATCH_SIZE
     && candidate.events.every(isProgressEvent);
 }
 
@@ -380,6 +398,7 @@ function isSyncLocalProgressRequest(value: unknown): value is SyncLocalProgressR
     && Array.isArray(candidate.progress.milestones)
     && isDailyChallengeHistoryEntryArray(candidate.progress.dailyChallengeHistory)
     && (candidate.progress.dailyMissionHistory === undefined || Array.isArray(candidate.progress.dailyMissionHistory))
+    && candidate.progress.journalEntries.length <= MAX_SYNC_JOURNAL_ENTRIES
     && isBirdJournalEntryArray(candidate.progress.journalEntries)
     && isBirdhouseStore(candidate.progress.birdhouse);
 }
@@ -391,7 +410,31 @@ function isSyncBirdJournalRequest(value: unknown): value is SyncBirdJournalReque
 
   const candidate = value as Partial<SyncBirdJournalRequest>;
   return candidate.action === 'sync-bird-journal'
+    && candidate.journalEntries.length <= MAX_SYNC_JOURNAL_ENTRIES
     && isBirdJournalEntryArray(candidate.journalEntries);
+}
+
+function getClientIp(request: NextRequest): string | null {
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  if (forwardedFor) {
+    return forwardedFor.split(',')[0]?.trim() ?? null;
+  }
+
+  return request.headers.get('x-real-ip');
+}
+
+function exceedsRequestBodyLimit(request: NextRequest, limitBytes: number): boolean {
+  const contentLength = request.headers.get('content-length');
+  if (!contentLength) {
+    return false;
+  }
+
+  const parsedLength = Number.parseInt(contentLength, 10);
+  return Number.isFinite(parsedLength) && parsedLength > limitBytes;
+}
+
+function buildEmailRedirectUrl(request: NextRequest): string {
+  return new URL('/auth/callback?next=/settings', request.url).toString();
 }
 
 function isBirdhouseStore(value: unknown): value is BirdhouseStore {
@@ -414,6 +457,39 @@ function isSyncBirdhouseRequest(value: unknown): value is SyncBirdhouseRequest {
 
   const candidate = value as Partial<SyncBirdhouseRequest>;
   return candidate.action === 'sync-birdhouse' && isBirdhouseStore(candidate.birdhouse);
+}
+
+function hasTooManyProgressEvents(value: unknown): boolean {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<ApplyProgressEventsRequest>;
+  return candidate.action === 'apply-progress-events'
+    && Array.isArray(candidate.events)
+    && candidate.events.length > MAX_PROGRESS_EVENT_BATCH_SIZE;
+}
+
+function hasTooManySyncJournalEntries(value: unknown): boolean {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<SyncBirdJournalRequest>;
+  return candidate.action === 'sync-bird-journal'
+    && Array.isArray(candidate.journalEntries)
+    && candidate.journalEntries.length > MAX_SYNC_JOURNAL_ENTRIES;
+}
+
+function hasTooManySyncLocalJournalEntries(value: unknown): boolean {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<SyncLocalProgressRequest>;
+  return candidate.action === 'sync-local-progress'
+    && Array.isArray(candidate.progress?.journalEntries)
+    && candidate.progress.journalEntries.length > MAX_SYNC_JOURNAL_ENTRIES;
 }
 
 function isSyncDailyMissionCompletionRequest(value: unknown): value is SyncDailyMissionCompletionRequest {
@@ -628,6 +704,7 @@ async function getAuthenticatedRequestContext(): Promise<AuthenticatedRequestCon
     return {
       userId: data.user.id,
       email: data.user.email ?? null,
+      user: data.user,
     };
   } catch {
     return null;
@@ -1016,6 +1093,10 @@ async function incrementWeeklySeedsEarned(
 }
 
 export async function POST(request: NextRequest) {
+  if (exceedsRequestBodyLimit(request, MAX_AUTH_REQUEST_BYTES)) {
+    return NextResponse.json({ error: 'request_too_large', message: 'This request body is too large.' }, { status: 413 });
+  }
+
   let body: unknown;
 
   try {
@@ -1024,7 +1105,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
   }
 
+  if (hasTooManyProgressEvents(body)) {
+    return NextResponse.json({ error: 'invalid_request', message: 'Progress event batches may not exceed 500 events.' }, { status: 400 });
+  }
+
+  if (hasTooManySyncJournalEntries(body) || hasTooManySyncLocalJournalEntries(body)) {
+    return NextResponse.json({ error: 'invalid_request', message: 'Journal sync payloads may not exceed 10,000 entries.' }, { status: 400 });
+  }
+
   if (isValidateUsernameRequest(body)) {
+    const rateLimit = await consumeRateLimit(
+      getRateLimitKey(getClientIp(request), 'auth-validate-username'),
+      USERNAME_VALIDATION_MAX_REQUESTS,
+      USERNAME_VALIDATION_WINDOW_MS,
+    );
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+    }
+
     const validation = validateUsername(body.username);
     const available = validation.isValid
       ? await lookupUsernameAvailability(validation.normalizedUsername)
@@ -1044,6 +1143,16 @@ export async function POST(request: NextRequest) {
       return configErrorResponse();
     }
 
+    const rateLimit = await consumeRateLimit(
+      getRateLimitKey(getClientIp(request), 'auth-register-account'),
+      REGISTER_MAX_REQUESTS,
+      REGISTER_WINDOW_MS,
+    );
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+    }
+
     const username = body.username.trim();
     const email = body.email.trim().toLowerCase();
     const password = body.password;
@@ -1059,11 +1168,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!email || !email.includes('@')) {
+    if (!email || !email.includes('@') || email.length > MAX_AUTH_EMAIL_LENGTH) {
       return NextResponse.json({ error: 'invalid_email', message: 'Enter a valid email address.' }, { status: 400 });
     }
 
-    if (password.length < 8) {
+    if (password.length < 8 || password.length > MAX_AUTH_PASSWORD_LENGTH) {
       return NextResponse.json({ error: 'invalid_password', message: 'Choose a password with at least 8 characters.' }, { status: 400 });
     }
 
@@ -1073,14 +1182,16 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      const admin = createSupabaseAdminClient();
-      const currentWeekStart = await finalizeExpiredWeeklyLeaderboards(admin);
-      const { data: createdUserResult, error: createUserError } = await admin.auth.admin.createUser({
+      const authClient = createSupabaseAuthClient();
+      const { data: createdUserResult, error: createUserError } = await authClient.auth.signUp({
         email,
         password,
-        email_confirm: true,
-        user_metadata: {
-          requested_username: username,
+        options: {
+          emailRedirectTo: buildEmailRedirectUrl(request),
+          data: {
+            requested_username: username,
+            requested_username_canonical: validation.normalizedUsername,
+          },
         },
       });
 
@@ -1094,61 +1205,15 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const userId = createdUserResult.user.id;
-
-      try {
-        const { data: profile, error: profileError } = await admin
-          .from('profiles')
-          .upsert(
-            {
-              user_id: userId,
-              username,
-              username_canonical: validation.normalizedUsername,
-              avatar_palette: 'finch',
-            },
-            { onConflict: 'user_id' }
-          )
-          .select('username, username_canonical, avatar_palette')
-          .single();
-
-        if (profileError || !profile) {
-          throw new Error('Unable to save the username for this account.');
-        }
-
-        const { error: leaderboardError } = await admin
-          .from('leaderboard_stats')
-          .upsert(
-            {
-              user_id: userId,
-              username_canonical: validation.normalizedUsername,
-              current_week_start: currentWeekStart,
-            },
-            { onConflict: 'user_id' }
-          );
-
-        if (leaderboardError) {
-          throw new Error('Unable to prepare the leaderboard profile for this account.');
-        }
-
-        return NextResponse.json({
-          action: 'register-account',
-          account: {
-            email,
-            username: profile.username,
-            usernameCanonical: profile.username_canonical,
-            avatarPalette: profile.avatar_palette,
-          },
-        });
-      } catch (caughtError) {
-        await admin.auth.admin.deleteUser(userId);
-        return NextResponse.json(
-          {
-            error: 'account_creation_failed',
-            message: caughtError instanceof Error ? caughtError.message : 'Unable to finish creating the account.',
-          },
-          { status: 500 }
-        );
-      }
+      return NextResponse.json({
+        action: 'register-account',
+        account: {
+          email,
+          username,
+          usernameCanonical: validation.normalizedUsername,
+        },
+        requiresEmailVerification: !createdUserResult.session,
+      });
     } catch {
       return NextResponse.json({ error: 'account_creation_failed', message: 'Unable to create the account.' }, { status: 500 });
     }
@@ -1165,6 +1230,7 @@ export async function POST(request: NextRequest) {
 
     try {
       const admin = createSupabaseAdminClient();
+      await ensureAccountProfileFromUserMetadata({ admin, user: context.user });
       const currentWeekStart = await finalizeExpiredWeeklyLeaderboards(admin);
       const [{ data: profile }, { data: progress }, { data: unlockedThemes }, leaderboardRow] = await Promise.all([
         admin
@@ -1305,26 +1371,33 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  if (isResolveSignInIdentifierRequest(body)) {
+  if (isSignInWithUsernameRequest(body)) {
     if (!hasSupabaseEnv()) {
       return configErrorResponse();
     }
 
-    const identifier = body.identifier.trim();
-    if (!identifier) {
+    const username = body.username.trim();
+    if (!username) {
       return NextResponse.json({ error: 'invalid_sign_in_identifier' }, { status: 400 });
     }
 
-    if (identifier.includes('@')) {
-      return NextResponse.json({
-        action: 'resolve-sign-in-identifier',
-        email: identifier.toLowerCase(),
-      });
+    if (body.password.length === 0 || body.password.length > MAX_AUTH_PASSWORD_LENGTH) {
+      return NextResponse.json({ error: 'invalid_password', message: 'Enter a valid password.' }, { status: 400 });
     }
 
-    const validation = validateUsername(identifier);
+    const validation = validateUsername(username);
     if (!validation.isValid) {
       return NextResponse.json({ error: 'invalid_sign_in_identifier' }, { status: 400 });
+    }
+
+    const rateLimit = await consumeRateLimit(
+      getRateLimitKey(getClientIp(request), `auth-sign-in-with-username:${validation.normalizedUsername}`),
+      USERNAME_SIGN_IN_MAX_REQUESTS,
+      USERNAME_SIGN_IN_WINDOW_MS,
+    );
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
     }
 
     try {
@@ -1336,20 +1409,38 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (!profile?.user_id) {
-        return NextResponse.json({ error: 'sign_in_identifier_not_found' }, { status: 404 });
+        return NextResponse.json({ error: 'invalid_sign_in_credentials', message: 'Unable to sign in with that username and password.' }, { status: 400 });
       }
 
       const { data: userResult, error } = await admin.auth.admin.getUserById(profile.user_id);
       if (error || !userResult.user?.email) {
-        return NextResponse.json({ error: 'sign_in_identifier_not_found' }, { status: 404 });
+        return NextResponse.json({ error: 'invalid_sign_in_credentials', message: 'Unable to sign in with that username and password.' }, { status: 400 });
+      }
+
+      const authClient = createSupabaseAuthClient();
+      const { data: signInResult, error: signInError } = await authClient.auth.signInWithPassword({
+        email: userResult.user.email,
+        password: body.password,
+      });
+
+      if (signInError || !signInResult.session) {
+        const errorMessage = signInError?.message?.toLowerCase() ?? '';
+        if (errorMessage.includes('email not confirmed')) {
+          return NextResponse.json({ error: 'email_confirmation_required' }, { status: 403 });
+        }
+
+        return NextResponse.json({ error: 'invalid_sign_in_credentials', message: 'Unable to sign in with that username and password.' }, { status: 400 });
       }
 
       return NextResponse.json({
-        action: 'resolve-sign-in-identifier',
-        email: userResult.user.email,
+        action: 'sign-in-with-username',
+        session: {
+          accessToken: signInResult.session.access_token,
+          refreshToken: signInResult.session.refresh_token,
+        },
       });
     } catch {
-      return NextResponse.json({ error: 'sign_in_identifier_not_found' }, { status: 404 });
+      return NextResponse.json({ error: 'invalid_sign_in_credentials', message: 'Unable to sign in with that username and password.' }, { status: 400 });
     }
   }
 

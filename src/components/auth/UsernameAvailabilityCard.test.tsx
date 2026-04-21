@@ -21,8 +21,8 @@ vi.mock('@/lib/auth/account-sync', () => ({
   fetchAccountState: vi.fn(),
   registerAccount: vi.fn(),
   pullAccountProgress: vi.fn(),
-  resolveSignInIdentifier: vi.fn(),
   saveProfile: vi.fn(),
+  signInWithUsername: vi.fn(),
   syncLocalProgress: vi.fn(),
 }));
 
@@ -37,7 +37,7 @@ vi.mock('@/lib/auth/account-session', () => ({
 
 import { hasSupabaseEnv } from '@/lib/supabase/env';
 import { useAccountState } from '@/components/account/AccountStateProvider';
-import { fetchAccountState, registerAccount, resolveSignInIdentifier, saveProfile } from '@/lib/auth/account-sync';
+import { fetchAccountState, registerAccount, saveProfile, signInWithUsername } from '@/lib/auth/account-sync';
 import {
   hydrateSignedInAccountToLocalState,
   notifyAccountStateChanged,
@@ -53,7 +53,7 @@ const mockedHasSupabaseEnv = vi.mocked(hasSupabaseEnv);
 const mockedUseAccountState = vi.mocked(useAccountState);
 const mockedFetchAccountState = vi.mocked(fetchAccountState);
 const mockedRegisterAccount = vi.mocked(registerAccount);
-const mockedResolveSignInIdentifier = vi.mocked(resolveSignInIdentifier);
+const mockedSignInWithUsername = vi.mocked(signInWithUsername);
 const mockedSaveProfile = vi.mocked(saveProfile);
 const mockedHydrateSignedInAccountToLocalState = vi.mocked(hydrateSignedInAccountToLocalState);
 const mockedNotifyAccountStateChanged = vi.mocked(notifyAccountStateChanged);
@@ -93,6 +93,7 @@ function createSupabaseClientMock(overrides?: {
       getUser: overrides?.getUser ?? vi.fn().mockResolvedValue({ data: { user: null } }),
       getSession: overrides?.getSession ?? vi.fn().mockResolvedValue({ data: { session: null } }),
       signInWithPassword: overrides?.signInWithPassword ?? vi.fn().mockResolvedValue({ error: null }),
+      setSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: 'user-1' } } }, error: null }),
       signUp: overrides?.signUp ?? vi.fn().mockResolvedValue({
         data: { user: { email: 'bird@example.com' }, session: null },
         error: null,
@@ -116,7 +117,7 @@ describe('UsernameAvailabilityCard', () => {
     mockedUseAccountState.mockReturnValue(createAccountState());
     mockedFetchAccountState.mockReset();
     mockedRegisterAccount.mockReset();
-    mockedResolveSignInIdentifier.mockReset();
+    mockedSignInWithUsername.mockReset();
     mockedSaveProfile.mockReset();
     mockedHydrateSignedInAccountToLocalState.mockReset();
     mockedNotifyAccountStateChanged.mockReset();
@@ -144,7 +145,6 @@ describe('UsernameAvailabilityCard', () => {
   });
 
   it('creates an account with required username, email, and password', async () => {
-    const signInWithPassword = vi.fn().mockResolvedValue({ error: null });
     const onAuthSuccess = vi.fn();
     mockedHasSupabaseEnv.mockReturnValue(true);
     mockedUseUsernameValidation.mockReturnValue({
@@ -162,12 +162,9 @@ describe('UsernameAvailabilityCard', () => {
         email: 'bird@example.com',
         username: 'BirdFan_17',
         usernameCanonical: 'birdfan_17',
-        avatarPalette: 'finch',
       },
+      requiresEmailVerification: true,
     });
-    mockedGetSupabaseBrowserClient.mockReturnValue(
-      createSupabaseClientMock({ signInWithPassword }) as never
-    );
 
     render(<UsernameAvailabilityCard onAuthSuccess={onAuthSuccess} />);
 
@@ -184,13 +181,10 @@ describe('UsernameAvailabilityCard', () => {
       });
     });
 
-    expect(signInWithPassword).toHaveBeenCalledWith({
-      email: 'bird@example.com',
-      password: 'secret-password',
-    });
-    expect(mockedPushCurrentLocalProgressToAccount).toHaveBeenCalled();
-    expect(mockedHydrateSignedInAccountToLocalState).toHaveBeenCalled();
-    expect(onAuthSuccess).toHaveBeenCalled();
+    expect(mockedPushCurrentLocalProgressToAccount).not.toHaveBeenCalled();
+    expect(mockedHydrateSignedInAccountToLocalState).not.toHaveBeenCalled();
+    expect(onAuthSuccess).not.toHaveBeenCalled();
+    expect(screen.getByText(/Check your email to confirm your account/i)).toBeInTheDocument();
   });
 
   it('keeps the compact create-account flow stripped down', () => {
@@ -215,9 +209,12 @@ describe('UsernameAvailabilityCard', () => {
     const signInWithPassword = vi.fn().mockResolvedValue({ error: null });
     const onAuthSuccess = vi.fn();
     mockedHasSupabaseEnv.mockReturnValue(true);
-    mockedResolveSignInIdentifier.mockResolvedValue({
-      action: 'resolve-sign-in-identifier',
-      email: 'bird@example.com',
+    mockedSignInWithUsername.mockResolvedValue({
+      action: 'sign-in-with-username',
+      session: {
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+      },
     });
     mockedGetSupabaseBrowserClient.mockReturnValue(
       createSupabaseClientMock({ signInWithPassword }) as never
@@ -236,22 +233,15 @@ describe('UsernameAvailabilityCard', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Sign in' }).at(-1)!);
 
     await waitFor(() => {
-      expect(mockedResolveSignInIdentifier).toHaveBeenCalledWith('BirdFan_17');
-    });
-
-    await waitFor(() => {
-      expect(signInWithPassword).toHaveBeenCalledWith({
-        email: 'bird@example.com',
-        password: 'secret-password',
-      });
+      expect(mockedSignInWithUsername).toHaveBeenCalledWith('BirdFan_17', 'secret-password');
     });
 
     expect(mockedHydrateSignedInAccountToLocalState).toHaveBeenCalled();
+    expect(mockedPushCurrentLocalProgressToAccount).toHaveBeenCalled();
     expect(onAuthSuccess).toHaveBeenCalled();
   });
 
   it('submits account creation when pressing Enter in the password field', async () => {
-    const signInWithPassword = vi.fn().mockResolvedValue({ error: null });
     mockedHasSupabaseEnv.mockReturnValue(true);
     mockedUseUsernameValidation.mockReturnValue({
       value: 'BirdFan_17',
@@ -268,12 +258,9 @@ describe('UsernameAvailabilityCard', () => {
         email: 'bird@example.com',
         username: 'BirdFan_17',
         usernameCanonical: 'birdfan_17',
-        avatarPalette: 'finch',
       },
+      requiresEmailVerification: true,
     });
-    mockedGetSupabaseBrowserClient.mockReturnValue(
-      createSupabaseClientMock({ signInWithPassword }) as never
-    );
 
     render(<UsernameAvailabilityCard />);
 
@@ -293,9 +280,12 @@ describe('UsernameAvailabilityCard', () => {
   it('submits sign-in when pressing Enter in the password field', async () => {
     const signInWithPassword = vi.fn().mockResolvedValue({ error: null });
     mockedHasSupabaseEnv.mockReturnValue(true);
-    mockedResolveSignInIdentifier.mockResolvedValue({
-      action: 'resolve-sign-in-identifier',
-      email: 'bird@example.com',
+    mockedSignInWithUsername.mockResolvedValue({
+      action: 'sign-in-with-username',
+      session: {
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+      },
     });
     mockedGetSupabaseBrowserClient.mockReturnValue(
       createSupabaseClientMock({ signInWithPassword }) as never
@@ -314,7 +304,7 @@ describe('UsernameAvailabilityCard', () => {
     fireEvent.keyDown(screen.getByLabelText('Password'), { key: 'Enter', code: 'Enter', charCode: 13 });
 
     await waitFor(() => {
-      expect(mockedResolveSignInIdentifier).toHaveBeenCalledWith('BirdFan_17');
+      expect(mockedSignInWithUsername).toHaveBeenCalledWith('BirdFan_17', 'secret-password');
     });
   });
 

@@ -5,8 +5,8 @@ import { AlertCircle, CheckCircle2, ChevronDown, LoaderCircle, ShieldCheck } fro
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import {
   registerAccount,
-  resolveSignInIdentifier,
   saveProfile,
+  signInWithUsername,
 } from '@/lib/auth/account-sync';
 import {
   hydrateSignedInAccountToLocalState,
@@ -159,30 +159,20 @@ export default function UsernameAvailabilityCard({
     setAuthNotice(null);
 
     try {
-      await registerAccount({
+      const response = await registerAccount({
         username: value.trim(),
         email: createEmail.trim().toLowerCase(),
         password: createPassword,
       });
 
-      const supabase = getSupabaseBrowserClient();
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: createEmail.trim().toLowerCase(),
-        password: createPassword,
-      });
-
-      if (signInError) {
-        throw signInError;
-      }
-
-      await pushCurrentLocalProgressToAccount();
-      await hydrateSignedInAccountToLocalState();
-      setHasSignedOutLocally(false);
-      hasPrefilledUsernameRef.current = true;
-      notifyAccountStateChanged();
-      setAuthNotice('Account created. Your current progress is now tied to this username.');
       setCreatePassword('');
-      onAuthSuccess?.();
+      setAuthMode('sign-in');
+      setSignInIdentifier(value.trim());
+      setAuthNotice(
+        response.requiresEmailVerification
+          ? 'Check your email to confirm your account, then sign in with your username and password.'
+          : 'Account created. If email confirmation is enabled in Supabase, confirm your email before signing in.'
+      );
     } catch (caughtError) {
       setAuthError(caughtError instanceof Error ? caughtError.message : 'Unable to create the account.');
     } finally {
@@ -206,12 +196,21 @@ export default function UsernameAvailabilityCard({
     setHasSignedOutLocally(false);
 
     try {
-      const resolved = await resolveSignInIdentifier(signInIdentifier.trim());
       const supabase = getSupabaseBrowserClient();
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: resolved.email,
-        password: signInPassword,
-      });
+      const identifier = signInIdentifier.trim();
+      const signInError = identifier.includes('@')
+        ? (await supabase.auth.signInWithPassword({
+            email: identifier.toLowerCase(),
+            password: signInPassword,
+          })).error
+        : (await (async () => {
+            const response = await signInWithUsername(identifier, signInPassword);
+            const { error } = await supabase.auth.setSession({
+              access_token: response.session.accessToken,
+              refresh_token: response.session.refreshToken,
+            });
+            return { error };
+          })()).error;
 
       if (signInError) {
         throw signInError;
@@ -219,6 +218,7 @@ export default function UsernameAvailabilityCard({
 
       await hydrateSignedInAccountToLocalState();
       setSignInPassword('');
+      await pushCurrentLocalProgressToAccount();
       setAuthNotice('Signed in.');
       onAuthSuccess?.();
     } catch (caughtError) {
@@ -330,7 +330,7 @@ export default function UsernameAvailabilityCard({
           <p className="text-sm leading-6 text-[var(--color-muted)]">
             {effectiveAccountEmail && effectiveSavedUsername
               ? 'Welcome back and happy real fake birding.'
-              : 'Create an account with a username, email, and password. After that, you can sign in with either your email or username.'}
+              : 'Create an account with a username, email, and password. You will confirm the account by email before signing in.'}
           </p>
         ) : null}
 
@@ -384,7 +384,7 @@ export default function UsernameAvailabilityCard({
                   <div className="mt-4">
                     <p className="text-sm font-semibold">Create account</p>
                     <p className="mt-1 text-sm text-[var(--color-muted)]">
-                      Choose the username that will show up in the app, then add your email and password.
+                      Choose the username that will show up in the app, then add your email and password. You will verify the account by email before signing in.
                     </p>
                   </div>
 
@@ -495,7 +495,7 @@ export default function UsernameAvailabilityCard({
                   <div className="mt-4">
                     <p className="text-sm font-semibold">Sign in</p>
                     <p className="mt-1 text-sm text-[var(--color-muted)]">
-                      Use the email you signed up with, or use your username instead. Your username is what other players will see.
+                      Use the email you signed up with, or use your username instead. Your username is what other players will see in the app.
                     </p>
                   </div>
 

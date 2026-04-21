@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import type { EmailOtpType } from '@supabase/supabase-js';
+import { ensureAccountProfileFromUserMetadata } from '@/lib/auth/account-profile';
+import { createSupabaseAdminClient, createSupabaseServerClient } from '@/lib/supabase/server';
 
 function getSafeNextPath(candidate: string | null): string {
   if (!candidate || !candidate.startsWith('/') || candidate.startsWith('//')) {
@@ -24,21 +26,33 @@ export async function GET(request: NextRequest) {
   const nextPath = getSafeNextPath(requestUrl.searchParams.get('next'));
   const oauthError = requestUrl.searchParams.get('error_description');
   const code = requestUrl.searchParams.get('code');
+  const tokenHash = requestUrl.searchParams.get('token_hash');
+  const otpType = requestUrl.searchParams.get('type') as EmailOtpType | null;
 
   if (oauthError) {
     return NextResponse.redirect(buildRedirectUrl(request, nextPath, oauthError));
   }
 
-  if (!code) {
+  if (!code && !(tokenHash && otpType)) {
     return NextResponse.redirect(buildRedirectUrl(request, nextPath, 'missing_code'));
   }
 
   try {
     const supabase = await createSupabaseServerClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const authResult = tokenHash && otpType
+      ? await supabase.auth.verifyOtp({ token_hash: tokenHash, type: otpType })
+      : code
+        ? await supabase.auth.exchangeCodeForSession(code)
+        : { error: new Error('missing_code') };
 
-    if (error) {
+    if (authResult.error) {
       return NextResponse.redirect(buildRedirectUrl(request, nextPath, 'exchange_failed'));
+    }
+
+    const { data } = await supabase.auth.getUser();
+    if (data.user) {
+      const admin = createSupabaseAdminClient();
+      await ensureAccountProfileFromUserMetadata({ admin, user: data.user });
     }
 
     return NextResponse.redirect(buildRedirectUrl(request, nextPath));
