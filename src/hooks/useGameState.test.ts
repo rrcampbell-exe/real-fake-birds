@@ -1,9 +1,11 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { deriveBirdKeyMock, recordBirdEncounterMock, writeCurrentRoundJournalBirdKeyMock } = vi.hoisted(() => ({
+const { deriveBirdKeyMock, isBirdImageRevealedMock, recordBirdEncounterMock, revealBirdImageMock, writeCurrentRoundJournalBirdKeyMock } = vi.hoisted(() => ({
   deriveBirdKeyMock: vi.fn(),
+  isBirdImageRevealedMock: vi.fn(),
   recordBirdEncounterMock: vi.fn(),
+  revealBirdImageMock: vi.fn(),
   writeCurrentRoundJournalBirdKeyMock: vi.fn(),
 }));
 
@@ -14,8 +16,10 @@ vi.mock('./useStoredValue', () => ({
 vi.mock('@/lib/utils/bird-journal', () => ({
   BIRD_JOURNAL_STORAGE_KEY: 'birdJournal',
   deriveBirdKey: deriveBirdKeyMock,
+  isBirdImageRevealed: isBirdImageRevealedMock,
   normalizeBirdJournalStore: (value: unknown) => value,
   recordBirdEncounter: recordBirdEncounterMock,
+  revealBirdImage: revealBirdImageMock,
   writeCurrentRoundJournalBirdKey: writeCurrentRoundJournalBirdKeyMock,
 }));
 
@@ -61,7 +65,10 @@ describe('useGameState', () => {
   beforeEach(() => {
     deriveBirdKeyMock.mockReset();
     deriveBirdKeyMock.mockReturnValue('real:blue-jay');
+    isBirdImageRevealedMock.mockReset();
+    isBirdImageRevealedMock.mockImplementation((entry) => Boolean(entry?.metadata?.imageRevealed));
     recordBirdEncounterMock.mockReset();
+    revealBirdImageMock.mockReset();
     writeCurrentRoundJournalBirdKeyMock.mockReset();
     recordBirdEncounterMock.mockReturnValue({
       birdKey: 'real:blue-jay',
@@ -399,6 +406,227 @@ describe('useGameState', () => {
     expect(spendSeeds).not.toHaveBeenCalledWith(12);
     expect(result.current.fakeBirdImageRevealed).toBe(false);
     expect(result.current.fakeImageNotice).toBe('That fake photo is unavailable right now, so no seeds were spent.');
+  });
+
+  it('treats a previously revealed fake bird as unlocked on later sightings', () => {
+    deriveBirdKeyMock.mockReturnValue('fake:blue-jay');
+    vi.mocked(useStoredJson).mockImplementation((key: string) => {
+      if (key === 'birdJournal') {
+        return {
+          'fake:blue-jay': {
+            birdKey: 'fake:blue-jay',
+            birdName: 'Blue Jay',
+            isReal: false,
+            seenCount: 2,
+            correctCount: 1,
+            incorrectCount: 1,
+            lastSeenAt: '2026-04-21T12:00:00.000Z',
+            metadata: {
+              imageRevealed: true,
+            },
+          },
+        };
+      }
+
+      if (key === 'currentRoundJournalRevealKey') {
+        return null;
+      }
+
+      return {
+        birdsSeen: 0,
+        birdsIdentified: 0,
+        currentStreak: 0,
+        justAchievedStreak: false,
+        bestStreak: 0,
+        currentDailyStreak: 0,
+        bestDailyStreak: 0,
+        seeds: 100,
+      };
+    });
+    vi.mocked(fetchData).mockImplementation(
+      async (
+        setIsReal,
+        setIsLoading,
+        setBirdData,
+        setSciName,
+        setRegionLabel,
+        setFact,
+        setSummary,
+        setArticleUrl,
+        setImageUrl,
+      ) => {
+        setIsReal(false);
+        setIsLoading(false);
+        setBirdData('Blue Jay');
+        setSciName('Cyanocitta cristata');
+        setRegionLabel('Algeria');
+        setFact('A suspiciously convincing fake bird.');
+        setSummary('A fake bird previously unlocked.');
+        setArticleUrl(null);
+        setImageUrl('https://images.example.com/fake-blue-jay.jpg');
+      }
+    );
+
+    const { result } = renderHook(() => useGameState());
+
+    expect(result.current.fakeBirdImageRevealed).toBe(true);
+  });
+
+  it('does not spend seeds again for a fake bird already unlocked in the journal', async () => {
+    deriveBirdKeyMock.mockReturnValue('fake:blue-jay');
+    vi.mocked(useStoredJson).mockImplementation((key: string) => {
+      if (key === 'birdJournal') {
+        return {
+          'fake:blue-jay': {
+            birdKey: 'fake:blue-jay',
+            birdName: 'Blue Jay',
+            isReal: false,
+            seenCount: 2,
+            correctCount: 1,
+            incorrectCount: 1,
+            lastSeenAt: '2026-04-21T12:00:00.000Z',
+            metadata: {
+              imageRevealed: true,
+            },
+          },
+        };
+      }
+
+      if (key === 'currentRoundJournalRevealKey') {
+        return null;
+      }
+
+      return {
+        birdsSeen: 0,
+        birdsIdentified: 0,
+        currentStreak: 0,
+        justAchievedStreak: false,
+        bestStreak: 0,
+        currentDailyStreak: 0,
+        bestDailyStreak: 0,
+        seeds: 100,
+      };
+    });
+    vi.mocked(fetchData).mockImplementation(
+      async (
+        setIsReal,
+        setIsLoading,
+        setBirdData,
+        setSciName,
+        setRegionLabel,
+        setFact,
+        setSummary,
+        setArticleUrl,
+        setImageUrl,
+      ) => {
+        setIsReal(false);
+        setIsLoading(false);
+        setBirdData('Blue Jay');
+        setSciName('Cyanocitta cristata');
+        setRegionLabel('Algeria');
+        setFact('A suspiciously convincing fake bird.');
+        setSummary('A fake bird previously unlocked.');
+        setArticleUrl(null);
+        setImageUrl('https://images.example.com/fake-blue-jay.jpg');
+      }
+    );
+
+    const { result } = renderHook(() => useGameState());
+    const event = {
+      preventDefault: vi.fn(),
+      currentTarget: { id: 'fake' },
+    } as unknown as React.MouseEvent<HTMLButtonElement>;
+
+    act(() => {
+      result.current.handleAnswer(event);
+    });
+
+    vi.mocked(spendSeeds).mockClear();
+
+    await act(async () => {
+      await result.current.revealFakeBirdImage();
+    });
+
+    expect(spendSeeds).not.toHaveBeenCalledWith(12);
+    expect(revealBirdImageMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps previously revealed fake birds marked as revealed when recording another encounter', () => {
+    deriveBirdKeyMock.mockReturnValue('fake:blue-jay');
+    vi.mocked(useStoredJson).mockImplementation((key: string) => {
+      if (key === 'birdJournal') {
+        return {
+          'fake:blue-jay': {
+            birdKey: 'fake:blue-jay',
+            birdName: 'Blue Jay',
+            isReal: false,
+            seenCount: 2,
+            correctCount: 1,
+            incorrectCount: 1,
+            lastSeenAt: '2026-04-21T12:00:00.000Z',
+            metadata: {
+              imageRevealed: true,
+            },
+          },
+        };
+      }
+
+      if (key === 'currentRoundJournalRevealKey') {
+        return null;
+      }
+
+      return {
+        birdsSeen: 0,
+        birdsIdentified: 0,
+        currentStreak: 0,
+        justAchievedStreak: false,
+        bestStreak: 0,
+        currentDailyStreak: 0,
+        bestDailyStreak: 0,
+        seeds: 100,
+      };
+    });
+    vi.mocked(fetchData).mockImplementation(
+      async (
+        setIsReal,
+        setIsLoading,
+        setBirdData,
+        setSciName,
+        setRegionLabel,
+        setFact,
+        setSummary,
+        setArticleUrl,
+        setImageUrl,
+      ) => {
+        setIsReal(false);
+        setIsLoading(false);
+        setBirdData('Blue Jay');
+        setSciName('Cyanocitta cristata');
+        setRegionLabel('Algeria');
+        setFact('A suspiciously convincing fake bird.');
+        setSummary('A fake bird previously unlocked.');
+        setArticleUrl(null);
+        setImageUrl('https://images.example.com/fake-blue-jay.jpg');
+      }
+    );
+
+    const { result } = renderHook(() => useGameState());
+    const event = {
+      preventDefault: vi.fn(),
+      currentTarget: { id: 'fake' },
+    } as unknown as React.MouseEvent<HTMLButtonElement>;
+
+    act(() => {
+      result.current.handleAnswer(event);
+    });
+
+    expect(recordBirdEncounterMock).toHaveBeenCalledWith(expect.objectContaining({
+      birdName: 'Blue Jay',
+      isReal: false,
+      metadata: expect.objectContaining({
+        imageRevealed: true,
+      }),
+    }));
   });
 
   it('passes the purchased fact into later image requests', async () => {
