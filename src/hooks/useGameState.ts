@@ -7,6 +7,7 @@ import { flushQueuedProgressEventsForSignedInUser } from '@/lib/auth/account-ses
 import {
   BIRD_JOURNAL_STORAGE_KEY,
   deriveBirdKey,
+  isBirdImageRevealed,
   normalizeBirdJournalStore,
   recordBirdEncounter,
   revealBirdImage,
@@ -118,6 +119,9 @@ export function useGameState(options?: UseGameStateOptions) {
   const currentJournalEntry = birdData
     ? normalizeBirdJournalStore(birdJournalStore)[currentBirdKey ?? ''] ?? null
     : null;
+  const fakeBirdImageUnlocked = fakeBirdImageRevealed
+    || Boolean(hints.image)
+    || isBirdImageRevealed(currentJournalEntry);
 
   const resetRoundState = useCallback(() => {
     localStorage.setItem('birdStreakAchieved', 'false');
@@ -377,7 +381,7 @@ export function useGameState(options?: UseGameStateOptions) {
           description: description ?? undefined,
           contentSource: contentSource ?? undefined,
           attribution: attribution ?? undefined,
-          imageRevealed: fakeBirdImageRevealed || Boolean(hints.image),
+          imageRevealed: fakeBirdImageUnlocked,
         },
       });
       setIsNewBirdEncounter(journalEntry.seenCount === 1);
@@ -425,7 +429,7 @@ export function useGameState(options?: UseGameStateOptions) {
       localStorage.removeItem(hintsKey);
       setHasAnswered(true);
     },
-    [articleUrl, attribution, birdData, birdDataKey, contentSource, currentJournalEntry, description, fact, fakeBirdImageRevealed, hints, hintsKey, imageThumbUrl, imageUrl, isReal, isSignedIn, mode, options, regionLabel, scheduleProgressFlush, sciName, summary]
+    [articleUrl, attribution, birdData, birdDataKey, contentSource, currentJournalEntry, description, fact, fakeBirdImageUnlocked, hints, hintsKey, imageThumbUrl, imageUrl, isReal, isSignedIn, mode, options, regionLabel, scheduleProgressFlush, sciName, summary]
   );
 
   const requestHint = useCallback(
@@ -509,7 +513,7 @@ export function useGameState(options?: UseGameStateOptions) {
   );
 
   const revealFakeBirdImage = useCallback(async () => {
-    if (!hasAnswered || isReal || !currentBirdKey || fakeBirdImageRevealed) {
+    if (!hasAnswered || isReal || !currentBirdKey || fakeBirdImageUnlocked) {
       return;
     }
 
@@ -533,7 +537,7 @@ export function useGameState(options?: UseGameStateOptions) {
       source: 'answer_card',
     });
     trackFirstPurchase('fake_reveal');
-  }, [birdScore.seeds, currentBirdKey, fakeBirdImageRevealed, hasAnswered, imageUrl, isReal, queueSeedSpend]);
+  }, [birdScore.seeds, currentBirdKey, fakeBirdImageUnlocked, hasAnswered, imageUrl, isReal, queueSeedSpend]);
 
   const tryAgain = useCallback(() => {
     resetRoundState();
@@ -578,7 +582,7 @@ export function useGameState(options?: UseGameStateOptions) {
     handleAnswer,
     requestHint,
     revealFakeBirdImage,
-    fakeBirdImageRevealed,
+    fakeBirdImageRevealed: fakeBirdImageUnlocked,
     tryAgain,
   };
 }
