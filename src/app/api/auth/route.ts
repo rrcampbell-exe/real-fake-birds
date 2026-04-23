@@ -1406,30 +1406,48 @@ export async function POST(request: NextRequest) {
             .map((row) => row.userId)
         )
       );
-      const { data: avatarRows } = avatarUserIds.length > 0
-        ? await admin
-            .from('profiles')
-            .select('user_id, avatar_palette, is_house_account')
-            .in('user_id', avatarUserIds)
-        : { data: [] };
+      const [{ data: avatarRows }, { data: progressRows }] = await Promise.all([
+        avatarUserIds.length > 0
+          ? admin
+              .from('profiles')
+              .select('user_id, avatar_palette, is_house_account')
+              .in('user_id', avatarUserIds)
+          : Promise.resolve({ data: [] }),
+        avatarUserIds.length > 0
+          ? admin
+              .from('player_progress')
+              .select('user_id, birds_identified')
+              .in('user_id', avatarUserIds)
+          : Promise.resolve({ data: [] }),
+      ]);
       const avatarPaletteByUserId = new Map(
         (avatarRows ?? []).map((row) => [row.user_id as string, typeof row.avatar_palette === 'string' ? row.avatar_palette : null])
       );
       const isHouseAccountByUserId = new Map(
         (avatarRows ?? []).map((row) => [row.user_id as string, row.is_house_account === true])
       );
+      const birdsIdentifiedByUserId = new Map(
+        (progressRows ?? []).map((row) => [row.user_id as string, typeof row.birds_identified === 'number' ? row.birds_identified : 0])
+      );
+      const getLatestBadgeName = (userId: string): string | null => {
+        const birdsIdentified = birdsIdentifiedByUserId.get(userId) ?? 0;
+        const earned = milestones.filter((m) => m.value <= birdsIdentified);
+        return earned.length > 0 ? earned[earned.length - 1].badge : null;
+      };
       const topEntriesWithAvatars = ranked.rankedRows
         .filter((row) => row.entry.rank <= 10)
         .map((row) => ({
           ...row.entry,
           avatarPalette: avatarPaletteByUserId.get(row.userId) ?? null,
           isHouseAccount: isHouseAccountByUserId.get(row.userId) ?? false,
+          latestBadgeName: isHouseAccountByUserId.get(row.userId) ? null : getLatestBadgeName(row.userId),
         }));
       const currentUserEntryWithAvatar = currentUserEntry
         ? {
             ...currentUserEntry,
             avatarPalette: avatarPaletteByUserId.get(context?.userId ?? '') ?? null,
             isHouseAccount: isHouseAccountByUserId.get(context?.userId ?? '') ?? false,
+            latestBadgeName: isHouseAccountByUserId.get(context?.userId ?? '') ? null : getLatestBadgeName(context?.userId ?? ''),
           }
         : null;
 

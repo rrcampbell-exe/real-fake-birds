@@ -175,6 +175,7 @@ export interface WeeklyLeaderboardEntry {
   birdsSeen: number;
   isCurrentUser: boolean;
   isHouseAccount?: boolean;
+  latestBadgeName?: string | null;
 }
 
 export interface WeeklyOverview {
