@@ -341,7 +341,10 @@ describe('bird route', () => {
     );
 
     expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({ error: 'invalid_request' });
+    await expect(response.json()).resolves.toEqual({
+      error: 'invalid_request',
+      message: 'Hint requests must use supported field types and lengths.',
+    });
   });
 
   it('returns 429 when the GET rate limit is exceeded', async () => {

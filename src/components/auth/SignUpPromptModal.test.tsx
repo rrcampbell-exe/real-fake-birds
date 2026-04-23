@@ -15,26 +15,15 @@ vi.mock('@/lib/auth/account-sync', () => ({
   fetchWeeklyLeaderboard: vi.fn(),
 }));
 
-vi.mock('@/lib/supabase/env', () => ({
-  hasSupabaseEnv: vi.fn(),
-}));
-
 vi.mock('@/lib/analytics', () => ({
   track: vi.fn(),
 }));
 
-import { fetchWeeklyLeaderboard } from '@/lib/auth/account-sync';
 import { track } from '@/lib/analytics';
-import { hasSupabaseEnv } from '@/lib/supabase/env';
-
-const mockedFetchWeeklyLeaderboard = vi.mocked(fetchWeeklyLeaderboard);
-const mockedHasSupabaseEnv = vi.mocked(hasSupabaseEnv);
 const mockedTrack = vi.mocked(track);
 
 describe('SignUpPromptModal', () => {
   beforeEach(() => {
-    mockedFetchWeeklyLeaderboard.mockReset();
-    mockedHasSupabaseEnv.mockReturnValue(true);
     mockedTrack.mockReset();
     localStorage.clear();
   });
@@ -101,37 +90,7 @@ describe('SignUpPromptModal', () => {
     expect(mockedTrack).toHaveBeenCalledWith('signup_prompt_authenticated', expect.objectContaining({ threshold: 10 }));
   });
 
-  it('shows leaderboard context for 50-plus birds when available', async () => {
-    mockedFetchWeeklyLeaderboard.mockResolvedValue({
-      action: 'get-leaderboard',
-      leaderboard: {
-        weekStart: '2026-04-06',
-        endsAt: '2026-04-13T00:00:00.000Z',
-        challenge: {
-          id: 'seed-collector',
-          name: 'Seed Collector',
-          description: 'Gather more seeds this week than anyone else.',
-          icon: 'sprout',
-          primaryLabel: 'Seeds earned',
-          tiebreakerLabel: 'Accuracy',
-          metric: 'weeklySeedsEarned',
-          tiebreakerMetric: 'accuracy',
-        },
-        currentUserEntry: null,
-        entries: Array.from({ length: 10 }, (_, index) => ({
-          rank: index + 1,
-          username: `birder-${index + 1}`,
-          avatarPalette: null,
-          primaryValue: 120 - index,
-          primaryDisplayValue: `${120 - index} seeds`,
-          tiebreakerValue: 92 - index,
-          tiebreakerDisplayValue: `${92 - index}% accuracy`,
-          birdsSeen: 60 - index,
-          isCurrentUser: false,
-        })),
-      },
-    });
-
+  it('keeps the prompt focused on achievements and account benefits', async () => {
     render(
       <SignUpPromptModal
         birdsSeen={58}
@@ -144,8 +103,10 @@ describe('SignUpPromptModal', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/This week is all about stockpiling seeds/i)).toBeInTheDocument();
+      expect(screen.getByText('58 seen')).toBeInTheDocument();
     });
+    expect(screen.getByText('36 seeds')).toBeInTheDocument();
+    expect(screen.getByText('1 theme unlocked')).toBeInTheDocument();
   });
 
   it('tracks prompt impressions on mount', () => {

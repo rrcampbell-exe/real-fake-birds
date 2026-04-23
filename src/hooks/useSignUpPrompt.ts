@@ -27,11 +27,11 @@ function writePromptThreshold(threshold: number | null): void {
 }
 
 export function useSignUpPrompt(mode: 'classic' | 'daily' = 'classic') {
-  const { accountEmail } = useAccountState();
+  const { isSignedIn } = useAccountState();
   const birdScore = useStoredJson(BIRD_SCORE_STORAGE_KEY, defaultBirdScore);
   const lastPromptThreshold = useStoredJson<number | null>(SIGN_UP_PROMPT_LAST_THRESHOLD_STORAGE_KEY, null);
 
-  const activeThreshold = mode === 'classic' && !accountEmail
+  const activeThreshold = mode === 'classic' && !isSignedIn
     ? getEligibleSignUpPromptThreshold(birdScore.birdsSeen, lastPromptThreshold)
     : null;
 

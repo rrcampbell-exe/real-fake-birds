@@ -8,6 +8,7 @@ import type {
   WeeklyOverview,
 } from '@/types';
 import type { ProgressEvent } from '@/lib/progress/progress-events';
+import { AccountActionError } from '@/lib/auth/error';
 
 export interface AccountStateResponse {
   action: 'get-account-state';
@@ -55,10 +56,14 @@ export interface SaveProfileResponse {
 export interface RegisterAccountResponse {
   action: 'register-account';
   account: {
-    email: string;
+    email: string | null;
     username: string;
     usernameCanonical: string;
-    avatarPalette: string;
+  };
+  requiresEmailVerification: boolean;
+  session: {
+    accessToken: string;
+    refreshToken: string;
   };
 }
 
@@ -151,9 +156,12 @@ export interface SyncDailyMissionCompletionResponse extends DirectProgressMutati
   date: string;
 }
 
-export interface ResolveSignInIdentifierResponse {
-  action: 'resolve-sign-in-identifier';
-  email: string;
+export interface SignInWithUsernameResponse {
+  action: 'sign-in-with-username';
+  session: {
+    accessToken: string;
+    refreshToken: string;
+  };
 }
 
 export interface LocalProgressPayload {
@@ -166,21 +174,29 @@ export interface LocalProgressPayload {
   birdhouse: BirdhouseStore;
 }
 
-async function postAuthAction<T>(body: object, signal?: AbortSignal): Promise<T> {
+interface PostAuthActionOptions {
+  signal?: AbortSignal;
+  keepalive?: boolean;
+}
+
+async function postAuthAction<T>(body: object, options?: PostAuthActionOptions): Promise<T> {
   const response = await fetch('/api/auth', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
-    signal,
+    signal: options?.signal,
+    keepalive: options?.keepalive,
   });
 
   if (!response.ok) {
     let message = 'Unable to complete account action.';
+    let errorCode: string | undefined;
 
     try {
       const payload = await response.json() as { error?: string; message?: string; issues?: string[] };
+      errorCode = payload.error;
       if (payload.message) {
         message = payload.message;
       } else if (payload.error === 'username_unavailable') {
@@ -195,8 +211,18 @@ async function postAuthAction<T>(body: object, signal?: AbortSignal): Promise<T>
         message = 'Enter a valid email address.';
       } else if (payload.error === 'invalid_password') {
         message = 'Choose a password with at least 8 characters.';
+      } else if (payload.error === 'captcha_required') {
+        message = 'Complete the quick human check before creating your account.';
+      } else if (payload.error === 'captcha_verification_failed') {
+        message = 'The human check expired or failed. Try it again.';
       } else if (payload.error === 'account_creation_failed') {
         message = payload.message ?? 'Unable to create the account.';
+      } else if (payload.error === 'email_already_registered') {
+        message = 'An account with that email address already exists. Try signing in instead, or check your inbox for a confirmation link.';
+      } else if (payload.error === 'email_confirmation_required') {
+        message = 'Check your email to confirm your account before signing in.';
+      } else if (payload.error === 'sign_in_identifier_not_found') {
+        message = 'We could not find an account for that username. If you recently signed up, check your email for a confirmation link before signing in.';
       } else if (payload.error === 'insurance_already_active') {
         message = payload.message ?? 'Streak insurance is already armed for your next guess.';
       } else if (payload.error === 'insurance_streak_too_low') {
@@ -210,20 +236,20 @@ async function postAuthAction<T>(body: object, signal?: AbortSignal): Promise<T>
       // Fall back to the generic message.
     }
 
-    throw new Error(message);
+    throw new AccountActionError(message, response.status, errorCode);
   }
 
   return response.json() as Promise<T>;
 }
 
 export function fetchAccountState(signal?: AbortSignal): Promise<AccountStateResponse> {
-  return postAuthAction<AccountStateResponse>({ action: 'get-account-state' }, signal);
+  return postAuthAction<AccountStateResponse>({ action: 'get-account-state' }, { signal });
 }
 
 export function registerAccount(options: {
   username: string;
-  email: string;
   password: string;
+  captchaToken?: string;
 }): Promise<RegisterAccountResponse> {
   return postAuthAction<RegisterAccountResponse>({
     action: 'register-account',
@@ -232,13 +258,14 @@ export function registerAccount(options: {
 }
 
 export function fetchWeeklyLeaderboard(signal?: AbortSignal): Promise<GetLeaderboardResponse> {
-  return postAuthAction<GetLeaderboardResponse>({ action: 'get-leaderboard' }, signal);
+  return postAuthAction<GetLeaderboardResponse>({ action: 'get-leaderboard' }, { signal });
 }
 
-export function resolveSignInIdentifier(identifier: string): Promise<ResolveSignInIdentifierResponse> {
-  return postAuthAction<ResolveSignInIdentifierResponse>({
-    action: 'resolve-sign-in-identifier',
-    identifier,
+export function signInWithUsername(username: string, password: string): Promise<SignInWithUsernameResponse> {
+  return postAuthAction<SignInWithUsernameResponse>({
+    action: 'sign-in-with-username',
+    username,
+    password,
   });
 }
 
@@ -299,11 +326,14 @@ export function purchaseTheme(themeName: string): Promise<PurchaseThemeResponse>
   });
 }
 
-export function applyProgressEvents(events: ProgressEvent[]): Promise<ApplyProgressEventsResponse> {
+export function applyProgressEvents(
+  events: ProgressEvent[],
+  options?: { signal?: AbortSignal; keepalive?: boolean },
+): Promise<ApplyProgressEventsResponse> {
   return postAuthAction<ApplyProgressEventsResponse>({
     action: 'apply-progress-events',
     events,
-  });
+  }, options);
 }
 
 export function purchaseStreakInsuranceDirect(): Promise<PurchaseStreakInsuranceResponse> {

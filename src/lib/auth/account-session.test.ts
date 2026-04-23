@@ -331,7 +331,7 @@ describe('account-session', () => {
 
     await flushQueuedProgressEventsForSignedInUser();
 
-    expect(applyProgressEventsMock).toHaveBeenCalledWith([queuedEvent]);
+    expect(applyProgressEventsMock).toHaveBeenCalledWith([queuedEvent], { keepalive: undefined });
     expect(removeQueuedProgressEventsMock).toHaveBeenCalledWith(['round-1', 'skip-1']);
     expect(writeBirdScoreMock).toHaveBeenCalled();
     expect(setUnlockedThemeNamesMock).toHaveBeenCalledWith(['Robin']);
@@ -405,6 +405,7 @@ describe('account-session', () => {
   });
 
   it('syncs signed-in state even when flushing queued events fails, and deduplicates concurrent syncs', async () => {
+    vi.useFakeTimers();
     readProgressEventOutboxMock.mockReturnValue([queuedEvent]);
     applyProgressEventsMock.mockRejectedValue(new Error('flush failed'));
 
@@ -416,6 +417,8 @@ describe('account-session', () => {
     const first = syncSignedInAccountToLocalState({ notify: false });
     const second = syncSignedInAccountToLocalState({ notify: false });
 
+    await vi.runAllTimersAsync();
+
     resolvePull?.({
       progress: { score: { seeds: 30 } },
       lastLocalSyncAt: '2026-04-07T11:00:00.000Z',
@@ -423,6 +426,7 @@ describe('account-session', () => {
     });
 
     await Promise.all([first, second]);
+    vi.useRealTimers();
 
     expect(pullAccountProgressMock).toHaveBeenCalledTimes(1);
     expect(applyPulledAccountProgressMock).toHaveBeenCalled();
@@ -478,11 +482,15 @@ describe('account-session', () => {
   });
 
   it('swallows sync failures while preparing the signed-in session for sign-out', async () => {
+    vi.useFakeTimers();
     readProgressEventOutboxMock.mockReturnValue([queuedEvent]);
     applyProgressEventsMock.mockRejectedValue(new Error('flush failed'));
     syncLocalProgressMock.mockRejectedValue(new Error('push failed'));
 
-    await expect(prepareSignedInSessionForSignOut()).resolves.toBeUndefined();
+    const pendingSignOut = prepareSignedInSessionForSignOut();
+    await vi.runAllTimersAsync();
+    await expect(pendingSignOut).resolves.toBeUndefined();
+    vi.useRealTimers();
   });
 
   it('resets local state for the guest session', () => {

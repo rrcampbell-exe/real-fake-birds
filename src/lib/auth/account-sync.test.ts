@@ -9,9 +9,9 @@ import {
   purchaseStreakInsuranceDirect,
   purchaseTheme,
   registerAccount,
-  resolveSignInIdentifier,
   saveAvatarPalette,
   saveProfile,
+  signInWithUsername,
   syncBirdhouse,
   syncBirdJournal,
   syncDailyMissionCompletion,
@@ -44,7 +44,7 @@ describe('account-sync', () => {
     await fetchAccountState(controller.signal);
     await registerAccount({ username: 'birder', email: 'bird@example.com', password: 'password123' });
     await fetchWeeklyLeaderboard(controller.signal);
-    await resolveSignInIdentifier('bird@example.com');
+    await signInWithUsername('birder', 'password123');
     await saveProfile('birder');
     await saveAvatarPalette('Robin');
     await syncLocalProgress(progress);
@@ -71,7 +71,7 @@ describe('account-sync', () => {
       body: JSON.stringify({ action: 'get-leaderboard' }),
     }));
     expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/auth', expect.objectContaining({
-      body: JSON.stringify({ action: 'resolve-sign-in-identifier', identifier: 'bird@example.com' }),
+      body: JSON.stringify({ action: 'sign-in-with-username', username: 'birder', password: 'password123' }),
     }));
     expect(fetchMock).toHaveBeenNthCalledWith(5, '/api/auth', expect.objectContaining({
       body: JSON.stringify({ action: 'save-profile', username: 'birder', avatarPalette: 'finch' }),

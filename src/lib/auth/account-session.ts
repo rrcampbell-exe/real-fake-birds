@@ -2,6 +2,7 @@ import { CURRENT_HINTS_STORAGE_KEY } from '@/lib/constants/hints';
 import { track } from '@/lib/analytics';
 import { applyProgressEvents, pullAccountProgress, syncBirdhouse, syncBirdJournal, syncLocalProgress, type LocalProgressPayload } from '@/lib/auth/account-sync';
 import { applyPulledAccountProgress } from '@/lib/auth/account-sync-local';
+import { isRetryableAccountActionError } from '@/lib/auth/error';
 import type { ProgressEvent } from '@/lib/progress/progress-events';
 import { clearProgressEventOutbox, readProgressEventOutbox, removeQueuedProgressEvents } from '@/lib/progress/progress-event-outbox';
 import { clearDirtyBirdJournalKeys, getDirtyBirdJournalEntries, readBirdJournal, writeBirdJournal } from '@/lib/utils/bird-journal';
@@ -34,9 +35,44 @@ export const ACCOUNT_STATE_CHANGED_EVENT = 'rfb-account-state-changed';
 let progressFlushPromise: Promise<void> | null = null;
 let signedInSyncPromise: Promise<void> | null = null;
 let birdhouseSyncPromise: Promise<void> | null = null;
+const PROGRESS_FLUSH_RETRY_DELAYS_MS = [0, 2_000, 4_000, 8_000] as const;
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined';
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function applyProgressEventsWithRetry(
+  queuedEvents: ProgressEvent[],
+  options?: { keepalive?: boolean },
+) {
+  let lastError: unknown = null;
+
+  for (const delayMs of PROGRESS_FLUSH_RETRY_DELAYS_MS) {
+    if (delayMs > 0) {
+      console.warn('Retrying progress event flush.', {
+        queuedEventCount: queuedEvents.length,
+        retryDelayMs: delayMs,
+      });
+      await wait(delayMs);
+    }
+
+    try {
+      return await applyProgressEvents(queuedEvents, { keepalive: options?.keepalive });
+    } catch (error) {
+      lastError = error;
+      if (!isRetryableAccountActionError(error)) {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError ?? new Error('Unable to flush progress events.');
 }
 
 export function notifyAccountStateChanged(): void {
@@ -130,7 +166,7 @@ export function mergeFlushedProgressScore(
   );
 }
 
-export async function flushQueuedProgressEventsForSignedInUser(): Promise<void> {
+export async function flushQueuedProgressEventsForSignedInUser(options?: { keepalive?: boolean }): Promise<void> {
   if (progressFlushPromise) {
     await progressFlushPromise;
     return;
@@ -149,13 +185,16 @@ export async function flushQueuedProgressEventsForSignedInUser(): Promise<void> 
         track('account_sync_started', { event_count: queuedEvents.length });
       }
 
-      const response = await applyProgressEvents(queuedEvents);
+      const response = await applyProgressEventsWithRetry(queuedEvents, options);
       removeQueuedProgressEvents([...response.appliedEventIds, ...response.ignoredEventIds]);
       writeBirdScore(mergeFlushedProgressScore(readBirdScore(), response.snapshot.score, queuedEvents));
       setUnlockedThemeNames(response.snapshot.unlockedThemes);
       writeDailyChallengeHistory(response.snapshot.dailyChallengeHistory);
-      await pushDirtyBirdJournalEntriesToAccount();
-      await pushBirdhouseToAccount();
+
+      if (!options?.keepalive) {
+        await pushDirtyBirdJournalEntriesToAccount();
+        await pushBirdhouseToAccount();
+      }
     }
   })().finally(() => {
     progressFlushPromise = null;

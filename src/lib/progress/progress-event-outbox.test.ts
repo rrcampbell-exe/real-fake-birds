@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   clearProgressEventOutbox,
   createProgressEventId,
+  MAX_PROGRESS_EVENT_OUTBOX_SIZE,
   PROGRESS_EVENT_OUTBOX_STORAGE_KEY,
   queueProgressEvent,
   readProgressEventOutbox,
@@ -49,6 +50,22 @@ describe('progress-event-outbox', () => {
       queueProgressEvent(e1);
       queueProgressEvent(e2);
       expect(readProgressEventOutbox()).toEqual([e1, e2]);
+    });
+
+    it('drops the oldest events when the outbox exceeds the maximum size', () => {
+      for (let index = 0; index < MAX_PROGRESS_EVENT_OUTBOX_SIZE + 2; index += 1) {
+        queueProgressEvent({
+          eventId: `e${index}`,
+          eventType: 'round-resolved',
+          occurredAt: `2026-01-${String((index % 28) + 1).padStart(2, '0')}`,
+          payload: {},
+        } as ProgressEvent);
+      }
+
+      const events = readProgressEventOutbox();
+      expect(events).toHaveLength(MAX_PROGRESS_EVENT_OUTBOX_SIZE);
+      expect(events[0]?.eventId).toBe('e2');
+      expect(events.at(-1)?.eventId).toBe(`e${MAX_PROGRESS_EVENT_OUTBOX_SIZE + 1}`);
     });
   });
 

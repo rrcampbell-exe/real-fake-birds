@@ -89,7 +89,7 @@ describe('buildSignUpPromptContent', () => {
     });
 
     expect(content.eyebrow).toBe('Protect your progress');
-    expect(content.title).toBe("Don't lose your flock.");
+    expect(content.title).toBe("Your flock needs a leader.");
     expect(content.achievementLine).toBeNull();
     expect(content.leaderboardLine).toBeNull();
   });
@@ -103,7 +103,7 @@ describe('buildSignUpPromptContent', () => {
       leaderboard: null,
     });
 
-    expect(content.title).toContain('Keep the streak');
+    expect(content.title).toContain('Keep this progress');
     expect(content.summary).toContain('28 seen');
     expect(content.achievementLine).toContain('Downy Feather');
     expect(content.achievementLine).toContain('Robin');

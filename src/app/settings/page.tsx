@@ -42,7 +42,7 @@ export default function SettingsPage() {
   useScreenViewed('settings');
   const isHydrated = useHasHydrated();
   const {
-    accountEmail,
+    isSignedIn,
     remoteSummary,
     remoteUnlockedThemes,
     refreshAccountState,
@@ -51,7 +51,7 @@ export default function SettingsPage() {
   const storedScore = useStoredJson<typeof defaultBirdScore | null>('birdScore', defaultBirdScore);
   const storedUnlockedThemeNames = useStoredJson<string[]>(UNLOCKED_THEMES_STORAGE_KEY, []);
   const localScore = isHydrated ? normalizeBirdScore(storedScore) : defaultBirdScore;
-  const score = accountEmail && remoteSummary
+  const score = isSignedIn && remoteSummary
     ? {
         ...defaultBirdScore,
         birdsSeen: localScore.birdsSeen,
@@ -65,7 +65,7 @@ export default function SettingsPage() {
   const currentTheme = isHydrated ? resolveTheme(storedTheme) : finch;
   const showDynamicThemeState = isHydrated;
   const unlockedThemeNames = new Set(
-    accountEmail
+    isSignedIn
       ? [finch.name, ...getMilestoneUnlockedThemeNames(score.birdsIdentified), ...remoteUnlockedThemes]
       : isHydrated
         ? [...getUnlockedThemeNames(score), ...storedUnlockedThemeNames]
@@ -100,7 +100,7 @@ export default function SettingsPage() {
     document.documentElement.setAttribute('data-theme', theme.name);
     play('themeChange');
 
-    if (accountEmail) {
+    if (isSignedIn) {
       void saveAvatarPalette(theme.name).catch(() => undefined);
     }
   };
@@ -142,7 +142,7 @@ export default function SettingsPage() {
       return;
     }
 
-    if (accountEmail) {
+    if (isSignedIn) {
       void (async () => {
         try {
           await flushQueuedProgressEventsForSignedInUser();

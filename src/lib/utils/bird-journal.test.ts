@@ -1,5 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  BIRD_JOURNAL_MAX_SERIALIZED_BYTES,
+  BIRD_JOURNAL_STORAGE_KEY,
   clearDirtyBirdJournalKeys,
   deriveBirdKey,
   getDirtyBirdJournalEntries,
@@ -17,8 +19,6 @@ import {
 vi.mock('@/hooks/useStoredValue', () => ({
   notifyStoredValueChanged: vi.fn(),
 }));
-
-import { vi } from 'vitest';
 
 describe('bird-journal utilities', () => {
   beforeEach(() => {
@@ -189,6 +189,100 @@ describe('bird-journal utilities', () => {
   it('writes journal with notify=false', () => {
     writeBirdJournal({ 'real:jay': { birdKey: 'real:jay', birdName: 'Jay', isReal: true, seenCount: 1, correctCount: 1, incorrectCount: 0, lastSeenAt: '2026-01-01', metadata: {} } }, false);
     expect(readBirdJournal()['real:jay']).toBeDefined();
+  });
+
+  it('prunes oldest verbose journal metadata when storage size grows too large', () => {
+    const largeText = 'a'.repeat(400_000);
+    const oversizedJournal = Object.fromEntries(
+      Array.from({ length: 4 }, (_, index) => {
+        const birdKey = `real:bird-${index}`;
+        return [birdKey, {
+          birdKey,
+          birdName: `Bird ${index}`,
+          isReal: true,
+          seenCount: 1,
+          correctCount: 1,
+          incorrectCount: 0,
+          lastSeenAt: `2026-01-0${index + 1}T00:00:00.000Z`,
+          metadata: {
+            imageUrl: `https://example.com/${birdKey}.webp`,
+            summary: largeText,
+            description: largeText,
+          },
+        }];
+      })
+    );
+
+    writeBirdJournal(oversizedJournal, false);
+
+    const stored = readBirdJournal();
+    const serializedLength = new TextEncoder().encode(JSON.stringify(stored)).length;
+    expect(serializedLength).toBeLessThanOrEqual(BIRD_JOURNAL_MAX_SERIALIZED_BYTES);
+    expect(stored['real:bird-0']?.metadata.summary).toBeUndefined();
+    expect(stored['real:bird-0']?.metadata.description).toBeUndefined();
+    expect(stored['real:bird-3']?.metadata.imageUrl).toBe('https://example.com/real:bird-3.webp');
+  });
+
+  it('drops oldest entries entirely when field pruning is insufficient to reach the byte limit', () => {
+    // Build a journal where no entries have summary or description — field pruning won't help.
+    // Each entry carries ~750,000 bytes of imageUrl data so 4 entries exceed the 2 MB limit.
+    const largeUrl = 'https://example.com/' + 'a'.repeat(750_000);
+    const oversizedJournal = Object.fromEntries(
+      Array.from({ length: 4 }, (_, index) => {
+        const birdKey = `real:bird-${index}`;
+        return [birdKey, {
+          birdKey,
+          birdName: `Bird ${index}`,
+          isReal: true,
+          seenCount: 1,
+          correctCount: 1,
+          incorrectCount: 0,
+          lastSeenAt: `2026-01-0${index + 1}T00:00:00.000Z`,
+          metadata: { imageUrl: largeUrl },
+        }];
+      })
+    );
+
+    writeBirdJournal(oversizedJournal, false);
+
+    const stored = readBirdJournal();
+    const serializedLength = new TextEncoder().encode(JSON.stringify(stored)).length;
+    expect(serializedLength).toBeLessThanOrEqual(BIRD_JOURNAL_MAX_SERIALIZED_BYTES);
+    // Oldest entries (bird-0, bird-1, …) should have been dropped; newest retained.
+    expect(stored['real:bird-3']).toBeDefined();
+  });
+
+  it('recovers gracefully when localStorage.setItem throws a QuotaExceededError', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('QuotaExceededError');
+    });
+    const removeItemSpy = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {});
+
+    const journal = {
+      'real:blue-jay': {
+        birdKey: 'real:blue-jay',
+        birdName: 'Blue Jay',
+        isReal: true as const,
+        seenCount: 1,
+        correctCount: 1,
+        incorrectCount: 0,
+        lastSeenAt: '2026-01-01T00:00:00.000Z',
+        metadata: {},
+      },
+    };
+
+    // Should not throw despite setItem failing.
+    expect(() => writeBirdJournal(journal, false)).not.toThrow();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to write bird journal'),
+      expect.anything()
+    );
+    expect(removeItemSpy).toHaveBeenCalledWith(BIRD_JOURNAL_STORAGE_KEY);
+
+    setItemSpy.mockRestore();
+    removeItemSpy.mockRestore();
+    warnSpy.mockRestore();
   });
 
   it('merges local and remote stores conservatively', () => {

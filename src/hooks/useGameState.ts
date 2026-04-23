@@ -303,12 +303,12 @@ export function useGameState(options?: UseGameStateOptions) {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
-        void flushQueuedProgressEvents();
+        void flushQueuedProgressEventsForSignedInUser({ keepalive: true });
       }
     };
 
     const handlePageHide = () => {
-      void flushQueuedProgressEvents();
+      void flushQueuedProgressEventsForSignedInUser({ keepalive: true });
     };
 
     window.addEventListener('pagehide', handlePageHide);

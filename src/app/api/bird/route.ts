@@ -16,6 +16,11 @@ const BIRD_FETCH_WINDOW_MS = 60_000;
 const BIRD_FETCH_MAX_REQUESTS = 60;
 const HINT_WINDOW_MS = 60_000;
 const HINT_MAX_REQUESTS = 20;
+const MAX_BIRD_REQUEST_BYTES = 8_192;
+const MAX_HINT_BIRD_NAME_LENGTH = 100;
+const MAX_HINT_SCI_NAME_LENGTH = 100;
+const MAX_HINT_REGION_LABEL_LENGTH = 100;
+const MAX_HINT_FACT_CONTENT_LENGTH = 500;
 
 interface EBirdObservation {
   comName?: string;
@@ -48,12 +53,23 @@ function isHintRequest(value: unknown): value is HintRequest {
   const candidate = value as Partial<HintRequest>;
   return (
     typeof candidate.birdName === 'string' &&
+    candidate.birdName.length <= MAX_HINT_BIRD_NAME_LENGTH &&
     typeof candidate.isReal === 'boolean' &&
     isHintType(candidate.type) &&
-    (candidate.regionLabel === undefined || typeof candidate.regionLabel === 'string') &&
-    (candidate.sciName === undefined || typeof candidate.sciName === 'string') &&
-    (candidate.factHintContent === undefined || typeof candidate.factHintContent === 'string')
+    (candidate.regionLabel === undefined || (typeof candidate.regionLabel === 'string' && candidate.regionLabel.length <= MAX_HINT_REGION_LABEL_LENGTH)) &&
+    (candidate.sciName === undefined || (typeof candidate.sciName === 'string' && candidate.sciName.length <= MAX_HINT_SCI_NAME_LENGTH)) &&
+    (candidate.factHintContent === undefined || (typeof candidate.factHintContent === 'string' && candidate.factHintContent.length <= MAX_HINT_FACT_CONTENT_LENGTH))
   );
+}
+
+function exceedsRequestBodyLimit(request: NextRequest, limitBytes: number): boolean {
+  const contentLength = request.headers.get('content-length');
+  if (!contentLength) {
+    return false;
+  }
+
+  const parsedLength = Number.parseInt(contentLength, 10);
+  return Number.isFinite(parsedLength) && parsedLength > limitBytes;
 }
 
 function buildStructuredRealBirdFact(request: HintRequest): string | null {
@@ -288,7 +304,7 @@ function getClientIp(request: NextRequest): string | null {
 }
 
 export async function GET(request: NextRequest) {
-  const rateLimit = consumeRateLimit(
+  const rateLimit = await consumeRateLimit(
     getRateLimitKey(getClientIp(request), 'bird-fetch'),
     BIRD_FETCH_MAX_REQUESTS,
     BIRD_FETCH_WINDOW_MS
@@ -313,7 +329,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const rateLimit = consumeRateLimit(
+  const rateLimit = await consumeRateLimit(
     getRateLimitKey(getClientIp(request), 'bird-hint'),
     HINT_MAX_REQUESTS,
     HINT_WINDOW_MS
@@ -321,6 +337,10 @@ export async function POST(request: NextRequest) {
 
   if (!rateLimit.allowed) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
+
+  if (exceedsRequestBodyLimit(request, MAX_BIRD_REQUEST_BYTES)) {
+    return NextResponse.json({ error: 'request_too_large' }, { status: 413 });
   }
 
   let requestBody: unknown;
@@ -332,7 +352,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (!isHintRequest(requestBody)) {
-    return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
+    return NextResponse.json({ error: 'invalid_request', message: 'Hint requests must use supported field types and lengths.' }, { status: 400 });
   }
 
   const startTime = Date.now();

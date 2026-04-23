@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { AlertCircle, CheckCircle2, ChevronDown, LoaderCircle, ShieldCheck } from 'lucide-react';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import {
   registerAccount,
-  resolveSignInIdentifier,
-  saveProfile,
+  signInWithUsername,
 } from '@/lib/auth/account-sync';
 import {
   hydrateSignedInAccountToLocalState,
@@ -37,29 +37,34 @@ export default function UsernameAvailabilityCard({
   const supabaseReady = hasSupabaseEnv();
   const {
     isLoadingAccount,
+    isSignedIn,
     accountEmail,
     accountUsername,
     refreshAccountState,
   } = useAccountState();
   const { value, normalizedUsername, issues, available, isChecking, error, setValue } = useUsernameValidation();
   const usernameValueRef = useRef(value);
+  const turnstileRef = useRef<TurnstileInstance | null>(null);
   const hasPrefilledUsernameRef = useRef(false);
   const [authMode, setAuthMode] = useState<'create' | 'sign-in'>('create');
-  const [createEmail, setCreateEmail] = useState('');
   const [createPassword, setCreatePassword] = useState('');
+  const [createPasswordConfirm, setCreatePasswordConfirm] = useState('');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [signInIdentifier, setSignInIdentifier] = useState('');
   const [signInPassword, setSignInPassword] = useState('');
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [showUsernameRules, setShowUsernameRules] = useState(false);
   const [hasSignedOutLocally, setHasSignedOutLocally] = useState(false);
   const savedUsername = accountUsername;
+  const effectiveIsSignedIn = hasSignedOutLocally ? false : isSignedIn;
   const effectiveAccountEmail = hasSignedOutLocally ? null : accountEmail;
   const effectiveSavedUsername = hasSignedOutLocally ? null : savedUsername;
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? '';
+  const isCaptchaEnabled = turnstileSiteKey.length > 0;
 
   useEffect(() => {
     usernameValueRef.current = value;
@@ -67,7 +72,13 @@ export default function UsernameAvailabilityCard({
 
   useEffect(() => {
     setAuthError(null);
-    setAuthNotice(null);
+  }, [authMode]);
+
+  useEffect(() => {
+    if (authMode !== 'create') {
+      setCaptchaToken(null);
+      turnstileRef.current?.reset();
+    }
   }, [authMode]);
 
   useEffect(() => {
@@ -84,7 +95,7 @@ export default function UsernameAvailabilityCard({
   }, []);
 
   useEffect(() => {
-    if (!effectiveAccountEmail) {
+    if (!effectiveIsSignedIn) {
       hasPrefilledUsernameRef.current = false;
       return;
     }
@@ -93,7 +104,7 @@ export default function UsernameAvailabilityCard({
       hasPrefilledUsernameRef.current = true;
       setValue(accountUsername);
     }
-  }, [accountEmail, accountUsername, effectiveAccountEmail, setValue]);
+  }, [accountUsername, effectiveIsSignedIn, setValue]);
 
   const handleCreateAccountSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -128,13 +139,8 @@ export default function UsernameAvailabilityCard({
       return;
     }
 
-    if (!createEmail.trim() || !createPassword) {
-      setAuthError('Enter an email address, username, and password first.');
-      return;
-    }
-
-    if (!createEmail.includes('@')) {
-      setAuthError('Use an email address when creating an account.');
+    if (!createPassword || !createPasswordConfirm) {
+      setAuthError('Enter a username, password, and password confirmation first.');
       return;
     }
 
@@ -154,38 +160,53 @@ export default function UsernameAvailabilityCard({
       return;
     }
 
+    if (createPassword !== createPasswordConfirm) {
+      setAuthError('Passwords do not match.');
+      return;
+    }
+
+    if (isCaptchaEnabled && !captchaToken) {
+      setAuthError('Complete the quick human check before creating your account.');
+      return;
+    }
+
     setIsCreatingAccount(true);
     setAuthError(null);
     setAuthNotice(null);
+    setHasSignedOutLocally(false);
 
     try {
-      await registerAccount({
-        username: value.trim(),
-        email: createEmail.trim().toLowerCase(),
-        password: createPassword,
-      });
-
       const supabase = getSupabaseBrowserClient();
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: createEmail.trim().toLowerCase(),
+      const response = await registerAccount({
+        username: value.trim(),
         password: createPassword,
+        captchaToken: captchaToken ?? undefined,
       });
 
-      if (signInError) {
-        throw signInError;
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: response.session.accessToken,
+        refresh_token: response.session.refreshToken,
+      });
+
+      if (sessionError) {
+        throw sessionError;
       }
 
-      await pushCurrentLocalProgressToAccount();
-      await hydrateSignedInAccountToLocalState();
-      setHasSignedOutLocally(false);
-      hasPrefilledUsernameRef.current = true;
-      notifyAccountStateChanged();
-      setAuthNotice('Account created. Your current progress is now tied to this username.');
       setCreatePassword('');
+      setCreatePasswordConfirm('');
+      setSignInPassword('');
+      await hydrateSignedInAccountToLocalState();
+      await pushCurrentLocalProgressToAccount();
+      await refreshAccountState();
+      setAuthNotice('Account created and signed in.');
       onAuthSuccess?.();
     } catch (caughtError) {
       setAuthError(caughtError instanceof Error ? caughtError.message : 'Unable to create the account.');
     } finally {
+      if (isCaptchaEnabled) {
+        setCaptchaToken(null);
+        turnstileRef.current?.reset();
+      }
       setIsCreatingAccount(false);
     }
   };
@@ -206,19 +227,30 @@ export default function UsernameAvailabilityCard({
     setHasSignedOutLocally(false);
 
     try {
-      const resolved = await resolveSignInIdentifier(signInIdentifier.trim());
       const supabase = getSupabaseBrowserClient();
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: resolved.email,
-        password: signInPassword,
-      });
+      const identifier = signInIdentifier.trim();
+      const signInError = identifier.includes('@')
+        ? (await supabase.auth.signInWithPassword({
+            email: identifier.toLowerCase(),
+            password: signInPassword,
+          })).error
+        : (await (async () => {
+            const response = await signInWithUsername(identifier, signInPassword);
+            const { error } = await supabase.auth.setSession({
+              access_token: response.session.accessToken,
+              refresh_token: response.session.refreshToken,
+            });
+            return { error };
+          })()).error;
 
       if (signInError) {
         throw signInError;
       }
 
       await hydrateSignedInAccountToLocalState();
+      await refreshAccountState();
       setSignInPassword('');
+      await pushCurrentLocalProgressToAccount();
       setAuthNotice('Signed in.');
       onAuthSuccess?.();
     } catch (caughtError) {
@@ -250,8 +282,8 @@ export default function UsernameAvailabilityCard({
       setHasSignedOutLocally(true);
       void refreshAccountState();
       hasPrefilledUsernameRef.current = false;
-      setCreateEmail('');
       setCreatePassword('');
+      setCreatePasswordConfirm('');
       setSignInIdentifier('');
       setSignInPassword('');
       setAuthNotice('Signed out.');
@@ -261,36 +293,6 @@ export default function UsernameAvailabilityCard({
       setIsSigningOut(false);
     }
   };
-
-  const handleSaveProfile = async () => {
-    if (!effectiveAccountEmail || issues.length > 0 || available === false || !value.trim()) {
-      return;
-    }
-
-    setIsSavingProfile(true);
-    setAuthError(null);
-    setAuthNotice(null);
-
-    try {
-      const response = await saveProfile(value.trim());
-      setValue(response.profile.username);
-      notifyAccountStateChanged();
-      setAuthNotice('Username saved to your account.');
-    } catch (caughtError) {
-      setAuthError(caughtError instanceof Error ? caughtError.message : 'Unable to save username.');
-    } finally {
-      setIsSavingProfile(false);
-    }
-  };
-
-  const canSaveProfile = Boolean(
-    effectiveAccountEmail
-      && value.trim()
-      && issues.length === 0
-      && !isChecking
-      && available !== false
-      && normalizedUsername !== savedUsername?.toLowerCase()
-  );
 
   const statusMessage = !value.trim()
     ? 'People will see your username on leaderboards and account screens.'
@@ -307,10 +309,8 @@ export default function UsernameAvailabilityCard({
               : 'Rules passed. Live availability will start once Supabase is configured.';
     const outerContainerClassName = compact
       ? 'space-y-4'
-      : 'rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4';
-    const contentContainerClassName = compact
-      ? 'space-y-4'
-      : 'mt-4 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-3';
+      : 'space-y-4 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4';
+    const contentContainerClassName = 'space-y-4';
     const tabsClassName = compact
       ? 'grid grid-cols-2 gap-2 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-1'
       : 'grid grid-cols-2 gap-2 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-1';
@@ -328,19 +328,15 @@ export default function UsernameAvailabilityCard({
       <div className={outerContainerClassName}>
         {!compact ? (
           <p className="text-sm leading-6 text-[var(--color-muted)]">
-            {effectiveAccountEmail && effectiveSavedUsername
-              ? 'Welcome back and happy real fake birding.'
-              : 'Create an account with a username, email, and password. After that, you can sign in with either your email or username.'}
+            {effectiveIsSignedIn
+              ? `Welcome back${effectiveSavedUsername ? ', ' + effectiveSavedUsername + '!' : '!'} Happy real fake birding.`
+              : 'Create an account with a public username and password.'}
           </p>
         ) : null}
 
         <div className={contentContainerClassName}>
-          {effectiveAccountEmail && effectiveSavedUsername ? (
+          {effectiveIsSignedIn ? (
             <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold">{effectiveSavedUsername}</p>
-                <p className="mt-1 truncate text-xs text-[var(--color-muted)]">{effectiveAccountEmail}</p>
-              </div>
               <button
                 type="button"
                 onClick={handleSignOut}
@@ -350,9 +346,9 @@ export default function UsernameAvailabilityCard({
                 {isSigningOut ? 'Signing out...' : 'Sign out'}
               </button>
             </div>
-          ) : !effectiveAccountEmail && isLoadingAccount && !hasSignedOutLocally ? (
+          ) : !effectiveIsSignedIn && isLoadingAccount && !hasSignedOutLocally ? (
             <p className="text-sm text-[var(--color-muted)]">Checking account status...</p>
-          ) : !effectiveAccountEmail ? (
+          ) : !effectiveIsSignedIn ? (
             <>
               <div className={tabsClassName}>
                 <button
@@ -381,12 +377,6 @@ export default function UsernameAvailabilityCard({
 
               {authMode === 'create' ? (
                 <form className="contents" onKeyDown={handleCreateAccountKeyDown} onSubmit={handleCreateAccountSubmit}>
-                  <div className="mt-4">
-                    <p className="text-sm font-semibold">Create account</p>
-                    <p className="mt-1 text-sm text-[var(--color-muted)]">
-                      Choose the username that will show up in the app, then add your email and password.
-                    </p>
-                  </div>
 
                   <label className="mt-4 block">
                     <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
@@ -454,22 +444,6 @@ export default function UsernameAvailabilityCard({
                   <div className="mt-4 grid gap-3">
                     <label className="block">
                       <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
-                        Email
-                      </span>
-                      <input
-                        type="email"
-                        value={createEmail}
-                        onChange={(event) => setCreateEmail(event.target.value)}
-                        placeholder="birdfan@example.com"
-                        autoCapitalize="none"
-                        autoCorrect="off"
-                        spellCheck={false}
-                        className="w-full rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-secondary)]"
-                      />
-                    </label>
-
-                    <label className="block">
-                      <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
                         Password
                       </span>
                       <input
@@ -481,9 +455,60 @@ export default function UsernameAvailabilityCard({
                       />
                     </label>
 
+                    <label className="block">
+                      <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
+                        Confirm password
+                      </span>
+                      <input
+                        type="password"
+                        value={createPasswordConfirm}
+                        onChange={(event) => setCreatePasswordConfirm(event.target.value)}
+                        placeholder="Re-enter your password"
+                        className="w-full rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-secondary)]"
+                      />
+                    </label>
+
+                    {isCaptchaEnabled ? (
+                      <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
+                          Real Fake Human Check
+                        </p>
+                        <p className="mt-2 text-sm text-[var(--color-muted)]">
+                          One quick check keeps bots out of the birdhouse.
+                        </p>
+                        <div className="mt-3 overflow-hidden rounded-lg">
+                          <Turnstile
+                            ref={turnstileRef}
+                            siteKey={turnstileSiteKey}
+                            options={{
+                              action: 'register-account',
+                              size: compact ? 'compact' : 'flexible',
+                              theme: 'auto',
+                            }}
+                            onSuccess={(token) => {
+                              setCaptchaToken(token);
+                              setAuthError(null);
+                            }}
+                            onExpire={() => {
+                              setCaptchaToken(null);
+                              setAuthError('The human check expired. Please try again.');
+                            }}
+                            onError={() => {
+                              setCaptchaToken(null);
+                              setAuthError('The human check could not be verified right now. Please try again.');
+                            }}
+                            onUnsupported={() => {
+                              setCaptchaToken(null);
+                              setAuthError('This browser could not load the human check. Try another browser or disable extensions that block it.');
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+
                     <button
                       type="submit"
-                      disabled={!supabaseReady || isCreatingAccount || isSigningIn}
+                      disabled={!supabaseReady || isCreatingAccount || isSigningIn || (isCaptchaEnabled && !captchaToken)}
                       className="inline-flex items-center justify-center rounded-full bg-[var(--color-secondary)] px-4 py-2 text-sm font-semibold text-[var(--color-on-secondary)] transition disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isCreatingAccount ? 'Creating account...' : 'Create account'}
@@ -495,7 +520,7 @@ export default function UsernameAvailabilityCard({
                   <div className="mt-4">
                     <p className="text-sm font-semibold">Sign in</p>
                     <p className="mt-1 text-sm text-[var(--color-muted)]">
-                      Use the email you signed up with, or use your username instead. Your username is what other players will see.
+                      Use your username to sign in.
                     </p>
                   </div>
 
@@ -508,7 +533,7 @@ export default function UsernameAvailabilityCard({
                         type="text"
                         value={signInIdentifier}
                         onChange={(event) => setSignInIdentifier(event.target.value)}
-                        placeholder="birdfan@example.com or BirdFan_17"
+                        placeholder="BirdFan_17 or birdfan@example.com"
                         autoCapitalize="none"
                         autoCorrect="off"
                         spellCheck={false}
@@ -548,28 +573,7 @@ export default function UsernameAvailabilityCard({
           {authNotice ? (
             <p className="mt-3 text-xs text-emerald-300">{authNotice}</p>
           ) : null}
-          {effectiveAccountEmail && !effectiveSavedUsername ? (
-            <div className="mt-4 space-y-3">
-              <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold">Legacy account needs a username</p>
-                    <p className="mt-1 text-xs text-[var(--color-muted)]">
-                      This account was created before usernames were required. Pick a public username to finish migrating it.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleSaveProfile}
-                    disabled={!canSaveProfile || isSavingProfile}
-                    className="inline-flex min-w-[8rem] items-center justify-center rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] transition disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {isSavingProfile ? 'Saving...' : 'Save username'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : null}
+
         </div>
       </div>
     </section>

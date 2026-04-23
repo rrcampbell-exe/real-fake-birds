@@ -6,15 +6,17 @@ vi.mock('@/lib/supabase/env', () => ({
 
 vi.mock('@/lib/supabase/server', () => ({
   createSupabaseAdminClient: vi.fn(),
+  createSupabaseAuthClient: vi.fn(),
   createSupabaseServerClient: vi.fn(),
 }));
 
 import { hasSupabaseEnv } from '@/lib/supabase/env';
-import { createSupabaseAdminClient, createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseAdminClient, createSupabaseAuthClient, createSupabaseServerClient } from '@/lib/supabase/server';
 import { POST, shouldClearServerStreakInsurance } from './route';
 
 const mockedHasSupabaseEnv = vi.mocked(hasSupabaseEnv);
 const mockedCreateSupabaseAdminClient = vi.mocked(createSupabaseAdminClient);
+const mockedCreateSupabaseAuthClient = vi.mocked(createSupabaseAuthClient);
 const mockedCreateSupabaseServerClient = vi.mocked(createSupabaseServerClient);
 
 function mockAuthenticatedUser() {
@@ -31,6 +33,7 @@ function mockAuthenticatedUser() {
 describe('auth route', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
     mockedHasSupabaseEnv.mockReturnValue(false);
   });
 
@@ -114,27 +117,34 @@ describe('auth route', () => {
     });
   });
 
-  it('registers an account with username, email, and password in one server-side flow', async () => {
+  it('registers an account with username and password in one server-side flow', async () => {
     mockedHasSupabaseEnv.mockReturnValue(true);
+    vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('123');
 
     const createUser = vi.fn().mockResolvedValue({
-      data: { user: { id: 'user-1', email: 'bird@example.com' } },
+      data: {
+        user: {
+          id: 'user-1',
+          email: 'u_123@accounts.realfakebirds.invalid',
+          user_metadata: {
+            requested_username: 'BirdFan_17',
+            requested_username_canonical: 'birdfan_17',
+            account_email_kind: 'placeholder',
+          },
+        },
+      },
       error: null,
     });
     const deleteUser = vi.fn().mockResolvedValue({ error: null });
-    const profileUpsert = vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({
-          data: {
-            username: 'BirdFan_17',
-            username_canonical: 'birdfan_17',
-            avatar_palette: 'finch',
-          },
-          error: null,
-        }),
-      }),
+    const signInWithPassword = vi.fn().mockResolvedValue({
+      data: {
+        session: {
+          access_token: 'access-token',
+          refresh_token: 'refresh-token',
+        },
+      },
+      error: null,
     });
-    const leaderboardUpsert = vi.fn().mockResolvedValue({ error: null });
 
     mockedCreateSupabaseAdminClient.mockReturnValue({
       auth: {
@@ -145,19 +155,43 @@ describe('auth route', () => {
       },
       from: vi.fn((table: string) => {
         if (table === 'profiles') {
+          const availabilityQuery = {
+            limit: vi.fn().mockReturnThis(),
+            neq: vi.fn().mockResolvedValue({ count: 0, error: null }),
+          };
+
           return {
-            upsert: profileUpsert,
+            select: vi.fn((columns: string, options?: { count?: string; head?: boolean }) => {
+              if (options?.count === 'exact' && options.head === true) {
+                return {
+                  eq: vi.fn().mockReturnValue(availabilityQuery),
+                };
+              }
+
+              return {
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+                }),
+              };
+            }),
+            upsert: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({
+                  data: {
+                    username: 'BirdFan_17',
+                    username_canonical: 'birdfan_17',
+                    avatar_palette: 'finch',
+                  },
+                  error: null,
+                }),
+              }),
+            }),
           };
         }
 
         if (table === 'leaderboard_stats') {
           return {
-            select: vi.fn().mockReturnValue({
-              not: vi.fn().mockReturnValue({
-                lt: vi.fn().mockResolvedValue({ data: [] }),
-              }),
-            }),
-            upsert: leaderboardUpsert,
+            upsert: vi.fn().mockResolvedValue({ error: null }),
           };
         }
 
@@ -170,6 +204,11 @@ describe('auth route', () => {
         };
       }),
     } as never);
+    mockedCreateSupabaseAuthClient.mockReturnValue({
+      auth: {
+        signInWithPassword,
+      },
+    } as never);
 
     const response = await POST(
       new Request('http://localhost/api/auth', {
@@ -177,7 +216,6 @@ describe('auth route', () => {
         body: JSON.stringify({
           action: 'register-account',
           username: 'BirdFan_17',
-          email: 'bird@example.com',
           password: 'secret-password',
         }),
         headers: { 'Content-Type': 'application/json' },
@@ -186,22 +224,225 @@ describe('auth route', () => {
 
     expect(response.status).toBe(200);
     expect(createUser).toHaveBeenCalledWith({
-      email: 'bird@example.com',
+      email: 'u_123@accounts.realfakebirds.invalid',
       password: 'secret-password',
       email_confirm: true,
       user_metadata: {
         requested_username: 'BirdFan_17',
+        requested_username_canonical: 'birdfan_17',
+        account_email_kind: 'placeholder',
       },
+    });
+    expect(signInWithPassword).toHaveBeenCalledWith({
+      email: 'u_123@accounts.realfakebirds.invalid',
+      password: 'secret-password',
     });
     expect(deleteUser).not.toHaveBeenCalled();
     await expect(response.json()).resolves.toEqual({
       action: 'register-account',
       account: {
-        email: 'bird@example.com',
+        email: null,
         username: 'BirdFan_17',
         usernameCanonical: 'birdfan_17',
-        avatarPalette: 'finch',
       },
+      requiresEmailVerification: false,
+      session: {
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+      },
+    });
+  });
+
+  it('requires a captcha token when Turnstile verification is configured', async () => {
+    mockedHasSupabaseEnv.mockReturnValue(true);
+    vi.stubEnv('TURNSTILE_SECRET_KEY', 'test-secret');
+    const createUser = vi.fn();
+
+    mockedCreateSupabaseAdminClient.mockReturnValue({
+      auth: {
+        admin: {
+          createUser,
+        },
+      },
+      from: vi.fn(() => ({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue({ count: 0, error: null }),
+          }),
+        }),
+      })),
+    } as never);
+
+    const response = await POST(
+      new Request('http://localhost/api/auth', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'register-account',
+          username: 'BirdFan_17',
+          password: 'secret-password',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      }) as never
+    );
+
+    expect(response.status).toBe(400);
+    expect(createUser).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toEqual({
+      error: 'captcha_required',
+      message: 'Complete the quick human check and try again.',
+    });
+  });
+
+  it('signs in with a username without returning the backing email', async () => {
+    mockedHasSupabaseEnv.mockReturnValue(true);
+
+    const signInWithPassword = vi.fn().mockResolvedValue({
+      data: {
+        session: {
+          access_token: 'access-token',
+          refresh_token: 'refresh-token',
+        },
+      },
+      error: null,
+    });
+
+    mockedCreateSupabaseAdminClient.mockReturnValue({
+      auth: {
+        admin: {
+          getUserById: vi.fn().mockResolvedValue({
+            data: { user: { email: 'bird@example.com' } },
+            error: null,
+          }),
+        },
+      },
+      from: vi.fn(() => ({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: { user_id: 'user-1' } }),
+          }),
+        }),
+      })),
+    } as never);
+    mockedCreateSupabaseAuthClient.mockReturnValue({
+      auth: {
+        signInWithPassword,
+      },
+    } as never);
+
+    const response = await POST(
+      new Request('http://localhost/api/auth', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'sign-in-with-username',
+          username: 'BirdFan_17',
+          password: 'secret-password',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      }) as never
+    );
+
+    expect(response.status).toBe(200);
+    expect(signInWithPassword).toHaveBeenCalledWith({
+      email: 'bird@example.com',
+      password: 'secret-password',
+    });
+    await expect(response.json()).resolves.toEqual({
+      action: 'sign-in-with-username',
+      session: {
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+      },
+    });
+  });
+
+  it('returns email confirmation required when username sign-in hits an unverified account', async () => {
+    mockedHasSupabaseEnv.mockReturnValue(true);
+
+    mockedCreateSupabaseAdminClient.mockReturnValue({
+      auth: {
+        admin: {
+          getUserById: vi.fn().mockResolvedValue({
+            data: { user: { email: 'bird@example.com' } },
+            error: null,
+          }),
+        },
+      },
+      from: vi.fn(() => ({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: { user_id: 'user-1' } }),
+          }),
+        }),
+      })),
+    } as never);
+    mockedCreateSupabaseAuthClient.mockReturnValue({
+      auth: {
+        signInWithPassword: vi.fn().mockResolvedValue({
+          data: { session: null },
+          error: { message: 'Email not confirmed' },
+        }),
+      },
+    } as never);
+
+    const response = await POST(
+      new Request('http://localhost/api/auth', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'sign-in-with-username',
+          username: 'BirdFan_17',
+          password: 'secret-password',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      }) as never
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({ error: 'email_confirmation_required' });
+  });
+
+  it('rejects oversized progress event batches before auth work begins', async () => {
+    const response = await POST(
+      new Request('http://localhost/api/auth', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'apply-progress-events',
+          events: Array.from({ length: 501 }, (_, index) => ({ eventId: `e${index}` })),
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      }) as never
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: 'invalid_request',
+      message: 'Progress event batches may not exceed 500 events.',
+    });
+  });
+
+  it('rejects oversized journal sync payloads before auth work begins', async () => {
+    const response = await POST(
+      new Request('http://localhost/api/auth', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'sync-local-progress',
+          progress: {
+            score: null,
+            unlockedThemes: [],
+            dailyChallengeHistory: [],
+            dailyMissionHistory: [],
+            milestones: [],
+            journalEntries: Array.from({ length: 10_001 }, (_, index) => ({ birdKey: `real:bird-${index}` })),
+            birdhouse: { real: [], fake: [], updatedAt: '2026-01-01T00:00:00.000Z' },
+          },
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      }) as never
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: 'invalid_request',
+      message: 'Journal sync payloads may not exceed 10,000 entries.',
     });
   });
 

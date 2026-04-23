@@ -10,6 +10,7 @@ import {
   resetLocalStateForGuestSession,
   syncSignedInAccountToLocalState,
 } from '@/lib/auth/account-session';
+import { isUnauthenticatedAccountActionError } from '@/lib/auth/error';
 import { readAccountSyncMeta } from '@/lib/auth/account-sync-local';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { hasSupabaseEnv } from '@/lib/supabase/env';
@@ -227,6 +228,19 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
     setWeeklyOverview(null);
   }, []);
 
+  const clearStaleSignedInSession = useCallback(async () => {
+    clearAccountState();
+    clearAccountStateCache();
+    resetLocalStateForGuestSession();
+
+    try {
+      const supabase = getSupabaseBrowserClient();
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      // Clearing local auth state is best-effort here.
+    }
+  }, [clearAccountState]);
+
   const refreshAccountState = useCallback(async (options?: { silent?: boolean }) => {
     if (!supabaseReady) {
       clearAccountState();
@@ -265,14 +279,19 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
         weeklyOverview: accountState.weeklyOverview,
         lastFetchedAt: new Date().toISOString(),
       });
-    } catch {
+    } catch (error) {
+      if (isUnauthenticatedAccountActionError(error)) {
+        await clearStaleSignedInSession();
+        return;
+      }
+
       clearAccountState();
     } finally {
       if (!options?.silent) {
         setIsLoadingAccount(false);
       }
     }
-  }, [clearAccountState, supabaseReady]);
+  }, [clearAccountState, clearStaleSignedInSession, supabaseReady]);
 
   const syncSignedInProgress = useCallback(async (options?: { silent?: boolean }) => {
     if (!supabaseReady || !isSignedIn) {
@@ -420,7 +439,7 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
         }
 
         setBootStage('finalizing');
-        void refreshAccountState({ silent: true });
+        await refreshAccountState({ silent: true });
       } catch {
         clearAccountState();
       } finally {
