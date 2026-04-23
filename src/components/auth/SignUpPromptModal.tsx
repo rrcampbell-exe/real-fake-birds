@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bird, Sparkles, X } from 'lucide-react';
+import { Bird, Palette, Sparkles, X } from 'lucide-react';
 import UsernameAvailabilityCard from '@/components/auth/UsernameAvailabilityCard';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { track } from '@/lib/analytics';
@@ -166,7 +166,7 @@ export default function SignUpPromptModal({
                   {seeds} seeds
                 </div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-3 py-2 text-xs font-medium text-[var(--color-muted)]">
-                  <Sparkles size={14} className="text-[var(--color-secondary)]" />
+                  <Palette size={14} className="text-[var(--color-secondary)]" />
                   {unlockedThemeNames.length + 1} theme{unlockedThemeNames.length + 1 === 1 ? '' : 's'} unlocked
                 </div>
               </motion.div>

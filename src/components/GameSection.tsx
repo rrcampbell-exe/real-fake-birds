@@ -14,6 +14,8 @@ import Answer from './Answer';
 import Error from './Error';
 import StatsBar from '@/components/StatsBar';
 import SignUpPromptModal from '@/components/auth/SignUpPromptModal';
+import OnboardingOverlay from '@/components/game/OnboardingOverlay';
+import { useOnboarding } from '@/hooks/useOnboarding';
 import type { GameRoundResult } from '@/types';
 
 interface UnlockToast {
@@ -203,6 +205,7 @@ export default function GameSection() {
   });
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const signUpPrompt = useSignUpPrompt('classic');
+  const onboarding = useOnboarding();
 
   const cardState = isLoading ? 'loading' : showQuestion ? 'question' : 'answer';
   const activeToastRoundId = hasAnswered ? (roundAnimation?.id ?? 0) : null;
@@ -396,6 +399,12 @@ export default function GameSection() {
           }
         />
       )}
+
+      <AnimatePresence>
+        {onboarding.shouldShowOnboarding ? (
+          <OnboardingOverlay onDismiss={onboarding.dismissOnboarding} />
+        ) : null}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showSignUpModal && signUpPrompt.activeThreshold !== null ? (
