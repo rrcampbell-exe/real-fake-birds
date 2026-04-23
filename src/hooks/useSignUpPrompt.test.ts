@@ -23,7 +23,7 @@ describe('useSignUpPrompt', () => {
   });
 
   it('activates the prompt for eligible classic-mode guests', () => {
-    vi.mocked(useAccountState).mockReturnValue({ accountEmail: null } as ReturnType<typeof useAccountState>);
+    vi.mocked(useAccountState).mockReturnValue({ isSignedIn: false } as ReturnType<typeof useAccountState>);
     vi.mocked(useStoredJson)
       .mockReturnValueOnce({ birdsSeen: 25, birdsIdentified: 10, seeds: 6 })
       .mockReturnValueOnce(10);
@@ -36,7 +36,7 @@ describe('useSignUpPrompt', () => {
   });
 
   it('disables the prompt in daily mode and for signed-in users', () => {
-    vi.mocked(useAccountState).mockReturnValue({ accountEmail: 'bird@example.com' } as ReturnType<typeof useAccountState>);
+    vi.mocked(useAccountState).mockReturnValue({ isSignedIn: true } as ReturnType<typeof useAccountState>);
     vi.mocked(useStoredJson)
       .mockReturnValueOnce({ birdsSeen: 25, birdsIdentified: 10, seeds: 6 })
       .mockReturnValueOnce(null);
@@ -48,7 +48,7 @@ describe('useSignUpPrompt', () => {
   });
 
   it('persists the active threshold when dismissed or when an account is created', () => {
-    vi.mocked(useAccountState).mockReturnValue({ accountEmail: null } as ReturnType<typeof useAccountState>);
+    vi.mocked(useAccountState).mockReturnValue({ isSignedIn: false } as ReturnType<typeof useAccountState>);
     vi.mocked(useStoredJson)
       .mockReturnValueOnce({ birdsSeen: 50, birdsIdentified: 20, seeds: 8 })
       .mockReturnValueOnce(25);
@@ -64,7 +64,7 @@ describe('useSignUpPrompt', () => {
   });
 
   it('does not write prompt state when there is no active threshold', () => {
-    vi.mocked(useAccountState).mockReturnValue({ accountEmail: null } as ReturnType<typeof useAccountState>);
+    vi.mocked(useAccountState).mockReturnValue({ isSignedIn: false } as ReturnType<typeof useAccountState>);
     vi.mocked(useStoredJson)
       .mockReturnValueOnce({ birdsSeen: 9, birdsIdentified: 2, seeds: 1 })
       .mockReturnValueOnce(null);

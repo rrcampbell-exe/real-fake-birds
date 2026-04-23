@@ -233,20 +233,20 @@ export function buildSignUpPromptContent(options: {
   const { birdsSeen, birdsIdentified, seeds, unlockedThemeNames, leaderboard } = options;
 
   let eyebrow = 'Protect your progress';
-  let title = 'Don\'t lose your flock.';
-  let body = 'Save your birds, streaks, seeds, badges, and themes for good.';
+  let title = 'Your flock needs a leader.';
+  let body = 'Save your seeds, start your birdhouses, and unlock weekly challenges with a free account.';
   const summary = `${formatNumber(birdsSeen)} seen • ${formatNumber(birdsIdentified)} correct • ${formatNumber(seeds)} seeds`;
 
   if (birdsSeen >= 50) {
     eyebrow = 'This is real progress now';
-    title = 'Remaining a guest leaves real rewards on the table.';
+    title = 'This run deserves an account.';
     body = leaderboard
-      ? `This week\'s ${leaderboard.challenge.name} is live. Create an account so this run can turn into something worth bragging about.`
-      : 'At this point you\'re building a real collection. An account keeps your rewards safe and makes you eligible for weekly challenges!';
+      ? `This week\'s ${leaderboard.challenge.name} is live. Create an account so your progress can count in weekly challenges.`
+      : 'At this point you\'re building a real collection. An account keeps your progress safe and makes you eligible for weekly challenges.';
   } else if (birdsSeen >= 25) {
     eyebrow = 'Your collection is taking shape';
-    title = 'Keep the streak, unlocks, and journal entries attached to you.';
-    body = 'You\'re past the dabbling stage. An account means your progress follows you everywhere you play.';
+    title = 'Keep this progress attached to you.';
+    body = 'You\'re past the dabbling stage. An account means your streaks, seeds, and journal follow you everywhere you play.';
   }
 
   return {

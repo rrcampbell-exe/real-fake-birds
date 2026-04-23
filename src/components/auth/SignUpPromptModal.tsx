@@ -1,16 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
-import { Bird, ShieldCheck, Sparkles, Trophy, X } from 'lucide-react';
+import { Bird, Sparkles, X } from 'lucide-react';
 import UsernameAvailabilityCard from '@/components/auth/UsernameAvailabilityCard';
-import { fetchWeeklyLeaderboard, type GetLeaderboardResponse } from '@/lib/auth/account-sync';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { track } from '@/lib/analytics';
-import { hasSupabaseEnv } from '@/lib/supabase/env';
-import { UNLOCKED_THEMES_STORAGE_KEY } from '@/lib/utils/player-progress';
-import { buildSignUpPromptContent } from '@/lib/utils/signup-prompt';
 import { useStoredJson } from '@/hooks/useStoredValue';
+import { buildSignUpPromptContent } from '@/lib/utils/signup-prompt';
+import { UNLOCKED_THEMES_STORAGE_KEY } from '@/lib/utils/player-progress';
+import SeedIcon from '@/components/icons/SeedIcon';
 
 interface SignUpPromptModalProps {
   birdsSeen: number;
@@ -31,29 +30,26 @@ export default function SignUpPromptModal({
 }: SignUpPromptModalProps) {
   const unlockedThemeNames = useStoredJson<string[]>(UNLOCKED_THEMES_STORAGE_KEY, []);
   const prefersReducedMotion = usePrefersReducedMotion();
-  const shouldLoadLeaderboard = birdsSeen >= 50 && hasSupabaseEnv();
-  const [leaderboard, setLeaderboard] = useState<GetLeaderboardResponse['leaderboard'] | null>(null);
-  const [leaderboardStatus, setLeaderboardStatus] = useState<'idle' | 'ready' | 'error'>('idle');
 
   const handleDismiss = useCallback(() => {
     track('signup_prompt_dismissed', {
       threshold,
       birds_seen: birdsSeen,
       birds_identified: birdsIdentified,
-      challenge_id: leaderboard?.challenge.id,
+      challenge_id: null,
     });
     onDismiss();
-  }, [birdsIdentified, birdsSeen, leaderboard, onDismiss, threshold]);
+  }, [birdsIdentified, birdsSeen, onDismiss, threshold]);
 
   const handleAuthenticated = useCallback(() => {
     track('signup_prompt_authenticated', {
       threshold,
       birds_seen: birdsSeen,
       birds_identified: birdsIdentified,
-      challenge_id: leaderboard?.challenge.id,
+      challenge_id: null,
     });
     onAuthenticated();
-  }, [birdsIdentified, birdsSeen, leaderboard, onAuthenticated, threshold]);
+  }, [birdsIdentified, birdsSeen, onAuthenticated, threshold]);
 
   useEffect(() => {
     track('signup_prompt_viewed', {
@@ -61,6 +57,7 @@ export default function SignUpPromptModal({
       birds_seen: birdsSeen,
       birds_identified: birdsIdentified,
       seeds,
+      challenge_id: null,
     });
   }, [birdsIdentified, birdsSeen, seeds, threshold]);
 
@@ -76,59 +73,22 @@ export default function SignUpPromptModal({
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.body.style.overflow = '';
       window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
     };
   }, [handleDismiss]);
 
-  useEffect(() => {
-    if (!shouldLoadLeaderboard) {
-      return;
-    }
-
-    const controller = new AbortController();
-
-    fetchWeeklyLeaderboard(controller.signal)
-      .then((response) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-
-        setLeaderboard(response.leaderboard);
-        setLeaderboardStatus('ready');
-      })
-      .catch(() => {
-        if (controller.signal.aborted) {
-          return;
-        }
-
-        setLeaderboardStatus('error');
-      });
-
-    return () => {
-      controller.abort();
-    };
-  }, [shouldLoadLeaderboard]);
-
-  const resolvedLeaderboardStatus = shouldLoadLeaderboard
-    ? leaderboardStatus === 'error'
-      ? 'error'
-      : leaderboard
-        ? 'ready'
-        : 'loading'
-    : 'idle';
-
-  const content = useMemo(() => buildSignUpPromptContent({
-    birdsSeen,
-    birdsIdentified,
-    seeds,
-    unlockedThemeNames,
-    leaderboard,
-  }), [birdsIdentified, birdsSeen, leaderboard, seeds, unlockedThemeNames]);
-
-  const highlightLines = [content.leaderboardLine, content.nextRewardLine, content.achievementLine].filter(
-    (value): value is string => Boolean(value)
-  ).slice(0, 2);
+  const content = useMemo(
+    () =>
+      buildSignUpPromptContent({
+        birdsSeen,
+        birdsIdentified,
+        seeds,
+        unlockedThemeNames,
+        leaderboard: null,
+      }),
+    [birdsIdentified, birdsSeen, seeds, unlockedThemeNames]
+  );
 
   return (
     <AnimatePresence>
@@ -170,77 +130,53 @@ export default function SignUpPromptModal({
                 visible: { transition: prefersReducedMotion ? {} : { staggerChildren: 0.05 } },
               }}
             >
-                <motion.div
-                  variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
-                  className="inline-flex w-fit items-center gap-2 rounded-full border border-[var(--color-secondary)]/35 bg-[color-mix(in_srgb,var(--color-secondary)_10%,var(--color-surface))] px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-secondary)]"
-                >
-                  <Sparkles size={14} />
-                  {content.eyebrow}
-                </motion.div>
+              <motion.div
+                variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
+                className="inline-flex w-fit items-center gap-2 rounded-full border border-[var(--color-secondary)]/35 bg-[color-mix(in_srgb,var(--color-secondary)_10%,var(--color-surface))] px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-secondary)]"
+              >
+                <Sparkles size={14} />
+                {content.eyebrow}
+              </motion.div>
 
-                <motion.h2
-                  id="signup-prompt-title"
-                  variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
-                  className="mt-4 max-w-xl font-[family-name:var(--font-display)] text-3xl font-bold leading-tight"
-                >
-                  {content.title}
-                </motion.h2>
+              <motion.h2
+                id="signup-prompt-title"
+                variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
+                className="mt-4 max-w-xl font-[family-name:var(--font-display)] text-3xl font-bold leading-tight"
+              >
+                {content.title}
+              </motion.h2>
 
-                <motion.p
-                  variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
-                  className="mt-3 pr-10 text-sm leading-6 text-[var(--color-muted)]"
-                >
-                  {content.body}
-                </motion.p>
+              <motion.p
+                variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
+                className="mt-3 pr-10 text-sm leading-6 text-[var(--color-muted)]"
+              >
+                {content.body}
+              </motion.p>
 
-                <motion.div
-                  variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
-                  className="mt-4 inline-flex w-fit items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-3 py-2 text-xs font-medium text-[var(--color-muted)]"
-                >
-                  {content.summary}
-                </motion.div>
-
-                <div className="mt-5 space-y-2.5">
-                  {resolvedLeaderboardStatus === 'loading' ? (
-                    <motion.div
-                      variants={{ hidden: { opacity: 0, x: -10 }, visible: { opacity: 1, x: 0 } }}
-                      className="flex items-start gap-3 rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-4 py-3"
-                    >
-                      <Trophy size={18} className="mt-0.5 shrink-0 text-[var(--color-secondary)]" />
-                      <p className="text-sm leading-6 text-[var(--color-text)]">Checking this week&apos;s challenge pace.</p>
-                    </motion.div>
-                  ) : null}
-
-                  {highlightLines.map((line, index) => {
-                    const icon = index === 0 && content.leaderboardLine === line
-                      ? <Trophy size={18} className="mt-0.5 shrink-0 text-[var(--color-secondary)]" />
-                      : index === 0
-                        ? <Bird size={18} className="mt-0.5 shrink-0 text-[var(--color-secondary)]" />
-                        : <ShieldCheck size={18} className="mt-0.5 shrink-0 text-[var(--color-secondary)]" />;
-
-                    return (
-                      <motion.div
-                        key={line}
-                        variants={{ hidden: { opacity: 0, x: -10 }, visible: { opacity: 1, x: 0 } }}
-                        className={`flex items-start gap-3 rounded-2xl px-4 py-3 ${
-                          content.leaderboardLine === line
-                            ? 'border border-[var(--color-secondary)]/25 bg-[color-mix(in_srgb,var(--color-secondary)_10%,var(--color-surface))]'
-                            : 'border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)]'
-                        }`}
-                      >
-                        {icon}
-                        <p className="text-sm leading-6 text-[var(--color-text)]">{line}</p>
-                      </motion.div>
-                    );
-                  })}
+              <motion.div
+                variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
+                className="mt-5 flex flex-wrap gap-2"
+              >
+                <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-3 py-2 text-xs font-medium text-[var(--color-muted)]">
+                  <Bird size={14} className="text-[var(--color-secondary)]" />
+                  {birdsSeen} seen
                 </div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-3 py-2 text-xs font-medium text-[var(--color-muted)]">
+                  <SeedIcon size={14} className="text-[var(--color-secondary)]" />
+                  {seeds} seeds
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-3 py-2 text-xs font-medium text-[var(--color-muted)]">
+                  <Sparkles size={14} className="text-[var(--color-secondary)]" />
+                  {unlockedThemeNames.length + 1} theme{unlockedThemeNames.length + 1 === 1 ? '' : 's'} unlocked
+                </div>
+              </motion.div>
 
-                <motion.div
-                  variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
-                  className="mt-5"
-                >
-                  <UsernameAvailabilityCard compact onAuthSuccess={handleAuthenticated} />
-                </motion.div>
+              <motion.div
+                variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
+                className="mt-5"
+              >
+                <UsernameAvailabilityCard compact onAuthSuccess={handleAuthenticated} />
+              </motion.div>
             </motion.div>
           </div>
         </motion.div>
