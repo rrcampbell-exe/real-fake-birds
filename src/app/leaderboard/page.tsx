@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Binoculars, Bird, BookOpen, Feather, Flame, Sprout, Target, Trophy, HatGlasses, UserStar } from 'lucide-react';
+import { Binoculars, Bird, BookOpen, Bot, Feather, Flame, Sprout, Target, Trophy, HatGlasses, UserStar } from 'lucide-react';
 import ShareButton from '@/components/ShareButton';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import LeaderboardAvatar from '@/components/leaderboard/LeaderboardAvatar';
@@ -200,6 +200,7 @@ export default function LeaderboardPage() {
                         <div className="flex items-center gap-3">
                           <LeaderboardAvatar username={entry.username} avatarPalette={entry.avatarPalette} />
                           <span>{entry.username}</span>
+                          {entry.isHouseAccount ? <Bot size={13} className="text-[var(--color-muted)] shrink-0" aria-label="House account" /> : null}
                         </div>
                       </td>
                       <td className={`rounded-r-2xl border-y border-r ${borderColor} ${baseBackground} px-3 py-3`}>{entry.primaryDisplayValue}</td>
@@ -231,6 +232,11 @@ export default function LeaderboardPage() {
                 ) : null}
               </tbody>
             </table>
+            {leaderboard.entries.some((e) => e.isHouseAccount) ? (
+              <p className="mt-3 text-center text-xs text-[var(--color-muted)] flex items-center justify-center gap-1">
+                <Bot size={12} /> This icon designates a house account. Can you beat the bots?
+              </p>
+            ) : null}
           </div>
         ) : null}
       </div>
