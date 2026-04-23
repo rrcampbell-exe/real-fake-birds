@@ -56,11 +56,15 @@ export interface SaveProfileResponse {
 export interface RegisterAccountResponse {
   action: 'register-account';
   account: {
-    email: string;
+    email: string | null;
     username: string;
     usernameCanonical: string;
   };
   requiresEmailVerification: boolean;
+  session: {
+    accessToken: string;
+    refreshToken: string;
+  };
 }
 
 export interface SyncLocalProgressResponse {
@@ -207,12 +211,18 @@ async function postAuthAction<T>(body: object, options?: PostAuthActionOptions):
         message = 'Enter a valid email address.';
       } else if (payload.error === 'invalid_password') {
         message = 'Choose a password with at least 8 characters.';
+      } else if (payload.error === 'captcha_required') {
+        message = 'Complete the quick human check before creating your account.';
+      } else if (payload.error === 'captcha_verification_failed') {
+        message = 'The human check expired or failed. Try it again.';
       } else if (payload.error === 'account_creation_failed') {
         message = payload.message ?? 'Unable to create the account.';
+      } else if (payload.error === 'email_already_registered') {
+        message = 'An account with that email address already exists. Try signing in instead, or check your inbox for a confirmation link.';
       } else if (payload.error === 'email_confirmation_required') {
         message = 'Check your email to confirm your account before signing in.';
       } else if (payload.error === 'sign_in_identifier_not_found') {
-        message = 'We could not find an account for that username.';
+        message = 'We could not find an account for that username. If you recently signed up, check your email for a confirmation link before signing in.';
       } else if (payload.error === 'insurance_already_active') {
         message = payload.message ?? 'Streak insurance is already armed for your next guess.';
       } else if (payload.error === 'insurance_streak_too_low') {
@@ -238,8 +248,8 @@ export function fetchAccountState(signal?: AbortSignal): Promise<AccountStateRes
 
 export function registerAccount(options: {
   username: string;
-  email: string;
   password: string;
+  captchaToken?: string;
 }): Promise<RegisterAccountResponse> {
   return postAuthAction<RegisterAccountResponse>({
     action: 'register-account',

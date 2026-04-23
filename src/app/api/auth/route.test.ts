@@ -33,6 +33,7 @@ function mockAuthenticatedUser() {
 describe('auth route', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
     mockedHasSupabaseEnv.mockReturnValue(false);
   });
 
@@ -116,21 +117,84 @@ describe('auth route', () => {
     });
   });
 
-  it('registers an account with username, email, and password in one server-side flow', async () => {
+  it('registers an account with username and password in one server-side flow', async () => {
     mockedHasSupabaseEnv.mockReturnValue(true);
+    vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('123');
 
-    const signUp = vi.fn().mockResolvedValue({
-      data: { user: { id: 'user-1', email: 'bird@example.com' }, session: null },
+    const createUser = vi.fn().mockResolvedValue({
+      data: {
+        user: {
+          id: 'user-1',
+          email: 'u_123@accounts.realfakebirds.invalid',
+          user_metadata: {
+            requested_username: 'BirdFan_17',
+            requested_username_canonical: 'birdfan_17',
+            account_email_kind: 'placeholder',
+          },
+        },
+      },
       error: null,
     });
-    mockedCreateSupabaseAuthClient.mockReturnValue({
-      auth: {
-        signUp,
+    const deleteUser = vi.fn().mockResolvedValue({ error: null });
+    const signInWithPassword = vi.fn().mockResolvedValue({
+      data: {
+        session: {
+          access_token: 'access-token',
+          refresh_token: 'refresh-token',
+        },
       },
-    } as never);
+      error: null,
+    });
 
     mockedCreateSupabaseAdminClient.mockReturnValue({
+      auth: {
+        admin: {
+          createUser,
+          deleteUser,
+        },
+      },
       from: vi.fn((table: string) => {
+        if (table === 'profiles') {
+          const availabilityQuery = {
+            limit: vi.fn().mockReturnThis(),
+            neq: vi.fn().mockResolvedValue({ count: 0, error: null }),
+          };
+
+          return {
+            select: vi.fn((columns: string, options?: { count?: string; head?: boolean }) => {
+              if (options?.count === 'exact' && options.head === true) {
+                return {
+                  eq: vi.fn().mockReturnValue(availabilityQuery),
+                };
+              }
+
+              return {
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+                }),
+              };
+            }),
+            upsert: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({
+                  data: {
+                    username: 'BirdFan_17',
+                    username_canonical: 'birdfan_17',
+                    avatar_palette: 'finch',
+                  },
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+
+        if (table === 'leaderboard_stats') {
+          return {
+            upsert: vi.fn().mockResolvedValue({ error: null }),
+          };
+        }
+
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
@@ -140,6 +204,11 @@ describe('auth route', () => {
         };
       }),
     } as never);
+    mockedCreateSupabaseAuthClient.mockReturnValue({
+      auth: {
+        signInWithPassword,
+      },
+    } as never);
 
     const response = await POST(
       new Request('http://localhost/api/auth', {
@@ -147,7 +216,6 @@ describe('auth route', () => {
         body: JSON.stringify({
           action: 'register-account',
           username: 'BirdFan_17',
-          email: 'bird@example.com',
           password: 'secret-password',
         }),
         headers: { 'Content-Type': 'application/json' },
@@ -155,25 +223,73 @@ describe('auth route', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(signUp).toHaveBeenCalledWith({
-      email: 'bird@example.com',
+    expect(createUser).toHaveBeenCalledWith({
+      email: 'u_123@accounts.realfakebirds.invalid',
       password: 'secret-password',
-      options: {
-        emailRedirectTo: 'http://localhost/auth/callback?next=/settings',
-        data: {
-          requested_username: 'BirdFan_17',
-          requested_username_canonical: 'birdfan_17',
-        },
+      email_confirm: true,
+      user_metadata: {
+        requested_username: 'BirdFan_17',
+        requested_username_canonical: 'birdfan_17',
+        account_email_kind: 'placeholder',
       },
     });
+    expect(signInWithPassword).toHaveBeenCalledWith({
+      email: 'u_123@accounts.realfakebirds.invalid',
+      password: 'secret-password',
+    });
+    expect(deleteUser).not.toHaveBeenCalled();
     await expect(response.json()).resolves.toEqual({
       action: 'register-account',
       account: {
-        email: 'bird@example.com',
+        email: null,
         username: 'BirdFan_17',
         usernameCanonical: 'birdfan_17',
       },
-      requiresEmailVerification: true,
+      requiresEmailVerification: false,
+      session: {
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+      },
+    });
+  });
+
+  it('requires a captcha token when Turnstile verification is configured', async () => {
+    mockedHasSupabaseEnv.mockReturnValue(true);
+    vi.stubEnv('TURNSTILE_SECRET_KEY', 'test-secret');
+    const createUser = vi.fn();
+
+    mockedCreateSupabaseAdminClient.mockReturnValue({
+      auth: {
+        admin: {
+          createUser,
+        },
+      },
+      from: vi.fn(() => ({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue({ count: 0, error: null }),
+          }),
+        }),
+      })),
+    } as never);
+
+    const response = await POST(
+      new Request('http://localhost/api/auth', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'register-account',
+          username: 'BirdFan_17',
+          password: 'secret-password',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      }) as never
+    );
+
+    expect(response.status).toBe(400);
+    expect(createUser).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toEqual({
+      error: 'captcha_required',
+      message: 'Complete the quick human check and try again.',
     });
   });
 

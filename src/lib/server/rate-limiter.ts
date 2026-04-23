@@ -91,7 +91,7 @@ export async function consumeRateLimit(
 
   try {
     const member = `${now}:${Math.random().toString(16).slice(2)}`;
-    const result = await redis.eval<number[]>(
+    const result = (await redis.eval(
       redisRateLimitScript,
       [`ratelimit:${key}`],
       [
@@ -101,7 +101,7 @@ export async function consumeRateLimit(
         String(windowMs),
         member,
       ],
-    );
+    )) as number[];
 
     return {
       allowed: result?.[0] === 1,

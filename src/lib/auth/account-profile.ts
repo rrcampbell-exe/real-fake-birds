@@ -52,7 +52,7 @@ export async function ensureAccountProfileFromUserMetadata(options: {
     return { status: 'error', profile: null };
   }
 
-  if (existingProfile) {
+  if (existingProfile?.username) {
     await admin
       .from('leaderboard_stats')
       .upsert(
@@ -73,6 +73,9 @@ export async function ensureAccountProfileFromUserMetadata(options: {
       },
     };
   }
+
+  // A stub profile row may exist (created by the handle_new_user trigger) without a username.
+  // Fall through to set the username from user metadata.
 
   const requestedUsername = typeof user.user_metadata?.requested_username === 'string'
     ? user.user_metadata.requested_username.trim()

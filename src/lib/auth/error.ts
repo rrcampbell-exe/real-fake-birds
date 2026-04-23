@@ -17,3 +17,9 @@ export function isRetryableAccountActionError(error: unknown): boolean {
 
   return true;
 }
+
+export function isUnauthenticatedAccountActionError(error: unknown): error is AccountActionError {
+  return error instanceof AccountActionError
+    && error.status === 401
+    && error.code === 'not_authenticated';
+}

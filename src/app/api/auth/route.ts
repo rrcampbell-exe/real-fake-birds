@@ -23,6 +23,7 @@ import { ensureAccountProfileFromUserMetadata } from '@/lib/auth/account-profile
 import { hasSupabaseEnv } from '@/lib/supabase/env';
 import { createSupabaseAdminClient, createSupabaseAuthClient, createSupabaseServerClient } from '@/lib/supabase/server';
 import { consumeRateLimit, getRateLimitKey } from '@/lib/server/rate-limiter';
+import { verifyTurnstileToken } from '@/lib/server/turnstile';
 import type {
   BirdhouseStore,
   BirdJournalEntry,
@@ -48,8 +49,8 @@ interface GetAccountStateRequest {
 interface RegisterAccountRequest {
   action: AuthAction;
   username: string;
-  email: string;
   password: string;
+  captchaToken?: string;
 }
 
 interface GetLeaderboardRequest {
@@ -125,7 +126,6 @@ const BIRD_JOURNAL_PULL_LIMIT = 10_000;
 const MAX_SYNC_JOURNAL_ENTRIES = 10_000;
 const MAX_PROGRESS_EVENT_BATCH_SIZE = 500;
 const MAX_AUTH_REQUEST_BYTES = 262_144;
-const MAX_AUTH_EMAIL_LENGTH = 254;
 const MAX_AUTH_PASSWORD_LENGTH = 128;
 const USERNAME_VALIDATION_WINDOW_MS = 60_000;
 const USERNAME_VALIDATION_MAX_REQUESTS = 20;
@@ -133,6 +133,7 @@ const REGISTER_WINDOW_MS = 900_000;
 const REGISTER_MAX_REQUESTS = 5;
 const USERNAME_SIGN_IN_WINDOW_MS = 60_000;
 const USERNAME_SIGN_IN_MAX_REQUESTS = 10;
+const PLACEHOLDER_AUTH_EMAIL_DOMAIN = 'accounts.realfakebirds.invalid';
 
 interface SyncDailyMissionCompletionRequest {
   action: AuthAction;
@@ -178,8 +179,8 @@ function isRegisterAccountRequest(value: unknown): value is RegisterAccountReque
   const candidate = value as Partial<RegisterAccountRequest>;
   return candidate.action === 'register-account'
     && typeof candidate.username === 'string'
-    && typeof candidate.email === 'string'
-    && typeof candidate.password === 'string';
+    && typeof candidate.password === 'string'
+    && (typeof candidate.captchaToken === 'undefined' || typeof candidate.captchaToken === 'string');
 }
 
 function isGetLeaderboardRequest(value: unknown): value is GetLeaderboardRequest {
@@ -410,6 +411,7 @@ function isSyncBirdJournalRequest(value: unknown): value is SyncBirdJournalReque
 
   const candidate = value as Partial<SyncBirdJournalRequest>;
   return candidate.action === 'sync-bird-journal'
+    && Array.isArray(candidate.journalEntries)
     && candidate.journalEntries.length <= MAX_SYNC_JOURNAL_ENTRIES
     && isBirdJournalEntryArray(candidate.journalEntries);
 }
@@ -688,6 +690,18 @@ function configErrorResponse() {
   return NextResponse.json({ error: 'supabase_not_configured' }, { status: 503 });
 }
 
+function buildPlaceholderAuthEmail(): string {
+  return `u_${crypto.randomUUID()}@${PLACEHOLDER_AUTH_EMAIL_DOMAIN}`;
+}
+
+function isPlaceholderAuthEmail(email: string | null | undefined): boolean {
+  if (!email) {
+    return false;
+  }
+
+  return email.endsWith(`@${PLACEHOLDER_AUTH_EMAIL_DOMAIN}`);
+}
+
 async function getAuthenticatedRequestContext(): Promise<AuthenticatedRequestContext | null> {
   if (!hasSupabaseEnv()) {
     return null;
@@ -703,7 +717,7 @@ async function getAuthenticatedRequestContext(): Promise<AuthenticatedRequestCon
 
     return {
       userId: data.user.id,
-      email: data.user.email ?? null,
+      email: isPlaceholderAuthEmail(data.user.email) ? null : (data.user.email ?? null),
       user: data.user,
     };
   } catch {
@@ -1154,7 +1168,6 @@ export async function POST(request: NextRequest) {
     }
 
     const username = body.username.trim();
-    const email = body.email.trim().toLowerCase();
     const password = body.password;
     const validation = validateUsername(username);
 
@@ -1168,10 +1181,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!email || !email.includes('@') || email.length > MAX_AUTH_EMAIL_LENGTH) {
-      return NextResponse.json({ error: 'invalid_email', message: 'Enter a valid email address.' }, { status: 400 });
-    }
-
     if (password.length < 8 || password.length > MAX_AUTH_PASSWORD_LENGTH) {
       return NextResponse.json({ error: 'invalid_password', message: 'Choose a password with at least 8 characters.' }, { status: 400 });
     }
@@ -1181,21 +1190,47 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'username_unavailable' }, { status: 409 });
     }
 
+    const captchaVerification = await verifyTurnstileToken({
+      token: body.captchaToken,
+      remoteIp: getClientIp(request),
+    });
+
+    if (!captchaVerification.success) {
+      const missingCaptcha = captchaVerification.errorCodes.includes('missing-input-response');
+      return NextResponse.json(
+        {
+          error: missingCaptcha ? 'captcha_required' : 'captcha_verification_failed',
+          message: missingCaptcha
+            ? 'Complete the quick human check and try again.'
+            : 'We could not verify the human check. Please try again.',
+        },
+        { status: missingCaptcha ? 400 : 403 }
+      );
+    }
+
     try {
+      const placeholderEmail = buildPlaceholderAuthEmail();
+      const admin = createSupabaseAdminClient();
       const authClient = createSupabaseAuthClient();
-      const { data: createdUserResult, error: createUserError } = await authClient.auth.signUp({
-        email,
+      const { data: createdUserResult, error: createUserError } = await admin.auth.admin.createUser({
+        email: placeholderEmail,
         password,
-        options: {
-          emailRedirectTo: buildEmailRedirectUrl(request),
-          data: {
-            requested_username: username,
-            requested_username_canonical: validation.normalizedUsername,
-          },
+        email_confirm: true,
+        user_metadata: {
+          requested_username: username,
+          requested_username_canonical: validation.normalizedUsername,
+          account_email_kind: 'placeholder',
         },
       });
 
       if (createUserError || !createdUserResult.user) {
+        const isAlreadyRegistered = createUserError?.message?.toLowerCase().includes('already registered')
+          || createUserError?.message?.toLowerCase().includes('already signed up');
+
+        if (isAlreadyRegistered) {
+          return NextResponse.json({ error: 'account_creation_failed', message: 'That account could not be created right now.' }, { status: 409 });
+        }
+
         return NextResponse.json(
           {
             error: 'account_creation_failed',
@@ -1205,14 +1240,42 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const profileBootstrap = await ensureAccountProfileFromUserMetadata({
+        admin,
+        user: createdUserResult.user,
+      });
+
+      if (profileBootstrap.status === 'username_unavailable') {
+        await admin.auth.admin.deleteUser(createdUserResult.user.id);
+        return NextResponse.json({ error: 'username_unavailable' }, { status: 409 });
+      }
+
+      if (profileBootstrap.status === 'error' || profileBootstrap.status === 'invalid_username' || profileBootstrap.status === 'missing_username') {
+        await admin.auth.admin.deleteUser(createdUserResult.user.id);
+        return NextResponse.json({ error: 'account_creation_failed', message: 'Unable to create the account.' }, { status: 500 });
+      }
+
+      const { data: signInResult, error: signInError } = await authClient.auth.signInWithPassword({
+        email: placeholderEmail,
+        password,
+      });
+
+      if (signInError || !signInResult.session) {
+        return NextResponse.json({ error: 'account_creation_failed', message: 'Account created, but sign-in is unavailable right now. Try signing in with your username and password.' }, { status: 500 });
+      }
+
       return NextResponse.json({
         action: 'register-account',
         account: {
-          email,
+          email: null,
           username,
           usernameCanonical: validation.normalizedUsername,
         },
-        requiresEmailVerification: !createdUserResult.session,
+        requiresEmailVerification: false,
+        session: {
+          accessToken: signInResult.session.access_token,
+          refreshToken: signInResult.session.refresh_token,
+        },
       });
     } catch {
       return NextResponse.json({ error: 'account_creation_failed', message: 'Unable to create the account.' }, { status: 500 });
@@ -1409,7 +1472,7 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (!profile?.user_id) {
-        return NextResponse.json({ error: 'invalid_sign_in_credentials', message: 'Unable to sign in with that username and password.' }, { status: 400 });
+        return NextResponse.json({ error: 'sign_in_identifier_not_found' }, { status: 400 });
       }
 
       const { data: userResult, error } = await admin.auth.admin.getUserById(profile.user_id);
