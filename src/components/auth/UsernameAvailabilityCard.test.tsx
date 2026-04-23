@@ -1,6 +1,14 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('@marsidev/react-turnstile', () => ({
+  Turnstile: ({ onSuccess }: { onSuccess?: (token: string) => void }) => (
+    <button type="button" onClick={() => onSuccess?.('captcha-token')}>
+      Complete human check
+    </button>
+  ),
+}));
+
 vi.mock('@/lib/supabase/env', () => ({
   hasSupabaseEnv: vi.fn(),
 }));
@@ -21,7 +29,6 @@ vi.mock('@/lib/auth/account-sync', () => ({
   fetchAccountState: vi.fn(),
   registerAccount: vi.fn(),
   pullAccountProgress: vi.fn(),
-  saveProfile: vi.fn(),
   signInWithUsername: vi.fn(),
   syncLocalProgress: vi.fn(),
 }));
@@ -37,7 +44,7 @@ vi.mock('@/lib/auth/account-session', () => ({
 
 import { hasSupabaseEnv } from '@/lib/supabase/env';
 import { useAccountState } from '@/components/account/AccountStateProvider';
-import { fetchAccountState, registerAccount, saveProfile, signInWithUsername } from '@/lib/auth/account-sync';
+import { fetchAccountState, registerAccount, signInWithUsername } from '@/lib/auth/account-sync';
 import {
   hydrateSignedInAccountToLocalState,
   notifyAccountStateChanged,
@@ -54,7 +61,6 @@ const mockedUseAccountState = vi.mocked(useAccountState);
 const mockedFetchAccountState = vi.mocked(fetchAccountState);
 const mockedRegisterAccount = vi.mocked(registerAccount);
 const mockedSignInWithUsername = vi.mocked(signInWithUsername);
-const mockedSaveProfile = vi.mocked(saveProfile);
 const mockedHydrateSignedInAccountToLocalState = vi.mocked(hydrateSignedInAccountToLocalState);
 const mockedNotifyAccountStateChanged = vi.mocked(notifyAccountStateChanged);
 const mockedPrepareSignedInSessionForSignOut = vi.mocked(prepareSignedInSessionForSignOut);
@@ -113,12 +119,12 @@ function createSupabaseClientMock(overrides?: {
 describe('UsernameAvailabilityCard', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
     mockedHasSupabaseEnv.mockReturnValue(false);
     mockedUseAccountState.mockReturnValue(createAccountState());
     mockedFetchAccountState.mockReset();
     mockedRegisterAccount.mockReset();
     mockedSignInWithUsername.mockReset();
-    mockedSaveProfile.mockReset();
     mockedHydrateSignedInAccountToLocalState.mockReset();
     mockedNotifyAccountStateChanged.mockReset();
     mockedPrepareSignedInSessionForSignOut.mockReset();
@@ -144,9 +150,11 @@ describe('UsernameAvailabilityCard', () => {
     expect(screen.getAllByRole('button', { name: 'Sign in' }).at(-1)).toBeDisabled();
   });
 
-  it('creates an account with required username, email, and password', async () => {
+  it('creates an account with required username, password, and confirmation', async () => {
     const onAuthSuccess = vi.fn();
+    const refreshAccountState = vi.fn().mockResolvedValue(undefined);
     mockedHasSupabaseEnv.mockReturnValue(true);
+    mockedUseAccountState.mockReturnValue(createAccountState({ refreshAccountState }));
     mockedUseUsernameValidation.mockReturnValue({
       value: 'BirdFan_17',
       normalizedUsername: 'birdfan_17',
@@ -159,32 +167,78 @@ describe('UsernameAvailabilityCard', () => {
     mockedRegisterAccount.mockResolvedValue({
       action: 'register-account',
       account: {
-        email: 'bird@example.com',
+        email: null,
         username: 'BirdFan_17',
         usernameCanonical: 'birdfan_17',
       },
-      requiresEmailVerification: true,
+      requiresEmailVerification: false,
+      session: {
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+      },
     });
 
     render(<UsernameAvailabilityCard onAuthSuccess={onAuthSuccess} />);
 
-    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'bird@example.com' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'secret-password' } });
+    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'secret-password' } });
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Create account' }).at(-1)!);
 
     await waitFor(() => {
       expect(mockedRegisterAccount).toHaveBeenCalledWith({
         username: 'BirdFan_17',
-        email: 'bird@example.com',
         password: 'secret-password',
       });
     });
 
-    expect(mockedPushCurrentLocalProgressToAccount).not.toHaveBeenCalled();
-    expect(mockedHydrateSignedInAccountToLocalState).not.toHaveBeenCalled();
-    expect(onAuthSuccess).not.toHaveBeenCalled();
-    expect(screen.getByText(/Check your email to confirm your account/i)).toBeInTheDocument();
+    expect(mockedHydrateSignedInAccountToLocalState).toHaveBeenCalled();
+    expect(mockedPushCurrentLocalProgressToAccount).toHaveBeenCalled();
+    expect(refreshAccountState).toHaveBeenCalled();
+    expect(onAuthSuccess).toHaveBeenCalled();
+    expect(screen.getByText(/Account created and signed in/i)).toBeInTheDocument();
+  });
+
+  it('passes the captcha token when Turnstile is enabled', async () => {
+    mockedHasSupabaseEnv.mockReturnValue(true);
+    vi.stubEnv('NEXT_PUBLIC_TURNSTILE_SITE_KEY', 'site-key');
+    mockedUseUsernameValidation.mockReturnValue({
+      value: 'BirdFan_17',
+      normalizedUsername: 'birdfan_17',
+      issues: [],
+      available: true,
+      isChecking: false,
+      error: null,
+      setValue: vi.fn(),
+    });
+    mockedRegisterAccount.mockResolvedValue({
+      action: 'register-account',
+      account: {
+        email: null,
+        username: 'BirdFan_17',
+        usernameCanonical: 'birdfan_17',
+      },
+      requiresEmailVerification: false,
+      session: {
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+      },
+    });
+
+    render(<UsernameAvailabilityCard />);
+
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'secret-password' } });
+    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'secret-password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Complete human check' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Create account' }).at(-1)!);
+
+    await waitFor(() => {
+      expect(mockedRegisterAccount).toHaveBeenCalledWith({
+        username: 'BirdFan_17',
+        password: 'secret-password',
+        captchaToken: 'captcha-token',
+      });
+    });
   });
 
   it('keeps the compact create-account flow stripped down', () => {
@@ -208,7 +262,9 @@ describe('UsernameAvailabilityCard', () => {
   it('signs in with email and password', async () => {
     const signInWithPassword = vi.fn().mockResolvedValue({ error: null });
     const onAuthSuccess = vi.fn();
+    const refreshAccountState = vi.fn().mockResolvedValue(undefined);
     mockedHasSupabaseEnv.mockReturnValue(true);
+    mockedUseAccountState.mockReturnValue(createAccountState({ refreshAccountState }));
     mockedSignInWithUsername.mockResolvedValue({
       action: 'sign-in-with-username',
       session: {
@@ -238,6 +294,7 @@ describe('UsernameAvailabilityCard', () => {
 
     expect(mockedHydrateSignedInAccountToLocalState).toHaveBeenCalled();
     expect(mockedPushCurrentLocalProgressToAccount).toHaveBeenCalled();
+    expect(refreshAccountState).toHaveBeenCalled();
     expect(onAuthSuccess).toHaveBeenCalled();
   });
 
@@ -255,26 +312,51 @@ describe('UsernameAvailabilityCard', () => {
     mockedRegisterAccount.mockResolvedValue({
       action: 'register-account',
       account: {
-        email: 'bird@example.com',
+        email: null,
         username: 'BirdFan_17',
         usernameCanonical: 'birdfan_17',
       },
-      requiresEmailVerification: true,
+      requiresEmailVerification: false,
+      session: {
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+      },
     });
 
     render(<UsernameAvailabilityCard />);
 
-    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'bird@example.com' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'secret-password' } });
-    fireEvent.keyDown(screen.getByLabelText('Password'), { key: 'Enter', code: 'Enter', charCode: 13 });
+    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'secret-password' } });
+    fireEvent.keyDown(screen.getByLabelText('Confirm password'), { key: 'Enter', code: 'Enter', charCode: 13 });
 
     await waitFor(() => {
       expect(mockedRegisterAccount).toHaveBeenCalledWith({
         username: 'BirdFan_17',
-        email: 'bird@example.com',
         password: 'secret-password',
       });
     });
+  });
+
+  it('shows a mismatch error when the password confirmation does not match', async () => {
+    mockedHasSupabaseEnv.mockReturnValue(true);
+    mockedUseUsernameValidation.mockReturnValue({
+      value: 'BirdFan_17',
+      normalizedUsername: 'birdfan_17',
+      issues: [],
+      available: true,
+      isChecking: false,
+      error: null,
+      setValue: vi.fn(),
+    });
+
+    render(<UsernameAvailabilityCard />);
+
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'secret-password' } });
+    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'different-password' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Create account' }).at(-1)!);
+
+    expect(mockedRegisterAccount).not.toHaveBeenCalled();
+    expect(screen.getByText('Passwords do not match.')).toBeInTheDocument();
   });
 
   it('submits sign-in when pressing Enter in the password field', async () => {
@@ -362,7 +444,7 @@ describe('UsernameAvailabilityCard', () => {
     render(<UsernameAvailabilityCard />);
 
     await waitFor(() => {
-      expect(screen.getByText('BirdFan_17')).toBeInTheDocument();
+      expect(screen.getByText(/BirdFan_17/)).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
@@ -375,94 +457,5 @@ describe('UsernameAvailabilityCard', () => {
     expect(mockedResetLocalStateForGuestSession).toHaveBeenCalled();
     expect(refreshAccountState).toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
-  });
-
-  it('keeps a legacy username repair path only for signed-in accounts missing a username', async () => {
-    mockedHasSupabaseEnv.mockReturnValue(true);
-    mockedUseAccountState.mockReturnValue(createAccountState({
-      isSignedIn: true,
-      accountEmail: 'bird@example.com',
-      accountUsername: null,
-    }));
-    mockedSaveProfile.mockResolvedValue({
-      action: 'save-profile',
-      profile: {
-        username: 'BirdFan_17',
-        usernameCanonical: 'birdfan_17',
-        avatarPalette: 'finch',
-      },
-    });
-
-    render(<UsernameAvailabilityCard />);
-
-    expect(screen.getByText('Legacy account needs a username')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Save username' })).toBeInTheDocument();
-  });
-
-  it('does not offer username updates once an account already has one', async () => {
-    mockedHasSupabaseEnv.mockReturnValue(true);
-    mockedUseAccountState.mockReturnValue(createAccountState({
-      isSignedIn: true,
-      accountEmail: 'bird@example.com',
-      accountUsername: 'BirdFan_17',
-      remoteSummary: {
-        birdsIdentified: 20,
-        seeds: 40,
-        bestStreak: 8,
-        bestDailyStreak: 3,
-        bestWeeklyPlacement: null,
-        firstPlaceCount: 0,
-        secondPlaceCount: 0,
-        thirdPlaceCount: 0,
-      },
-      remoteUnlockedThemes: [],
-      weeklyOverview: null,
-      refreshAccountState: vi.fn().mockResolvedValue(undefined),
-    }));
-    const setValue = vi.fn();
-    mockedUseUsernameValidation.mockReturnValue({
-      value: 'BirdFan_17',
-      normalizedUsername: 'birdfan_17',
-      issues: [],
-      available: true,
-      isChecking: false,
-      error: null,
-      setValue,
-    });
-    mockedGetSupabaseBrowserClient.mockReturnValue(
-      createSupabaseClientMock({
-        getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: 'user-1', email: 'bird@example.com' } } } }),
-      }) as never
-    );
-    mockedFetchAccountState.mockResolvedValue({
-      action: 'get-account-state',
-      email: 'bird@example.com',
-      profile: {
-        username: 'BirdFan_17',
-        usernameCanonical: 'birdfan_17',
-        avatarPalette: 'finch',
-      },
-      lastLocalSyncAt: null,
-      progressSummary: {
-        birdsIdentified: 20,
-        seeds: 40,
-        bestStreak: 8,
-        bestDailyStreak: 3,
-        bestWeeklyPlacement: null,
-        firstPlaceCount: 0,
-        secondPlaceCount: 0,
-        thirdPlaceCount: 0,
-      },
-      unlockedThemes: [],
-      weeklyOverview: null,
-    });
-    render(<UsernameAvailabilityCard />);
-
-    await waitFor(() => {
-      expect(screen.getByText('BirdFan_17')).toBeInTheDocument();
-    });
-
-    expect(screen.queryByRole('button', { name: 'Update username' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Save username' })).not.toBeInTheDocument();
   });
 });

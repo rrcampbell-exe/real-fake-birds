@@ -114,7 +114,7 @@ describe('SettingsPage theme unlocking', () => {
 
     mockedUseAccountState.mockReturnValue(createAccountState({
       isSignedIn: true,
-      accountEmail: 'bird@example.com',
+      accountEmail: null,
       accountUsername: 'BirdFan_17',
       remoteSummary: {
         birdsIdentified: 40,
