@@ -61,6 +61,31 @@ function pruneJournalForStorageLimit(journal: BirdJournalStore): BirdJournalStor
     });
   }
 
+  // Second pass: if still oversized after field pruning, drop oldest entries entirely.
+  if (getSerializedByteLength(serialized) > BIRD_JOURNAL_MAX_SERIALIZED_BYTES) {
+    const byAge = Object.values(nextJournal)
+      .sort((left, right) => left.lastSeenAt.localeCompare(right.lastSeenAt));
+    let droppedEntries = 0;
+
+    for (const entry of byAge) {
+      const { [entry.birdKey]: _dropped, ...rest } = nextJournal;
+      nextJournal = rest;
+      droppedEntries += 1;
+      serialized = JSON.stringify(nextJournal);
+
+      if (getSerializedByteLength(serialized) <= BIRD_JOURNAL_MAX_SERIALIZED_BYTES) {
+        break;
+      }
+    }
+
+    if (droppedEntries > 0) {
+      console.warn('Dropped oldest bird journal entries to stay within localStorage limits.', {
+        droppedEntryCount: droppedEntries,
+        maxBytes: BIRD_JOURNAL_MAX_SERIALIZED_BYTES,
+      });
+    }
+  }
+
   return nextJournal;
 }
 
@@ -162,7 +187,16 @@ export function readBirdJournal(): BirdJournalStore {
 
 export function writeBirdJournal(journalLike: BirdJournalStore, notify = true): BirdJournalStore {
   const journal = pruneJournalForStorageLimit(normalizeBirdJournalStore(journalLike));
-  localStorage.setItem(BIRD_JOURNAL_STORAGE_KEY, JSON.stringify(journal));
+  try {
+    localStorage.setItem(BIRD_JOURNAL_STORAGE_KEY, JSON.stringify(journal));
+  } catch (err) {
+    console.warn('Failed to write bird journal to localStorage; clearing to recover.', err);
+    try {
+      localStorage.removeItem(BIRD_JOURNAL_STORAGE_KEY);
+    } catch {
+      // If removeItem also fails, nothing more we can do.
+    }
+  }
 
   if (notify) {
     notifyStoredValueChanged(BIRD_JOURNAL_STORAGE_KEY);

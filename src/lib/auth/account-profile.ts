@@ -53,7 +53,7 @@ export async function ensureAccountProfileFromUserMetadata(options: {
   }
 
   if (existingProfile?.username) {
-    await admin
+    const { error: leaderboardError } = await admin
       .from('leaderboard_stats')
       .upsert(
         {
@@ -63,6 +63,10 @@ export async function ensureAccountProfileFromUserMetadata(options: {
         },
         { onConflict: 'user_id' }
       );
+
+    if (leaderboardError) {
+      return { status: 'error', profile: null };
+    }
 
     return {
       status: 'existing',
