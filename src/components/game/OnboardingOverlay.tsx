@@ -33,7 +33,7 @@ const STEPS: OnboardingStep[] = [
     ),
     title: 'Real or Fake?',
     description:
-      'Each round you see a bird photo and name. Tap Real if you believe it exists, or Fake if you think we made it up. Get it right to build your streak.',
+      'Each round you see a bird name. Tap Real if you believe it exists, or Fake if you think we made it up. Get it right to build your streak.',
   },
   {
     icon: (
