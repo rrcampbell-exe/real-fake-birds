@@ -286,7 +286,7 @@ describe('bird-journal utilities', () => {
     warnSpy.mockRestore();
   });
 
-
+  it('merges local and remote stores conservatively', () => {
     writeBirdJournal({
       'real:blue-jay': {
         birdKey: 'real:blue-jay',
