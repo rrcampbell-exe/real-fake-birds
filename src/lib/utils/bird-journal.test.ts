@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   BIRD_JOURNAL_MAX_SERIALIZED_BYTES,
+  BIRD_JOURNAL_STORAGE_KEY,
   clearDirtyBirdJournalKeys,
   deriveBirdKey,
   getDirtyBirdJournalEntries,
@@ -18,8 +19,6 @@ import {
 vi.mock('@/hooks/useStoredValue', () => ({
   notifyStoredValueChanged: vi.fn(),
 }));
-
-import { vi } from 'vitest';
 
 describe('bird-journal utilities', () => {
   beforeEach(() => {
