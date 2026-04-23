@@ -361,3 +361,39 @@ export function claimMissionSetBonusDirect(options: {
     ...options,
   });
 }
+
+export async function deleteAccount(password: string): Promise<{ success: true }> {
+  const response = await fetch('/api/auth/account', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  });
+
+  if (!response.ok) {
+    let message = 'Unable to delete account.';
+    let errorCode: string | undefined;
+
+    try {
+      const payload = await response.json() as { error?: string; message?: string };
+      errorCode = payload.error;
+
+      if (payload.error === 'rate_limited') {
+        message = 'Too many requests. Please try again later.';
+      } else if (payload.error === 'not_authenticated') {
+        message = 'Sign in first to delete your account.';
+      } else if (payload.error === 'wrong_password') {
+        message = 'Incorrect password. Please try again.';
+      } else if (payload.error === 'password_required') {
+        message = 'Enter your password to confirm deletion.';
+      } else if (payload.message) {
+        message = payload.message;
+      }
+    } catch {
+      // Fall back to the generic message.
+    }
+
+    throw new AccountActionError(message, response.status, errorCode);
+  }
+
+  return response.json() as Promise<{ success: true }>;
+}
