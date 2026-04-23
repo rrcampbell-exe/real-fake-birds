@@ -40,7 +40,7 @@ function buildCsp(nonce: string): string {
 
 export async function middleware(request: NextRequest) {
   // Generate a fresh nonce for every request.
-  const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+  const nonce = btoa(crypto.randomUUID());
 
   // Forward the nonce to the layout via a request header so the theme bootstrap
   // <Script> can carry it. Next.js also reads x-nonce to nonce its own inline scripts.
