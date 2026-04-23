@@ -226,7 +226,7 @@ describe('bird-journal utilities', () => {
 
   it('drops oldest entries entirely when field pruning is insufficient to reach the byte limit', () => {
     // Build a journal where no entries have summary or description — field pruning won't help.
-    // Each entry carries ~750 000 bytes of imageUrl data so 4 entries exceed the 2 MB limit.
+    // Each entry carries ~750,000 bytes of imageUrl data so 4 entries exceed the 2 MB limit.
     const largeUrl = 'https://example.com/' + 'a'.repeat(750_000);
     const oversizedJournal = Object.fromEntries(
       Array.from({ length: 4 }, (_, index) => {
