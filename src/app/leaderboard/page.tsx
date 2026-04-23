@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Binoculars, Bird, BookOpen, Bot, Feather, Flame, Sprout, Target, Trophy, HatGlasses, UserStar } from 'lucide-react';
@@ -12,6 +13,13 @@ import { useScreenViewed } from '@/hooks/useScreenViewed';
 import { buildWeeklyLeaderboardSharePayload } from '@/lib/utils/share-data';
 import { getTimeRemainingInWeek, markLeaderboardWeekSeen } from '@/lib/utils/weekly-leaderboard';
 import type { WeeklyChallengeIcon } from '@/types';
+
+function toBadgeAssetName(badgeName: string) {
+  return badgeName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
 
 const challengeIcons: Record<WeeklyChallengeIcon, typeof Trophy> = {
   bird: Bird,
@@ -85,19 +93,19 @@ export default function LeaderboardPage() {
 
   const renderSkeletonRows = () => (
     <div className="overflow-x-auto">
-      <table className="min-w-full border-separate border-spacing-y-2 text-left text-sm">
+      <table className="w-full table-fixed border-separate border-spacing-y-2 text-left text-sm">
         <thead>
           <tr className="text-[0.72rem] uppercase tracking-[0.14em] text-[var(--color-muted)]">
-            <th className="px-3 py-2">Rank</th>
+            <th className="w-10 sm:w-14 whitespace-nowrap px-2 sm:px-3 py-2">Rank</th>
             <th className="px-3 py-2">Birder</th>
-            <th className="px-3 py-2">Score</th>
+            <th className="w-16 sm:w-20 px-3 py-2">Score</th>
           </tr>
         </thead>
         <tbody>
           {Array.from({ length: 8 }).map((_, index) => (
             <tr key={`skeleton-${index}`} className="animate-pulse">
-              <td className="rounded-l-2xl border-y border-l border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-3 py-3">
-                <div className="h-3 w-10 rounded bg-[var(--color-surface-border)]" />
+              <td className="whitespace-nowrap rounded-l-2xl border-y border-l border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-2 sm:px-3 py-3">
+                <div className="h-3 w-8 rounded bg-[var(--color-surface-border)]" />
               </td>
               <td className="border-y border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-3 py-3">
                 <div className="flex items-center gap-3">
@@ -177,12 +185,12 @@ export default function LeaderboardPage() {
           </div>
         ) : leaderboard ? (
           <div className="overflow-x-auto">
-            <table className="min-w-full border-separate border-spacing-y-2 text-left text-sm">
+            <table className="w-full table-fixed border-separate border-spacing-y-2 text-left text-sm">
               <thead>
                 <tr className="text-[0.72rem] uppercase tracking-[0.14em] text-[var(--color-muted)]">
-                  <th className="px-3 py-2">Rank</th>
+                  <th className="w-10 sm:w-14 whitespace-nowrap px-2 sm:px-3 py-2">Rank</th>
                   <th className="px-3 py-2">Birder</th>
-                  <th className="px-3 py-2">Score</th>
+                  <th className="w-16 sm:w-20 px-3 py-2">Score</th>
                 </tr>
               </thead>
               <tbody>
@@ -195,12 +203,23 @@ export default function LeaderboardPage() {
 
                   return (
                     <tr key={`${entry.rank}-${entry.username}`}>
-                      <td className={`rounded-l-2xl border-y border-l ${borderColor} ${baseBackground} px-3 py-3 font-semibold`}>#{entry.rank}</td>
-                      <td className={`border-y ${borderColor} ${baseBackground} px-3 py-3 font-medium`}>
-                        <div className="flex items-center gap-3">
-                          <LeaderboardAvatar username={entry.username} avatarPalette={entry.avatarPalette} />
+                      <td className={`whitespace-nowrap rounded-l-2xl border-y border-l ${borderColor} ${baseBackground} px-2 sm:px-3 py-3 font-semibold`}>#{entry.rank}</td>
+                      <td className={`overflow-hidden border-y ${borderColor} ${baseBackground} px-3 py-3 font-medium`}>
+                        <div className="flex items-center gap-2">
+                          <span className="shrink-0"><LeaderboardAvatar username={entry.username} avatarPalette={entry.avatarPalette} /></span>
                           <span>{entry.username}</span>
-                          {entry.isHouseAccount ? <Bot size={13} className="text-[var(--color-muted)] shrink-0" aria-label="House account" /> : null}
+                          {entry.isHouseAccount ? (
+                            <Bot size={11} className="shrink-0 text-[var(--color-muted)]" aria-label="House account" />
+                          ) : entry.latestBadgeName ? (
+                            <Image
+                              src={`/images/badges/${toBadgeAssetName(entry.latestBadgeName)}.png`}
+                              alt={entry.latestBadgeName}
+                              width={18}
+                              height={18}
+                              className="shrink-0 rounded-full border-1 border-[var(--color-text)] opacity-75"
+                              title={entry.latestBadgeName}
+                            />
+                          ) : null}
                         </div>
                       </td>
                       <td className={`rounded-r-2xl border-y border-r ${borderColor} ${baseBackground} px-3 py-3`}>{entry.primaryDisplayValue}</td>
@@ -217,14 +236,24 @@ export default function LeaderboardPage() {
                 ) : null}
                 {leaderboard.currentUserEntry && leaderboard.currentUserEntry.rank > 10 ? (
                   <tr>
-                    <td className="rounded-l-2xl border-y border-l border-[var(--color-secondary)] bg-[color-mix(in_srgb,var(--color-secondary)_12%,var(--color-surface))] px-3 py-3 font-semibold">#{leaderboard.currentUserEntry.rank}</td>
-                    <td className="border-y border-[var(--color-secondary)] bg-[color-mix(in_srgb,var(--color-secondary)_12%,var(--color-surface))] px-3 py-3 font-medium">
-                      <div className="flex items-center gap-3">
-                        <LeaderboardAvatar
+                    <td className="whitespace-nowrap rounded-l-2xl border-y border-l border-[var(--color-secondary)] bg-[color-mix(in_srgb,var(--color-secondary)_12%,var(--color-surface))] px-2 sm:px-3 py-3 font-semibold">#{leaderboard.currentUserEntry.rank}</td>
+                    <td className="overflow-hidden border-y border-[var(--color-secondary)] bg-[color-mix(in_srgb,var(--color-secondary)_12%,var(--color-surface))] px-3 py-3 font-medium">
+                      <div className="flex items-center gap-2">
+                        <span className="shrink-0"><LeaderboardAvatar
                           username={leaderboard.currentUserEntry.username}
                           avatarPalette={leaderboard.currentUserEntry.avatarPalette}
-                        />
+                        /></span>
                         <span>{leaderboard.currentUserEntry.username}</span>
+                        {leaderboard.currentUserEntry.latestBadgeName ? (
+                          <Image
+                            src={`/images/badges/${toBadgeAssetName(leaderboard.currentUserEntry.latestBadgeName)}.png`}
+                            alt={leaderboard.currentUserEntry.latestBadgeName}
+                            width={18}
+                            height={18}
+                            className="shrink-0 rounded-full border-2 border-[var(--color-text)] opacity-75"
+                            title={leaderboard.currentUserEntry.latestBadgeName}
+                          />
+                        ) : null}
                       </div>
                     </td>
                     <td className="rounded-r-2xl border-y border-r border-[var(--color-secondary)] bg-[color-mix(in_srgb,var(--color-secondary)_12%,var(--color-surface))] px-3 py-3">{leaderboard.currentUserEntry.primaryDisplayValue}</td>
@@ -233,9 +262,10 @@ export default function LeaderboardPage() {
               </tbody>
             </table>
             {leaderboard.entries.some((e) => e.isHouseAccount) ? (
-              <p className="mt-3 text-center text-xs text-[var(--color-muted)] flex items-center justify-center gap-1">
-                <Bot size={12} /> This icon designates a house account. Can you beat the bots?
-              </p>
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5 text-center text-xs text-[var(--color-muted)]">
+                <Bot size={12} className="shrink-0" />
+                <span>This icon designates a house account. Can you beat the bots?</span>
+              </div>
             ) : null}
           </div>
         ) : null}
