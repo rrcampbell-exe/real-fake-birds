@@ -104,17 +104,19 @@ export default function LeaderboardPage() {
         <tbody>
           {Array.from({ length: 8 }).map((_, index) => (
             <tr key={`skeleton-${index}`} className="animate-pulse">
-              <td className="whitespace-nowrap rounded-l-2xl border-y border-l border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-2 sm:px-3 py-3">
+              <td className="rounded-l-2xl border-y border-l border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-2 sm:px-3 py-3">
                 <div className="h-3 w-8 rounded bg-[var(--color-surface-border)]" />
               </td>
-              <td className="border-y border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-3 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-[var(--color-surface-border)]" />
+              <td className="overflow-hidden border-y border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-3 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="shrink-0">
+                    <div className="h-10 w-10 rounded-full bg-[var(--color-surface-border)]" />
+                  </span>
                   <div className="h-3 w-24 rounded bg-[var(--color-surface-border)]" />
                 </div>
               </td>
               <td className="rounded-r-2xl border-y border-r border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-3 py-3">
-                <div className="h-3 w-16 rounded bg-[var(--color-surface-border)]" />
+                <div className="h-3 w-10 rounded bg-[var(--color-surface-border)]" />
               </td>
             </tr>
           ))}
