@@ -174,6 +174,7 @@ export interface WeeklyLeaderboardEntry {
   tiebreakerDisplayValue: string;
   birdsSeen: number;
   isCurrentUser: boolean;
+  isHouseAccount?: boolean;
 }
 
 export interface WeeklyOverview {

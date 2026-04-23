@@ -72,6 +72,8 @@ vi.mock('@/lib/utils/bird-journal', () => ({
 
 vi.mock('@/lib/utils/birdhouse', () => ({
   BIRDHOUSE_STORAGE_KEY: 'birdhouse',
+  BIRDHOUSE_REAL_CAP: 10,
+  BIRDHOUSE_FAKE_CAP: 10,
   normalizeBirdhouseStore: normalizeBirdhouseStoreMock,
   readBirdhouse: readBirdhouseMock,
   writeBirdhouse: writeBirdhouseMock,
@@ -188,6 +190,9 @@ describe('account-sync-local', () => {
   });
 
   it('applies pulled progress when today challenge and mission claims match the current day', () => {
+    const mergedJournal = { 'real:bird-a': { birdKey: 'real:bird-a', isReal: true } };
+    mergeBirdJournalStoresMock.mockReturnValue(mergedJournal);
+
     applyPulledAccountProgress({
       score: { seeds: 20 },
       unlockedThemes: ['Robin'],
@@ -209,7 +214,7 @@ describe('account-sync-local', () => {
     expect(writeDailyChallengeHistoryMock).toHaveBeenCalled();
     expect(writeDailyMissionHistoryMock).toHaveBeenCalled();
     expect(mergeBirdJournalStoresMock).toHaveBeenCalledWith({ local: true }, { 'bird-a': { birdKey: 'bird-a' } });
-    expect(writeBirdJournalMock).toHaveBeenCalledWith({ merged: true });
+    expect(writeBirdJournalMock).toHaveBeenCalledWith(mergedJournal);
     expect(writeBirdhouseMock).toHaveBeenCalledWith({ real: ['real:bird-a'], fake: [], updatedAt: '2026-04-07T10:00:00.000Z' }, false);
     expect(writeSessionMissionsMock).toHaveBeenCalledWith({
       date: '2026-04-07',
@@ -276,11 +281,12 @@ describe('account-sync-local', () => {
     expect(resetSessionMissionsMock).toHaveBeenCalledWith('2026-04-07');
   });
 
-  it('keeps local birdhouse when local updatedAt is newer than remote', () => {
+  it('merges local and remote birdhouses and keeps the newer updatedAt timestamp', () => {
     const localStore = { real: ['real:local-bird'], fake: [], updatedAt: '2026-04-08T00:00:00.000Z' };
     const remoteStore = { real: ['real:remote-bird'], fake: [], updatedAt: '2026-04-07T00:00:00.000Z' };
     readBirdhouseMock.mockReturnValue(localStore);
     normalizeBirdhouseStoreMock.mockReturnValue(remoteStore);
+    mergeBirdJournalStoresMock.mockReturnValue({ 'real:local-bird': {}, 'real:remote-bird': {} });
 
     applyPulledAccountProgress({
       score: { seeds: 0 },
@@ -294,14 +300,19 @@ describe('account-sync-local', () => {
       todayMissionClaims: null,
     } as never);
 
-    expect(writeBirdhouseMock).toHaveBeenCalledWith(localStore, false);
+    // Both birds are unioned; local updatedAt is newer so it is used
+    expect(writeBirdhouseMock).toHaveBeenCalledWith(
+      { real: ['real:local-bird', 'real:remote-bird'], fake: [], updatedAt: '2026-04-08T00:00:00.000Z' },
+      false
+    );
   });
 
-  it('uses remote birdhouse when remote updatedAt is newer, including +00:00 vs Z comparison', () => {
-    const localStore = { real: [], fake: [], updatedAt: '2026-04-07T00:00:00.000Z' };
+  it('uses the remote updatedAt when it is newer, including +00:00 vs Z comparison', () => {
+    const localStore = { real: [], fake: ['fake:local-fake'], updatedAt: '2026-04-07T00:00:00.000Z' };
     const remoteStore = { real: ['real:remote-bird'], fake: [], updatedAt: '2026-04-08T00:00:00.000+00:00' };
     readBirdhouseMock.mockReturnValue(localStore);
     normalizeBirdhouseStoreMock.mockReturnValue(remoteStore);
+    mergeBirdJournalStoresMock.mockReturnValue({ 'real:remote-bird': {}, 'fake:local-fake': {} });
 
     applyPulledAccountProgress({
       score: { seeds: 0 },
@@ -315,7 +326,37 @@ describe('account-sync-local', () => {
       todayMissionClaims: null,
     } as never);
 
-    expect(writeBirdhouseMock).toHaveBeenCalledWith(remoteStore, false);
+    // Both birds are unioned; remote updatedAt is newer so it is used
+    expect(writeBirdhouseMock).toHaveBeenCalledWith(
+      { real: ['real:remote-bird'], fake: ['fake:local-fake'], updatedAt: '2026-04-08T00:00:00.000+00:00' },
+      false
+    );
+  });
+
+  it('removes orphaned birdhouse keys that have no corresponding journal entry', () => {
+    const localStore = { real: ['real:orphan-bird', 'real:known-bird'], fake: [], updatedAt: '2026-04-06T00:00:00.000Z' };
+    const remoteStore = { real: [], fake: [], updatedAt: '2026-04-05T00:00:00.000Z' };
+    readBirdhouseMock.mockReturnValue(localStore);
+    normalizeBirdhouseStoreMock.mockReturnValue(remoteStore);
+    mergeBirdJournalStoresMock.mockReturnValue({ 'real:known-bird': { birdKey: 'real:known-bird' } });
+
+    applyPulledAccountProgress({
+      score: { seeds: 0 },
+      unlockedThemes: [],
+      dailyChallengeHistory: [],
+      dailyMissionHistory: [],
+      milestones: [],
+      birdhouse: remoteStore,
+      journalEntries: [],
+      lastLocalSyncAt: null,
+      todayMissionClaims: null,
+    } as never);
+
+    // 'real:orphan-bird' is not in merged journal, so it is cleaned up
+    expect(writeBirdhouseMock).toHaveBeenCalledWith(
+      { real: ['real:known-bird'], fake: [], updatedAt: '2026-04-06T00:00:00.000Z' },
+      false
+    );
   });
 
   it('suppresses writeBirdhouse notification in favor of batched notification', () => {

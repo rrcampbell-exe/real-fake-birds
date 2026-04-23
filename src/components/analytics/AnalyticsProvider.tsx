@@ -18,7 +18,7 @@ const postHogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://us.i.postho
 let hasInitializedPostHog = false;
 
 export default function AnalyticsProvider() {
-  const { accountUsername } = useAccountState();
+  const { accountUsername, isHouseAccount } = useAccountState();
   const [consentVersion, setConsentVersion] = useState(0);
 
   useEffect(() => {
@@ -73,6 +73,11 @@ export default function AnalyticsProvider() {
       return;
     }
 
+    if (isHouseAccount) {
+      clearAnalyticsUsername();
+      return;
+    }
+
     setAnalyticsUsername(accountUsername);
 
     const currentDistinctId = typeof posthog.get_distinct_id === 'function'
@@ -92,7 +97,7 @@ export default function AnalyticsProvider() {
 
     clearEmailIdentityArtifacts();
     posthog.register({ username: accountUsername });
-  }, [accountUsername, consentVersion]);
+  }, [accountUsername, isHouseAccount, consentVersion]);
 
   return null;
 }

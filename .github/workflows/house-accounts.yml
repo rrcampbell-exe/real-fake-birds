@@ -1,0 +1,62 @@
+name: House Accounts
+
+on:
+  schedule:
+    # Daily at 14:00 UTC (≈ 09:00 CDT) — bots play in the morning
+    - cron: '0 14 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Simulate without writing to DB'
+        type: boolean
+        default: false
+      bootstrap:
+        description: 'Run bootstrap (create missing accounts) before the daily runner'
+        type: boolean
+        default: false
+      environment:
+        description: 'Target environment'
+        type: choice
+        options:
+          - Production – real-fake-birds
+          - Preview – real-fake-birds
+        default: Production – real-fake-birds
+
+concurrency:
+  group: house-accounts
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Scheduled runs always target production. Manual runs use the selected environment.
+    environment: ${{ github.event_name == 'schedule' && 'Production – real-fake-birds' || inputs.environment }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Bootstrap house accounts (optional)
+        if: ${{ github.event.inputs.bootstrap == 'true' }}
+        run: npx tsx scripts/bootstrap-house-accounts.ts
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && 'true' || 'false' }}
+
+      - name: Run daily house account activity
+        run: npx tsx scripts/run-house-accounts.ts
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && 'true' || 'false' }}

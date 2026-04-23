@@ -17,6 +17,8 @@ import {
   writeBirdJournal,
 } from '@/lib/utils/bird-journal';
 import {
+  BIRDHOUSE_FAKE_CAP,
+  BIRDHOUSE_REAL_CAP,
   BIRDHOUSE_STORAGE_KEY,
   normalizeBirdhouseStore,
   readBirdhouse,
@@ -145,22 +147,28 @@ export function applyPulledAccountProgress(progress: PulledAccountProgress): voi
   writeDailyMissionHistory(
     mergeDailyMissionHistory(readDailyMissionHistory(), progress.dailyMissionHistory)
   );
-  writeBirdJournal(
-    mergeBirdJournalStores(
-      readBirdJournal(),
-      Object.fromEntries(progress.journalEntries.map((entry) => [entry.birdKey, entry]))
-    )
+  const mergedJournal = mergeBirdJournalStores(
+    readBirdJournal(),
+    Object.fromEntries(progress.journalEntries.map((entry) => [entry.birdKey, entry]))
   );
+  writeBirdJournal(mergedJournal);
   const localBirdhouse = readBirdhouse();
   const remoteBirdhouse = normalizeBirdhouseStore(progress.birdhouse);
   const toEpochMs = (timestamp: string): number => {
     const parsed = Date.parse(timestamp);
     return Number.isNaN(parsed) ? 0 : parsed;
   };
+  const mergedReal = Array.from(new Set([...localBirdhouse.real, ...remoteBirdhouse.real])).slice(0, BIRDHOUSE_REAL_CAP);
+  const mergedFake = Array.from(new Set([...localBirdhouse.fake, ...remoteBirdhouse.fake])).slice(0, BIRDHOUSE_FAKE_CAP);
+  const mergedUpdatedAt = toEpochMs(localBirdhouse.updatedAt) >= toEpochMs(remoteBirdhouse.updatedAt)
+    ? localBirdhouse.updatedAt
+    : remoteBirdhouse.updatedAt;
   writeBirdhouse(
-    toEpochMs(localBirdhouse.updatedAt) > toEpochMs(remoteBirdhouse.updatedAt)
-      ? localBirdhouse
-      : remoteBirdhouse,
+    {
+      real: mergedReal.filter((key) => key in mergedJournal),
+      fake: mergedFake.filter((key) => key in mergedJournal),
+      updatedAt: mergedUpdatedAt,
+    },
     false
   );
 

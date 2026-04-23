@@ -31,6 +31,7 @@ type RemoteProgressSummary = {
 type AccountStateCache = {
   email: string | null;
   username: string | null;
+  isHouseAccount: boolean;
   remoteSummary: RemoteProgressSummary | null;
   remoteUnlockedThemes: string[];
   weeklyOverview: WeeklyOverview | null;
@@ -47,6 +48,7 @@ type AccountStateContextValue = {
   isAppChromeVisible: boolean;
   accountEmail: string | null;
   accountUsername: string | null;
+  isHouseAccount: boolean;
   remoteSummary: RemoteProgressSummary | null;
   remoteUnlockedThemes: string[];
   weeklyOverview: WeeklyOverview | null;
@@ -199,6 +201,7 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
   const [bootStage, setBootStage] = useState<BootStage>('checking-session');
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
   const [accountUsername, setAccountUsername] = useState<string | null>(null);
+  const [isHouseAccount, setIsHouseAccount] = useState<boolean>(false);
   const [remoteSummary, setRemoteSummary] = useState<RemoteProgressSummary | null>(null);
   const [remoteUnlockedThemes, setRemoteUnlockedThemes] = useState<string[]>([]);
   const [weeklyOverview, setWeeklyOverview] = useState<WeeklyOverview | null>(null);
@@ -210,6 +213,7 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
 
     setAccountEmail(cache.email);
     setAccountUsername(cache.username);
+    setIsHouseAccount(cache.isHouseAccount ?? false);
     setRemoteSummary(cache.remoteSummary);
     setRemoteUnlockedThemes(cache.remoteUnlockedThemes);
     setWeeklyOverview(cache.weeklyOverview);
@@ -223,6 +227,7 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
     setIsSignedIn(false);
     setAccountEmail(null);
     setAccountUsername(null);
+    setIsHouseAccount(false);
     setRemoteSummary(null);
     setRemoteUnlockedThemes([]);
     setWeeklyOverview(null);
@@ -267,6 +272,7 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
       const accountState = await fetchAccountState();
       setAccountEmail(accountState.email);
       setAccountUsername(accountState.profile?.username ?? null);
+      setIsHouseAccount(accountState.profile?.isHouseAccount ?? false);
       setRemoteSummary(accountState.progressSummary);
       setRemoteUnlockedThemes(accountState.unlockedThemes);
       setWeeklyOverview(accountState.weeklyOverview);
@@ -274,6 +280,7 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
       writeAccountStateCache({
         email: accountState.email,
         username: accountState.profile?.username ?? null,
+        isHouseAccount: accountState.profile?.isHouseAccount ?? false,
         remoteSummary: accountState.progressSummary,
         remoteUnlockedThemes: accountState.unlockedThemes,
         weeklyOverview: accountState.weeklyOverview,
@@ -504,10 +511,10 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       clearAccountState();
 
-      if (event === 'SIGNED_OUT') {
+      if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
         resetLocalStateForGuestSession();
         clearAccountStateCache();
       }
@@ -529,12 +536,13 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
     isAppChromeVisible,
     accountEmail,
     accountUsername,
+    isHouseAccount,
     remoteSummary,
     remoteUnlockedThemes,
     weeklyOverview,
     refreshAccountState: () => refreshAccountState(),
     syncSignedInProgress: () => syncSignedInProgress({ silent: true }),
-  }), [accountEmail, accountUsername, isAppChromeVisible, isBackgroundSyncing, isBooting, isLoadingAccount, isSignedIn, refreshAccountState, remoteSummary, remoteUnlockedThemes, syncSignedInProgress, weeklyOverview]);
+  }), [accountEmail, accountUsername, isAppChromeVisible, isBackgroundSyncing, isBooting, isHouseAccount, isLoadingAccount, isSignedIn, refreshAccountState, remoteSummary, remoteUnlockedThemes, syncSignedInProgress, weeklyOverview]);
 
   return (
     <AccountStateContext.Provider value={value}>
