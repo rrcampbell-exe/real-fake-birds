@@ -17,6 +17,7 @@ export interface AccountStateResponse {
     username: string | null;
     usernameCanonical: string | null;
     avatarPalette: string | null;
+    isHouseAccount?: boolean;
   } | null;
   lastLocalSyncAt: string | null;
   progressSummary: {

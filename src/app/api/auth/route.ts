@@ -520,6 +520,9 @@ function normalizeBirdJournalMetadata(metadata: BirdJournalMetadata | null | und
     classificationRevealed: typeof metadata.classificationRevealed === 'boolean'
       ? metadata.classificationRevealed
       : undefined,
+    imageRevealed: typeof metadata.imageRevealed === 'boolean'
+      ? metadata.imageRevealed
+      : undefined,
   };
 }
 
@@ -562,9 +565,12 @@ async function syncBirdhouseStore(options: {
     return Number.isNaN(parsed) ? 0 : parsed;
   };
 
-  const acceptedBirdhouse = toEpochMillis(incomingBirdhouse.updatedAt) >= toEpochMillis(existingStore.updatedAt)
-    ? incomingBirdhouse
-    : existingStore;
+  const mergedReal = Array.from(new Set([...incomingBirdhouse.real, ...existingStore.real])).slice(0, 10);
+  const mergedFake = Array.from(new Set([...incomingBirdhouse.fake, ...existingStore.fake])).slice(0, 10);
+  const newerUpdatedAt = toEpochMillis(incomingBirdhouse.updatedAt) >= toEpochMillis(existingStore.updatedAt)
+    ? incomingBirdhouse.updatedAt
+    : existingStore.updatedAt;
+  const acceptedBirdhouse: BirdhouseStore = { real: mergedReal, fake: mergedFake, updatedAt: newerUpdatedAt };
 
   const { error: birdhouseUpsertError } = await admin
     .from('birdhouse')
@@ -607,6 +613,7 @@ function normalizeBirdJournalEntries(entries: BirdJournalEntry[]): BirdJournalEn
       metadata: {
         ...normalizeBirdJournalMetadata(entry.metadata),
         classificationRevealed: Boolean(existing?.metadata.classificationRevealed) || Boolean(entry.metadata?.classificationRevealed),
+        imageRevealed: Boolean(existing?.metadata.imageRevealed) || Boolean(entry.metadata?.imageRevealed),
       },
     };
 
@@ -677,6 +684,7 @@ async function upsertBirdJournalEntries(options: {
           metadata: {
             ...(useIncomingMetadata ? entry.metadata : existingEntry?.metadata),
             classificationRevealed: Boolean(existingEntry?.metadata.classificationRevealed) || Boolean(entry.metadata.classificationRevealed),
+            imageRevealed: Boolean(existingEntry?.metadata.imageRevealed) || Boolean(entry.metadata.imageRevealed),
           },
         };
       }),
@@ -1298,7 +1306,7 @@ export async function POST(request: NextRequest) {
       const [{ data: profile }, { data: progress }, { data: unlockedThemes }, leaderboardRow] = await Promise.all([
         admin
           .from('profiles')
-          .select('username, username_canonical, avatar_palette')
+          .select('username, username_canonical, avatar_palette, is_house_account')
           .eq('user_id', context.userId)
           .maybeSingle(),
         admin
@@ -1328,6 +1336,7 @@ export async function POST(request: NextRequest) {
               username: profile.username,
               usernameCanonical: profile.username_canonical,
               avatarPalette: profile.avatar_palette,
+              isHouseAccount: profile.is_house_account === true,
             }
           : null,
         lastLocalSyncAt: progress?.last_local_sync_at ?? null,
@@ -1400,22 +1409,27 @@ export async function POST(request: NextRequest) {
       const { data: avatarRows } = avatarUserIds.length > 0
         ? await admin
             .from('profiles')
-            .select('user_id, avatar_palette')
+            .select('user_id, avatar_palette, is_house_account')
             .in('user_id', avatarUserIds)
         : { data: [] };
       const avatarPaletteByUserId = new Map(
         (avatarRows ?? []).map((row) => [row.user_id as string, typeof row.avatar_palette === 'string' ? row.avatar_palette : null])
+      );
+      const isHouseAccountByUserId = new Map(
+        (avatarRows ?? []).map((row) => [row.user_id as string, row.is_house_account === true])
       );
       const topEntriesWithAvatars = ranked.rankedRows
         .filter((row) => row.entry.rank <= 10)
         .map((row) => ({
           ...row.entry,
           avatarPalette: avatarPaletteByUserId.get(row.userId) ?? null,
+          isHouseAccount: isHouseAccountByUserId.get(row.userId) ?? false,
         }));
       const currentUserEntryWithAvatar = currentUserEntry
         ? {
             ...currentUserEntry,
             avatarPalette: avatarPaletteByUserId.get(context?.userId ?? '') ?? null,
+            isHouseAccount: isHouseAccountByUserId.get(context?.userId ?? '') ?? false,
           }
         : null;
 
