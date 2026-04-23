@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { AlertCircle, CheckCircle2, ChevronDown, LoaderCircle, ShieldCheck } from 'lucide-react';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import {
   registerAccount,
   signInWithUsername,
+  deleteAccount,
 } from '@/lib/auth/account-sync';
 import {
   hydrateSignedInAccountToLocalState,
@@ -34,6 +36,7 @@ export default function UsernameAvailabilityCard({
   compact = false,
   onAuthSuccess,
 }: UsernameAvailabilityCardProps) {
+  const router = useRouter();
   const supabaseReady = hasSupabaseEnv();
   const {
     isLoadingAccount,
@@ -55,6 +58,9 @@ export default function UsernameAvailabilityCard({
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [showUsernameRules, setShowUsernameRules] = useState(false);
@@ -294,6 +300,33 @@ export default function UsernameAvailabilityCard({
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (!supabaseReady || isDeletingAccount) {
+      return;
+    }
+
+    if (!deletePassword) {
+      setAuthError('Enter your password to confirm deletion.');
+      return;
+    }
+
+    setIsDeletingAccount(true);
+    setAuthError(null);
+
+    try {
+      await prepareSignedInSessionForSignOut().catch(() => undefined);
+      await deleteAccount(deletePassword);
+      resetLocalStateForGuestSession();
+      const supabase = getSupabaseBrowserClient();
+      await supabase.auth.signOut().catch(() => undefined);
+      router.push('/');
+    } catch (caughtError) {
+      setAuthError(caughtError instanceof Error ? caughtError.message : 'Unable to delete account.');
+      setIsDeletingAccount(false);
+      setDeletePassword('');
+    }
+  };
+
   const statusMessage = !value.trim()
     ? 'People will see your username on leaderboards and account screens.'
     : issues.length > 0
@@ -336,15 +369,61 @@ export default function UsernameAvailabilityCard({
 
         <div className={contentContainerClassName}>
           {effectiveIsSignedIn ? (
-            <div className="flex items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={handleSignOut}
-                disabled={isSigningOut}
-                className="inline-flex min-w-[8rem] items-center justify-center rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] transition disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isSigningOut ? 'Signing out...' : 'Sign out'}
-              </button>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  disabled={isSigningOut || isDeletingAccount}
+                  className="inline-flex min-w-[8rem] items-center justify-center rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] transition disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isSigningOut ? 'Signing out...' : 'Sign out'}
+                </button>
+              </div>
+              <div className="h-px bg-[var(--color-surface-border)]" />
+              {showDeleteConfirm ? (
+                <div className="flex flex-col gap-3 rounded-xl border border-red-500/30 bg-red-500/5 p-3">
+                  <p className="text-xs leading-5 text-[var(--color-text)]">
+                    This will permanently delete your account and all associated data. This cannot be undone.
+                  </p>
+                  <input
+                    type="password"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    placeholder="Enter your password to confirm"
+                    autoComplete="current-password"
+                    disabled={isDeletingAccount}
+                    className="w-full rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-2 text-xs text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none focus:ring-1 focus:ring-red-500/50 disabled:opacity-50"
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleDeleteAccount}
+                      disabled={isDeletingAccount || !deletePassword}
+                      className="inline-flex items-center justify-center rounded-full bg-red-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isDeletingAccount ? 'Deleting...' : 'Yes, delete my account'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowDeleteConfirm(false); setDeletePassword(''); }}
+                      disabled={isDeletingAccount}
+                      className="inline-flex items-center justify-center rounded-full border border-[var(--color-surface-border)] px-4 py-2 text-xs font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={isSigningOut || isDeletingAccount}
+                  className="self-start text-xs text-red-500 underline decoration-red-500/40 underline-offset-2 transition hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Delete account
+                </button>
+              )}
             </div>
           ) : !effectiveIsSignedIn && isLoadingAccount && !hasSignedOutLocally ? (
             <p className="text-sm text-[var(--color-muted)]">Checking account status...</p>

@@ -29,6 +29,10 @@ vi.mock('@/hooks/useSound', () => ({
   }),
 }));
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 const mockedUseAccountState = vi.mocked(useAccountState);
 
 function createAccountState(overrides: Partial<ReturnType<typeof useAccountState>> = {}): ReturnType<typeof useAccountState> {
@@ -150,5 +154,11 @@ describe('SettingsPage theme unlocking', () => {
 
     expect(screen.getByText(new RegExp(`You have ${gullUnlock?.seedCost} seeds, so you can unlock this theme now\\.`, 'i'))).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Confirm Unlock' })).not.toBeDisabled();
+  });
+
+  it('shows Privacy Policy and Terms of Service links in the About section', () => {
+    render(<SettingsPage />);
+    expect(screen.getByRole('link', { name: /privacy policy/i })).toHaveAttribute('href', '/privacy');
+    expect(screen.getByRole('link', { name: /terms of service/i })).toHaveAttribute('href', '/terms');
   });
 });

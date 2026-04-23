@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import Image from 'next/image';
 import { Check, Music4, Volume2, VolumeX } from 'lucide-react';
 import { useAccountState } from '@/components/account/AccountStateProvider';
@@ -438,6 +439,20 @@ export default function SettingsPage() {
             <p className="text-[var(--color-muted)] text-xs">
               Theme music created in collaboration with ElevenLabs.
             </p>
+          </div>
+          <div className="flex items-center gap-4 pt-1">
+            <Link
+              href="/privacy"
+              className="text-xs text-[var(--color-muted)] underline decoration-[var(--color-muted)] underline-offset-2 hover:text-[var(--color-secondary)]"
+            >
+              Privacy Policy
+            </Link>
+            <Link
+              href="/terms"
+              className="text-xs text-[var(--color-muted)] underline decoration-[var(--color-muted)] underline-offset-2 hover:text-[var(--color-secondary)]"
+            >
+              Terms of Service
+            </Link>
           </div>
         </div>
       </section>

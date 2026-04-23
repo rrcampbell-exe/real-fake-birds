@@ -1,6 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 vi.mock('@marsidev/react-turnstile', () => ({
   Turnstile: ({ onSuccess }: { onSuccess?: (token: string) => void }) => (
     <button type="button" onClick={() => onSuccess?.('captcha-token')}>
