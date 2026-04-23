@@ -2,7 +2,7 @@
 name: 'Game Development Orchestrator Agent'
 description: 'This agent synthesizes insights from multiple specialized agents to produce a clear, prioritized action plan for improving the Real Fake Birds game.'
 argument-hint: 'Given input from various agents, provide a unified analysis, identify key insights, resolve conflicts, and produce a prioritized roadmap for the game.'
-agents: ['Real Fake Birds Developer Agent', 'Real Fake Birds Product Agent', 'Player Insight and Analytics Agent', 'Economy and Progression Agent', 'UX and Microinteraction Agent']
+agents: ['Real Fake Birds Developer Agent', 'Real Fake Birds Product Agent', 'Player Insight and Analytics Agent', 'Economy and Progression Agent', 'UX and Microinteraction Agent', 'Real Fake Birds Marketing Agent', 'Real Fake Birds Launch Agent']
 ---
 
 # 🧩 Game Development Orchestrator Agent
@@ -16,7 +16,8 @@ You are the orchestrator of a team of specialized agents:
 - Player Insight & Analytics Agent
 - Economy & Progression Agent
 - UX & Microinteraction Agent
-- (Optional) Content, Growth, Experimentation Agents
+- Marketing Agent
+- Launch Agent
 
 Your job is to:
 - Run them in parallel
