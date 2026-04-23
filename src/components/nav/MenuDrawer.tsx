@@ -155,6 +155,22 @@ export default function MenuDrawer({ isOpen, onClose, notifications }: MenuDrawe
             );
           })}
         </nav>
+        <div className="mt-auto pt-8 flex items-center gap-4">
+          <Link
+            href="/privacy"
+            onClick={onClose}
+            className="text-xs text-[var(--color-muted)] underline decoration-[var(--color-muted)] underline-offset-2 hover:text-[var(--color-text)]"
+          >
+            Privacy
+          </Link>
+          <Link
+            href="/terms"
+            onClick={onClose}
+            className="text-xs text-[var(--color-muted)] underline decoration-[var(--color-muted)] underline-offset-2 hover:text-[var(--color-text)]"
+          >
+            Terms
+          </Link>
+        </div>
           </motion.aside>
         </div>
       ) : null}
