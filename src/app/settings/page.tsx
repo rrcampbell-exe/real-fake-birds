@@ -419,12 +419,13 @@ export default function SettingsPage() {
         </h2>
         <div className="relative p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-surface-border)] text-sm flex flex-col gap-2">
           <Image
-            src="/images/branding/catbird_games_logo.png"
+            src="/images/branding/catbird_games_logo_v3.png"
             alt="Catbird Games"
             width={80}
-            height={26}
-            className="absolute top-1 right-1"
-            style={{ filter: 'var(--color-logo-filter)', height: 'auto' }}
+            height={45}
+            unoptimized
+            className="absolute top-0 right-0"
+            style={{ filter: 'var(--color-logo-filter)', marginRight: '-5px', marginTop: '15px' }}
           />
           <div className="flex flex-col gap-0.5">
             <p className="font-medium">Real Fake Birds</p>
@@ -437,7 +438,7 @@ export default function SettingsPage() {
               Ryan R. Campbell © 2023 - 2026 | All rights reserved.
             </p>
             <p className="text-[var(--color-muted)] text-xs">
-              Theme music created in collaboration with ElevenLabs.
+              Theme music and some visual assets created in collaboration with ElevenLabs.
             </p>
           </div>
           <div className="flex items-center gap-4 pt-1">

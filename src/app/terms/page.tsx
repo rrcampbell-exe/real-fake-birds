@@ -107,7 +107,7 @@ export default function TermsOfServicePage() {
             are provided for in-game use only and may not be extracted or used for other purposes.
           </p>
           <p>
-            Theme music was created in collaboration with ElevenLabs and is subject to ElevenLabs&apos;
+            Theme music and some visual assets were created in collaboration with ElevenLabs and is subject to ElevenLabs&apos;
             terms of service.
           </p>
         </section>

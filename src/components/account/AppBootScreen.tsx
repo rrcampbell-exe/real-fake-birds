@@ -72,13 +72,13 @@ export default function AppBootScreen({ progress, status }: AppBootScreenProps) 
       </div>
 
       <Image
-        src="/images/branding/catbird_games_logo.png"
+        src="/images/branding/catbird_games_logo_v3.png"
         alt="Catbird Games"
         width={100}
-        height={33}
+        height={56}
         priority
+        unoptimized
         className="absolute bottom-4 left-1/2 -translate-x-1/2 brightness-0 invert transition-opacity duration-700"
-        style={{ height: 'auto' }}
       />
     </div>
   );
