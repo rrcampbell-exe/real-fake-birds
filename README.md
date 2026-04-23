@@ -145,10 +145,6 @@ Supabase powers account auth and progression sync for signed-in players. The gam
 - [Random User](https://www.randomuser.me)
 - Geographic data embedded in the repository and used for fake-name generation
 
-### Visual Assets
-
-- [Bird SVGs via SVG Repo](https://www.svgrepo.com/)
-
 ### Audio
 
 - Theme music created in collaboration with ElevenLabs
@@ -156,7 +152,7 @@ Supabase powers account auth and progression sync for signed-in players. The gam
 
 ## License
 
-© 2023 - 2026 Ryan R. Campbell. All rights reserved.
+© 2023 - 2026 Catbird Games, LLC. All rights reserved.
 
 ## Questions, Comments, Suggestions
 
