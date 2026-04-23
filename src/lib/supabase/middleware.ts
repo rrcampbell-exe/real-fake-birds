@@ -2,9 +2,10 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { hasSupabaseEnv, getSupabaseAnonKey, getSupabaseUrl } from './env';
 
-export async function updateSession(request: NextRequest) {
+export async function updateSession(request: NextRequest, forwardHeaders?: Headers) {
+  const initHeaders = forwardHeaders ?? request.headers;
   let response = NextResponse.next({
-    request,
+    request: { headers: initHeaders },
   });
 
   if (!hasSupabaseEnv()) {
@@ -18,7 +19,8 @@ export async function updateSession(request: NextRequest) {
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-        response = NextResponse.next({ request });
+        // Preserve forwarded headers (e.g. x-nonce) when re-creating the response.
+        response = NextResponse.next({ request: { headers: initHeaders } });
         cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
       },
     },

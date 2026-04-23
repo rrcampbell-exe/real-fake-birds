@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fredoka, DM_Sans } from "next/font/google";
 import Script from 'next/script';
+import { headers } from 'next/headers';
 import { Analytics } from '@vercel/analytics/next';
 import "./globals.css";
 import ThemeProvider from "@/components/ThemeProvider";
@@ -63,17 +64,19 @@ export const metadata: Metadata = {
   description: "Some are real. Some are fake. Tell them apart.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
   return (
     <html lang="en" className={`${fredoka.variable} ${dmSans.variable}`} suppressHydrationWarning>
       <head>
         <Script
           id="theme-bootstrap"
           strategy="beforeInteractive"
+          nonce={nonce}
           dangerouslySetInnerHTML={{ __html: themeBootstrapScript }}
         />
       </head>

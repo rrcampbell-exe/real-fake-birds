@@ -16,8 +16,40 @@ const GDPR_COUNTRY_CODES = new Set([
 
 const REGION_COOKIE = 'rfb-region';
 
+function buildCsp(nonce: string): string {
+  const directives = [
+    `default-src 'self'`,
+    // 'strict-dynamic' lets scripts loaded by a nonced script load further scripts.
+    // Host allowlists serve as fallback for older browsers that ignore 'strict-dynamic'.
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://challenges.cloudflare.com https://va.vercel-scripts.com`,
+    // Tailwind and Next.js inject some inline styles; 'unsafe-inline' is acceptable
+    // for styles because CSS injection cannot exfiltrate data the way script injection can.
+    `style-src 'self' 'unsafe-inline'`,
+    `img-src 'self' data: https://upload.wikimedia.org https://cdn.realfakebirds.app`,
+    `font-src 'self'`,
+    `media-src 'self'`,
+    `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://challenges.cloudflare.com https://vitals.vercel-insights.com`,
+    `frame-src https://challenges.cloudflare.com`,
+    `object-src 'none'`,
+    `base-uri 'self'`,
+    `form-action 'self'`,
+    `upgrade-insecure-requests`,
+  ];
+  return directives.join('; ');
+}
+
 export async function middleware(request: NextRequest) {
-  const response = await updateSession(request);
+  // Generate a fresh nonce for every request.
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+
+  // Forward the nonce to the layout via a request header so the theme bootstrap
+  // <Script> can carry it. Next.js also reads x-nonce to nonce its own inline scripts.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-nonce', nonce);
+
+  const response = await updateSession(request, requestHeaders);
+
+  response.headers.set('Content-Security-Policy', buildCsp(nonce));
 
   // Only set the cookie once; skip if already present.
   if (!request.cookies.has(REGION_COOKIE)) {
