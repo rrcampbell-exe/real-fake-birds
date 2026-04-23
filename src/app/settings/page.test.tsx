@@ -49,6 +49,7 @@ function createAccountState(overrides: Partial<ReturnType<typeof useAccountState
     weeklyOverview: null,
     refreshAccountState: vi.fn().mockResolvedValue(undefined),
     syncSignedInProgress: vi.fn().mockResolvedValue(undefined),
+    isHouseAccount: false,
     ...overrides,
   };
 }
