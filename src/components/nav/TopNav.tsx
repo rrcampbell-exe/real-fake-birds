@@ -50,7 +50,7 @@ export default function TopNav() {
 
   return (
     <>
-      <nav className="hidden items-center justify-between border-b border-[var(--color-surface-border)] bg-[var(--color-surface)] px-6 py-3 backdrop-blur-md md:flex">
+      <nav className="hidden items-center justify-between border-b border-[var(--color-surface-border)] bg-[var(--color-surface)] px-6 py-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] backdrop-blur-md md:flex">
         <Link href="/" className="flex flex-col">
           <span className="font-[family-name:var(--font-display)] text-xl font-bold tracking-[0.05em] leading-tight">
             Real Fake Birds

@@ -96,7 +96,7 @@ export default function SignUpPromptModal({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[70] flex items-center justify-center bg-black/55 px-3 py-3 backdrop-blur-sm sm:px-4 sm:py-4"
+        className="fixed inset-0 z-[70] flex items-center justify-center bg-black/55 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:px-4 sm:pt-4 sm:pb-4"
         onClick={handleDismiss}
       >
         <motion.div
@@ -107,7 +107,7 @@ export default function SignUpPromptModal({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 16, scale: 0.98 }}
           transition={prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 260, damping: 24 }}
-          className="relative max-h-[calc(100dvh-1.5rem)] w-full max-w-xl overflow-y-auto rounded-[1.75rem] border border-[var(--color-surface-border)] bg-[var(--color-modal-bg)] shadow-2xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden sm:max-h-[calc(100dvh-2rem)]"
+          className="relative max-h-[calc(100dvh-max(1.5rem,env(safe-area-inset-top))-max(1.5rem,env(safe-area-inset-bottom)))] w-full max-w-xl overflow-y-auto rounded-[1.75rem] border border-[var(--color-surface-border)] bg-[var(--color-modal-bg)] shadow-2xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden sm:max-h-[calc(100dvh-2rem)]"
           onClick={(event) => event.stopPropagation()}
         >
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--color-secondary)_22%,transparent)_0%,transparent_48%),radial-gradient(circle_at_bottom_left,color-mix(in_srgb,var(--color-primary)_18%,transparent)_0%,transparent_42%)]" />

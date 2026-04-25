@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import ExternalLink from '@/components/native/ExternalLink';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy — Real Fake Birds',
@@ -100,40 +101,34 @@ export default function PrivacyPolicyPage() {
           <p>
             <strong>Supabase.</strong> Database hosting and authentication. Your account credentials
             and gameplay progress are stored in Supabase infrastructure. See{' '}
-            <a
+            <ExternalLink
               href="https://supabase.com/privacy"
-              target="_blank"
-              rel="noopener noreferrer"
               className="underline decoration-[var(--color-muted)] underline-offset-2 hover:text-[var(--color-secondary)]"
             >
               supabase.com/privacy
-            </a>
+            </ExternalLink>
             .
           </p>
           <p>
             <strong>PostHog.</strong> Product analytics. Usernames (for signed-in players) and
             approximate location data are transmitted to PostHog. Email addresses are not.
             See{' '}
-            <a
+            <ExternalLink
               href="https://posthog.com/privacy"
-              target="_blank"
-              rel="noopener noreferrer"
               className="underline decoration-[var(--color-muted)] underline-offset-2 hover:text-[var(--color-secondary)]"
             >
               posthog.com/privacy
-            </a>
+            </ExternalLink>
             .
           </p>
           <p>
             <strong>Vercel.</strong> Web hosting and edge delivery. See{' '}
-            <a
+            <ExternalLink
               href="https://vercel.com/legal/privacy-policy"
-              target="_blank"
-              rel="noopener noreferrer"
               className="underline decoration-[var(--color-muted)] underline-offset-2 hover:text-[var(--color-secondary)]"
             >
               vercel.com/legal/privacy-policy
-            </a>
+            </ExternalLink>
             .
           </p>
         </section>

@@ -1,6 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
+import ExternalLink from '@/components/native/ExternalLink';
 import { useEffect, useRef, useState } from 'react';
 import { Bird, Birdhouse, ChevronDown, ChevronUp, MapPin, Sparkles } from 'lucide-react';
 import BirdhouseToggleButton from '@/components/birdhouse/BirdhouseToggleButton';
@@ -78,14 +79,12 @@ function JournalBirdImage({ birdName, imageUrl, attribution }: JournalBirdImageP
             <>
               {' / '}
               {attribution.licenseUrl ? (
-                <a
+                <ExternalLink
                   href={attribution.licenseUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   className="underline underline-offset-2 hover:text-[var(--color-text)]"
                 >
                   {attribution.license}
-                </a>
+                </ExternalLink>
               ) : (
                 attribution.license
               )}

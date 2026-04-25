@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fredoka, DM_Sans } from "next/font/google";
 import Script from 'next/script';
 import { headers } from 'next/headers';
@@ -10,6 +10,8 @@ import BottomNav from "@/components/nav/BottomNav";
 import AnalyticsProvider from '@/components/analytics/AnalyticsProvider';
 import ConsentModal from '@/components/analytics/ConsentModal';
 import { themeUnlocks } from '@/lib/constants/theme-unlocks';
+import NativeBackHandler from '@/components/native/NativeBackHandler';
+import NativeMainWrapper from '@/components/native/NativeMainWrapper';
 
 const liveThemeUnlockThresholds = themeUnlocks
   .filter((themeUnlock) => !themeUnlock.comingSoon)
@@ -64,6 +66,13 @@ export const metadata: Metadata = {
   description: "Some are real. Some are fake. Tell them apart.",
 };
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#1B5C1B',
+};
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -81,13 +90,14 @@ export default async function RootLayout({
         />
       </head>
       <body className="flex min-h-dvh flex-col font-[family-name:var(--font-body)]">
+        <NativeBackHandler />
         <ThemeProvider>
           <AnalyticsProvider />
           <ConsentModal />
           <TopNav />
-          <main className="flex flex-1 flex-col pb-16 md:pb-0">
+          <NativeMainWrapper>
             {children}
-          </main>
+          </NativeMainWrapper>
           <BottomNav />
         </ThemeProvider>
         <Analytics />

@@ -295,7 +295,7 @@ export default function GameSection() {
   }, [activeToastRoundId, currentToastIndex, expiredToastRoundId, sortedToasts]);
 
   return (
-    <div className="box-border flex min-h-[calc(100dvh-7rem)] flex-1 flex-col items-center justify-center gap-6 py-6 md:min-h-0 md:py-4">
+    <div className="box-border flex min-h-[calc(100dvh-7rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] flex-1 flex-col items-center justify-center gap-6 py-6 md:min-h-0 md:py-4">
       {/* Title + slogan — visible only on mobile (desktop shows it in TopNav) */}
       <div className="text-center px-4 md:hidden">
         <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-[0.05em]">

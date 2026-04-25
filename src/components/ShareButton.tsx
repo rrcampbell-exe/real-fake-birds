@@ -19,7 +19,7 @@ export default function ShareButton({ payload, eventLabel, className = '' }: Sha
       return;
     }
 
-    const shareUrl = window.location.origin;
+    const shareUrl = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
     const body = `${payload.text}\n${shareUrl}`;
 
     try {

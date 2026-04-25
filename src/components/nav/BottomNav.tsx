@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Bird, Menu } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAccountState } from '@/components/account/AccountStateProvider';
+import { isNativePlatform } from '@/lib/native/platform';
 import { useHasHydrated } from '@/hooks/useHasHydrated';
 import { useStoredBoolean, useStoredJson } from '@/hooks/useStoredValue';
 import { useSound } from '@/hooks/useSound';
@@ -42,6 +43,8 @@ export default function BottomNav() {
     () => hasMounted && (showDailyNotification || hasUnseenBadges || hasNewThemeUnlock || showLeaderboardNotification),
     [hasMounted, hasNewThemeUnlock, hasUnseenBadges, showDailyNotification, showLeaderboardNotification]
   );
+  const [isNative, setIsNative] = useState(false);
+  useEffect(() => { setIsNative(isNativePlatform()); }, []);
   const playActive = pathname === '/';
 
   if (!isAppChromeVisible) {
@@ -50,12 +53,12 @@ export default function BottomNav() {
 
   return (
     <>
-      <nav className="fixed bottom-3 left-4 right-4 z-50 flex items-center justify-center rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 pb-[calc(env(safe-area-inset-bottom)+0.45rem)] pt-3 shadow-[var(--shadow-card)] backdrop-blur-md md:hidden">
+      <nav className={`app-bottom-nav fixed ${isNative ? 'bottom-[calc(env(safe-area-inset-bottom)+0.2rem)]' : 'bottom-3'} left-4 right-4 z-50 flex items-center justify-center rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 ${isNative ? 'pb-[0.55rem] pt-[0.55rem]' : 'pb-[calc(env(safe-area-inset-bottom)+0.45rem)] pt-3'} shadow-[var(--shadow-card)] backdrop-blur-md md:hidden`}>
         <div className="flex w-full max-w-sm items-center gap-3">
           <Link
             href="/"
             onClick={() => play('navTap')}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold transition-colors ${
+            className={`flex flex-1 items-center justify-center gap-2 rounded-full px-4 ${isNative ? 'py-[0.65rem]' : 'py-3'} text-sm font-semibold transition-colors ${
               playActive
                 ? 'bg-[var(--color-secondary)] text-[var(--color-on-secondary)]'
                 : 'bg-[var(--color-surface-hover)] text-[var(--color-text)]'
@@ -71,7 +74,7 @@ export default function BottomNav() {
               play('navTap');
               setMenuOpen(true);
             }}
-            className={`relative inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3 text-sm font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-surface-hover)] ${
+            className={`relative inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 ${isNative ? 'py-[0.65rem]' : 'py-3'} text-sm font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-surface-hover)] ${
               showMenuDot ? 'pr-8' : ''
             }`}
           >

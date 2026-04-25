@@ -13,6 +13,7 @@ import { useSound } from '@/hooks/useSound';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useStoredJson } from '@/hooks/useStoredValue';
 import ShareButton from '@/components/ShareButton';
+import ExternalLink from '@/components/native/ExternalLink';
 import { track } from '@/lib/analytics';
 import { isMajorStreakCheckpoint } from '@/lib/constants/streaks';
 import { deriveBirdKey, writePendingJournalTargetKey } from '@/lib/utils/bird-journal';
@@ -175,14 +176,12 @@ function ImageAttributionText({ attribution }: { attribution?: ImageAttribution 
       <p className="truncate">Photo: {attribution.artist}</p>
       {attribution.license ? (
         attribution.licenseUrl ? (
-          <a
+          <ExternalLink
             href={attribution.licenseUrl}
-            target="_blank"
-            rel="noopener noreferrer"
             className="block break-words underline underline-offset-2 hover:text-[var(--color-text)]"
           >
             {attribution.license}
-          </a>
+          </ExternalLink>
         ) : (
           <p className="break-words">{attribution.license}</p>
         )
