@@ -4,6 +4,7 @@ import { Volume2, X } from 'lucide-react';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import { useStoredBoolean } from '@/hooks/useStoredValue';
 import { setStoredBoolean } from '@/lib/utils/player-progress';
+import { isNativePlatform } from '@/lib/native/platform';
 
 export const IOS_WEB_AUDIO_NOTICE_DISMISSED_STORAGE_KEY = 'iosWebAudioNoticeDismissed';
 
@@ -25,7 +26,7 @@ function isIosWebBrowser(): boolean {
 export default function IosWebAudioNotice() {
   const { isAppChromeVisible } = useAccountState();
   const dismissed = useStoredBoolean(IOS_WEB_AUDIO_NOTICE_DISMISSED_STORAGE_KEY, false);
-  const shouldRender = isIosWebBrowser();
+  const shouldRender = isIosWebBrowser() && !isNativePlatform();
 
   if (!shouldRender || dismissed || !isAppChromeVisible) {
     return null;

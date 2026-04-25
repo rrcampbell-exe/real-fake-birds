@@ -47,3 +47,17 @@ node_modules
 
 # temp files
 *.tmp
+
+# capacitor native build artifacts (project files are tracked)
+ios/build/
+ios/DerivedData/
+ios/.build/
+ios/capacitor-cordova-ios-plugins/
+android/.gradle/
+android/build/
+android/app/build/
+android/.idea/
+android/local.properties
+android/capacitor-cordova-android-plugins/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
