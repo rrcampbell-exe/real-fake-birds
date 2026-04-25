@@ -8,7 +8,7 @@ export async function canLoadImage(url: string): Promise<boolean> {
     return false;
   }
 
-  return new Promise((resolve) => {
+  const decodedByImg = await new Promise<boolean>((resolve) => {
     const image = new Image();
     let settled = false;
 
@@ -31,4 +31,18 @@ export async function canLoadImage(url: string): Promise<boolean> {
       finish(image.naturalWidth > 0);
     }
   });
+
+  if (decodedByImg) {
+    return true;
+  }
+
+  // Image failed to decode (e.g. iOS WKWebView can't handle certain WebP
+  // profiles). Fall back to a HEAD request to confirm the resource exists.
+  // If it does, return true and let the caller's fallback URL handle rendering.
+  try {
+    const res = await fetch(normalizedUrl, { method: 'HEAD', cache: 'no-store' });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }

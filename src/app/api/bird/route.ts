@@ -249,6 +249,7 @@ async function fetchFakeBird(): Promise<BirdApiResult | null> {
     summary: cdnFact.summary,
     imageUrl: getCdnImageUrl(selectedFakeBird.birdKey, 'full', 'fake'),
     imageThumbUrl: getCdnImageUrl(selectedFakeBird.birdKey, 'thumb', 'fake'),
+    fallbackImageUrl: `/_next/image?url=${encodeURIComponent(getCdnImageUrl(selectedFakeBird.birdKey, 'full', 'fake'))}&w=1080&q=85`,
     description: cdnFact.description,
     contentSource: 'cdn',
     factSource: 'cdn',
