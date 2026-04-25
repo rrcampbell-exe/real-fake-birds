@@ -87,6 +87,7 @@ describe('bird route', () => {
       summary: 'A fabricated but cached summary.',
       imageUrl: 'https://cdn.example.com/birds/fake/blue-robin/image.webp',
       imageThumbUrl: 'https://cdn.example.com/birds/fake/blue-robin/thumb.webp',
+      fallbackImageUrl: '/_next/image?url=https%3A%2F%2Fcdn.example.com%2Fbirds%2Ffake%2Fblue-robin%2Fimage.webp&w=1080&q=85',
       description: 'A fabricated but cached description.',
       contentSource: 'cdn',
       factSource: 'cdn',

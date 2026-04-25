@@ -34,7 +34,7 @@ describe('ShareButton', () => {
     await waitFor(() => {
       expect(share).toHaveBeenCalledWith({
         title: 'Real Fake Birds stats',
-        text: `Check out my stats.\n${window.location.origin}`,
+        text: `Check out my stats.\n${process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin}`,
       });
     });
   });
@@ -57,7 +57,7 @@ describe('ShareButton', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Share' }));
 
     await waitFor(() => {
-      expect(writeText).toHaveBeenCalledWith(`I scored 4/5 today.\n${window.location.origin}`);
+      expect(writeText).toHaveBeenCalledWith(`I scored 4/5 today.\n${process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin}`);
     });
   });
 });
