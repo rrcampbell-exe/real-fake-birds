@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Bird, Menu } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import { isNativePlatform } from '@/lib/native/platform';
 import { useHasHydrated } from '@/hooks/useHasHydrated';
