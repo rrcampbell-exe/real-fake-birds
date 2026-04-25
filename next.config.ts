@@ -38,7 +38,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
-  allowedDevOrigins: ['capacitor://localhost', 'http://localhost:3000', '10.0.2.2']
+  allowedDevOrigins: ['capacitor://localhost', 'http://localhost:3000', 'http://10.0.2.2:3000']
 };
 
 export default nextConfig;
