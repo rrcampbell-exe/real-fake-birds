@@ -14,6 +14,7 @@ export default function NativeBackHandler() {
   const router = useRouter();
 
   useEffect(() => {
+    let cancelled = false;
     let removeListener: (() => void) | undefined;
 
     async function register() {
@@ -26,7 +27,13 @@ export default function NativeBackHandler() {
           void App.exitApp();
         }
       });
-      removeListener = remove;
+      // If the component unmounted before this promise resolved, remove
+      // the listener immediately rather than leaking it.
+      if (cancelled) {
+        remove();
+      } else {
+        removeListener = remove;
+      }
     }
 
     // Only activate inside the native shell
@@ -40,6 +47,7 @@ export default function NativeBackHandler() {
     }
 
     return () => {
+      cancelled = true;
       removeListener?.();
     };
   }, [router]);
