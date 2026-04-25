@@ -13,6 +13,11 @@ const eslintConfig = defineConfig([
     "build/**",
     "coverage/**",
     "next-env.d.ts",
+    // Capacitor native build artifacts:
+    "android/app/build/**",
+    "android/.gradle/**",
+    "ios/build/**",
+    "ios/DerivedData/**",
   ]),
   // Treat _-prefixed variables as intentionally unused (standard convention).
   {

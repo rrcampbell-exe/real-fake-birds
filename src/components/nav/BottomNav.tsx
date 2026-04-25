@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Bird, Menu } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import { isNativePlatform } from '@/lib/native/platform';
 import { useHasHydrated } from '@/hooks/useHasHydrated';
@@ -43,8 +43,7 @@ export default function BottomNav() {
     () => hasMounted && (showDailyNotification || hasUnseenBadges || hasNewThemeUnlock || showLeaderboardNotification),
     [hasMounted, hasNewThemeUnlock, hasUnseenBadges, showDailyNotification, showLeaderboardNotification]
   );
-  const [isNative, setIsNative] = useState(false);
-  useEffect(() => { setIsNative(isNativePlatform()); }, []);
+  const isNative = hasMounted && isNativePlatform();
   const playActive = pathname === '/';
 
   if (!isAppChromeVisible) {
