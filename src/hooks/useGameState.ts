@@ -36,6 +36,7 @@ import { refundSeeds, spendSeeds } from '@/lib/utils/seed-spend';
 import { track, trackFirstPurchase, trackSessionStart } from '@/lib/analytics';
 
 const PROGRESS_FLUSH_DELAY_MS = 5000;
+const OFFLINE_CONNECTIVITY_POLL_MS = 30_000;
 
 interface UseGameStateOptions {
   mode?: GameMode;
@@ -293,13 +294,12 @@ export function useGameState(options?: UseGameStateOptions) {
   useEffect(() => {
     if (!isOfflineReplay || hasAnswered) return;
 
-    const POLL_INTERVAL_MS = 30_000;
     const timerId = window.setInterval(() => {
       if (typeof navigator !== 'undefined' && navigator.onLine) {
         resetRoundState();
         setFetchKey((k) => k + 1);
       }
-    }, POLL_INTERVAL_MS);
+    }, OFFLINE_CONNECTIVITY_POLL_MS);
 
     const handleOnline = () => {
       resetRoundState();
