@@ -43,7 +43,16 @@ const QUARANTINE = process.argv.includes('--quarantine');
 
 const BIRDS_FILE = (() => {
   const index = process.argv.indexOf('--birds-file');
-  return index !== -1 ? process.argv[index + 1] : undefined;
+  if (index === -1) {
+    return undefined;
+  }
+
+  const raw = process.argv[index + 1];
+  if (!raw || raw.trim() === '' || raw.startsWith('--')) {
+    throw new Error('The --birds-file flag must be followed by a non-empty path.');
+  }
+
+  return raw;
 })();
 
 const LIMIT = (() => {
