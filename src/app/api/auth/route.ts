@@ -1037,7 +1037,7 @@ async function finalizeExpiredWeeklyLeaderboards(admin: ReturnType<typeof create
           .eq('user_id', row.userId);
       }
 
-      await admin
+      const { count: finalizedCount } = await admin
         .from('leaderboard_stats')
         .update({
           ...createWeeklyResetState(currentWeekStart),
@@ -1047,9 +1047,17 @@ async function finalizeExpiredWeeklyLeaderboards(admin: ReturnType<typeof create
           previous_week_rank: rank,
           previous_week_reward_seeds: rewardSeeds,
           previous_week_finalized_at: finalizedAt,
-        })
+        }, { count: 'exact' })
         .eq('user_id', row.userId)
-        .eq('current_week_start', weekStart);
+        .lt('current_week_start', currentWeekStart);
+
+      if (finalizedCount === 0) {
+        console.warn('[weekly-leaderboard] finalization update matched 0 rows', {
+          userId: row.userId,
+          weekStart,
+          currentWeekStart,
+        });
+      }
     }));
   }
 
@@ -2268,6 +2276,14 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'profile_save_failed' }, { status: 500 });
       }
 
+      // Safety net: if the row exists but hasn't been rolled over yet (e.g., finalization
+      // silently matched 0 rows), reset weekly fields before writing the new week.
+      await admin
+        .from('leaderboard_stats')
+        .update(createWeeklyResetState(currentWeekStart))
+        .eq('user_id', context.userId)
+        .lt('current_week_start', currentWeekStart);
+
       await admin
         .from('leaderboard_stats')
         .upsert(
@@ -2435,6 +2451,14 @@ export async function POST(request: NextRequest) {
       if (!birdhouseResult.ok) {
         return NextResponse.json({ error: 'progress_sync_failed' }, { status: 500 });
       }
+
+      // Safety net: if the row exists but hasn't been rolled over yet (e.g., finalization
+      // silently matched 0 rows), reset weekly fields before writing lifetime stats.
+      await admin
+        .from('leaderboard_stats')
+        .update(createWeeklyResetState(currentWeekStart))
+        .eq('user_id', context.userId)
+        .lt('current_week_start', currentWeekStart);
 
       await admin
         .from('leaderboard_stats')
