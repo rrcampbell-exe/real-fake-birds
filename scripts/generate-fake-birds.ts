@@ -29,7 +29,16 @@ const MAX_ATTEMPTS = COUNT * 50;
 
 const NEW_BIRDS_OUT = (() => {
   const index = process.argv.indexOf('--new-birds-out');
-  return index !== -1 ? process.argv[index + 1] : undefined;
+  if (index === -1) {
+    return undefined;
+  }
+
+  const raw = process.argv[index + 1];
+  if (!raw || raw.trim() === '') {
+    throw new Error('The --new-birds-out flag requires a non-empty output path.');
+  }
+
+  return raw;
 })();
 
 type GeneratedBirdResult = {
