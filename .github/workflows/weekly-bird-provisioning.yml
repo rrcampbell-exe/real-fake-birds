@@ -1,0 +1,231 @@
+name: Weekly Bird Provisioning
+
+on:
+  schedule:
+    # 06:00 UTC Monday = midnight US Central (CDT, UTC-6) — aligns with weekly challenge rollover
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      fake_count:
+        description: 'Number of new fake birds to generate'
+        type: number
+        default: 100
+      dry_run:
+        description: 'Skip CDN writes and PR creation (catalog export + merge still run)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: weekly-bird-provisioning
+  cancel-in-progress: false
+
+# ---------------------------------------------------------------------------
+# Job 1a: Export preview real-bird catalog
+# ---------------------------------------------------------------------------
+jobs:
+  export-dev:
+    name: Export preview bird catalog
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: Preview – real-fake-birds
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Export preview real-bird catalog
+        run: npx tsx scripts/export-real-birds.ts --env dev
+        env:
+          DEV_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          DEV_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: Upload dev catalog artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-birds-catalog
+          path: scripts/data/dev-birds.json
+          retention-days: 3
+
+# ---------------------------------------------------------------------------
+# Job 1b: Export production real-bird catalog (runs in parallel with 1a)
+# ---------------------------------------------------------------------------
+  export-prod:
+    name: Export production bird catalog
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: Production – real-fake-birds
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Export production real-bird catalog
+        run: npx tsx scripts/export-real-birds.ts --env prod
+        env:
+          PROD_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          PROD_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: Upload prod catalog artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-birds-catalog
+          path: scripts/data/prod-birds.json
+          retention-days: 3
+
+# ---------------------------------------------------------------------------
+# Job 2: Provision — merge catalogs, seed, generate, moderate, manifest, PR
+# ---------------------------------------------------------------------------
+  provision:
+    name: Provision birds
+    needs: [export-dev, export-prod]
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    environment: Production – real-fake-birds
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download dev catalog
+        uses: actions/download-artifact@v4
+        with:
+          name: dev-birds-catalog
+          path: scripts/data/
+
+      - name: Download prod catalog
+        uses: actions/download-artifact@v4
+        with:
+          name: prod-birds-catalog
+          path: scripts/data/
+
+      - name: Merge catalogs into seed-birds.json
+        run: npx tsx scripts/export-real-birds.ts --merge-only
+
+      - name: Seed real birds (skip existing)
+        if: ${{ inputs.dry_run != true }}
+        run: npx tsx scripts/seed-cdn.ts --skip-existing
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          EBIRD_API_KEY: ${{ secrets.EBIRD_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Generate new fake birds
+        run: |
+          mkdir -p scripts/.tmp
+          npx tsx scripts/generate-fake-birds.ts \
+            --count ${{ inputs.fake_count || 100 }} \
+            --seed \
+            --new-birds-out scripts/.tmp/new-birds.json
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Moderate and quarantine new fake birds
+        run: |
+          npx tsx scripts/validate-fake-birds.ts \
+            --birds-file scripts/.tmp/new-birds.json \
+            --moderate-text \
+            --moderate-images \
+            --quarantine
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Upload moderation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: moderation-report
+          path: scripts/.tmp/fake-bird-validation-report.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Regenerate CDN manifest
+        run: npx tsx scripts/score-fake-birds.ts
+
+      - name: Configure git identity
+        if: ${{ inputs.dry_run != true }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit data and manifest
+        id: commit
+        if: ${{ inputs.dry_run != true }}
+        run: |
+          BRANCH="automation/bird-provisioning-$(date -u +%Y-%m-%d)"
+          git checkout -b "$BRANCH"
+          git add \
+            scripts/data/dev-birds.json \
+            scripts/data/prod-birds.json \
+            scripts/data/seed-birds.json \
+            scripts/data/fake-birds.json \
+            src/lib/server/cdn-manifest.ts
+          if git diff --cached --quiet; then
+            echo "No changes to commit — all birds already up to date."
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "chore(birds): weekly bird provisioning $(date -u +%Y-%m-%d)"
+            git push origin "$BRANCH"
+            echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create auto-merge PR
+        if: ${{ inputs.dry_run != true && steps.commit.outputs.has_changes == 'true' }}
+        run: |
+          BRANCH="${{ steps.commit.outputs.branch }}"
+          TODAY="$(date -u +%Y-%m-%d)"
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "chore(birds): weekly bird provisioning ${TODAY}" \
+            --body "Automated weekly bird provisioning.
+
+- Exported real-bird catalogs from preview and production Supabase
+- Seeded any missing real-bird CDN assets
+- Generated and seeded ${{ inputs.fake_count || 100 }} new fake birds
+- Moderated new fake birds; quarantined any flagged outputs
+- Regenerated CDN manifest with updated plausibility scores
+
+Moderation report is attached as a workflow artifact."
+          gh pr merge --auto --squash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
