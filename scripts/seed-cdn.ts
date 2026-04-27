@@ -311,10 +311,19 @@ const FAKE_IMAGE_PROMPT_OVERRIDES: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// Wild-card mechanic (~12% of birds get an absurdist or thematic twist)
+// Wild-card mechanic
+//
+// Two independent systems:
+//   1. Name-cue wild-cards (always-on): any bird whose name contains a
+//      recognized token (hat, tie, crown, etc.) always receives a thematic
+//      treatment — independent of the hash.
+//   2. Generic anatomical wild-cards (~12%, hash-gated): birds with no name
+//      cue receive a random absurdist anatomical trait when their hash falls
+//      below WILD_CARD_RATE.
 // ---------------------------------------------------------------------------
 
-const WILD_CARD_RATE = 12; // percent
+const WILD_CARD_RATE = 12;  // percent — generic anatomical wild-card gate
+const NAME_CUE_RATE = 65;   // percent — apply a matched name cue this fraction of the time; others fall through to standard path
 
 /**
  * Deterministic hash so the same bird always gets the same wild-card treatment.
@@ -343,40 +352,148 @@ function detectWildCardCue(birdName: string): WildCardCue | null {
   if (/\bhat\b|\bberet\b|\bfedora\b|\bbonnet\b/.test(lower)) {
     return { kind: 'accessory', description: 'wearing a small hat that matches its name, naturally positioned on its head' };
   }
-  if (/\btie\b|\bbowtie\b|bow[- ]tie/.test(lower)) {
-    return { kind: 'accessory', description: 'wearing a tiny bow tie or neck tie, naturally draped around its neck' };
-  }
-  if (/\bglasses\b|\bspectacles\b|\bmonocle\b/.test(lower)) {
-    return { kind: 'accessory', description: 'wearing tiny round glasses perched naturally on its beak' };
-  }
-  if (/\bcrown\b|\bking\b|\bqueen\b/.test(lower)) {
-    return { kind: 'accessory', description: 'wearing a tiny ornate crown balanced naturally on its head' };
-  }
-  if (/\btuxedo\b|\bformal\b/.test(lower)) {
-    return { kind: 'accessory', description: 'wearing a miniature tuxedo vest with a white chest patch' };
-  }
 
-  // Anatomical cues
-  if (/\bmustache\b|\bmoustache\b/.test(lower)) {
-    return { kind: 'anatomical', description: 'prominent mustache-like feather tufts framing its face below the beak' };
-  }
-  if (/\beyebrow\b/.test(lower)) {
-    return { kind: 'anatomical', description: 'dramatically thick expressive eyebrow-like feather tufts above its eyes' };
+  // Anatomical / plumage cues — all patterns validated against the fake bird catalog
+  if (/crowned/.test(lower)) {
+    // e.g. "Red-crowned Crane", "Black-crowned Fulmar" — exaggerate the crown marking
+    return { kind: 'anatomical', description: 'a dramatically oversized, vividly colored crown patch that radiates outward from the top of its head almost like a glowing halo' };
   }
   if (/\bdisco\b|\bglitter\b/.test(lower)) {
     return { kind: 'anatomical', description: 'extraordinarily iridescent plumage that catches light from every angle like a mirror-ball' };
   }
-  if (/\bfluffy\b|\bfluffball\b|\bpoof\b/.test(lower)) {
-    return { kind: 'anatomical', description: 'comically round, oversized fluffy plumage that makes it look like a feathered sphere' };
+  if (/\bpearl\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'an opalescent pearl-like sheen across its entire plumage that shifts through soft iridescent hues depending on the angle of light' };
   }
-  if (/\btiny\b|\bmicro\b|\bmini\b/.test(lower)) {
-    return { kind: 'anatomical', description: 'comically small size, perched on a regular twig that dwarfs it for scale' };
+  if (/\bmidnight\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'extraordinarily deep, light-absorbing matte-black plumage that seems to consume all light around it' };
+  }
+  if (/\bcosmic\b|\bgalactic\b|\bstellar\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'plumage with a deep-space quality: an inky base scattered with tiny luminous points of light, giving it a star-field appearance' };
+  }
+  if (/\bsunburst\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'a dramatic radiating starburst of contrasting feathers spreading outward from its chest like a halo' };
+  }
+  if (/\bcamouflage\b|\bcamo\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'plumage in a precise disruptive camouflage pattern of earthy tones that makes it nearly vanish against its background' };
+  }
+  if (/\bcyber\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'plumage overlaid with geometric circuit-board-like markings in electric colors, as if its feathers are living technology' };
+  }
+  if (/\bdead\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'ghostly pale, near-colorless plumage with hollow-looking dark-rimmed eyes, giving it a spectral appearance' };
   }
   if (/\bgiant\b|\bcolossal\b|\benormous\b/.test(lower)) {
     return { kind: 'anatomical', description: 'dramatically large size relative to the surrounding vegetation, towering over nearby branches' };
   }
-  if (/\bnoodle\b|\bspaghetti\b/.test(lower)) {
-    return { kind: 'anatomical', description: 'a bizarrely elongated, noodle-like neck that still reads as fully avian' };
+
+  // Botanical / food-as-color cues — name tokens describe a color or texture
+  if (/\beggplant\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'deep purple-black plumage with a rich glossy sheen, like polished eggplant skin' };
+  }
+  if (/\bparsley\b/.test(lower)) {
+    // ~1-in-3 chance of the accessory version
+    return birdNameHash(birdName) % 3 === 0
+      ? { kind: 'accessory', description: 'wearing a small bright sprig of fresh parsley tucked neatly into its breast feathers like a boutonnière' }
+      : { kind: 'anatomical', description: 'bright leafy-green speckled markings scattered across its plumage like fresh parsley' };
+  }
+  if (/\blaurel\b/.test(lower)) {
+    // ~1-in-3 chance of an actual laurel wreath on its head
+    return birdNameHash(birdName) % 3 === 0
+      ? { kind: 'accessory', description: 'wearing a neatly woven laurel wreath balanced on top of its head like a champion\'s crown' }
+      : { kind: 'anatomical', description: 'a ring of dense layered overlapping feathers encircling its neck like a natural laurel wreath' };
+  }
+  if (/\bapple\b/.test(lower)) {
+    // ~1-in-3 chance of a tiny apple balanced on its head
+    return birdNameHash(birdName) % 3 === 0
+      ? { kind: 'accessory', description: 'balancing a small perfectly round red apple on top of its head with implausible confidence' }
+      : { kind: 'anatomical', description: 'vivid patches of polished red and bright green across its breast, like the skin of a two-toned apple' };
+  }
+  if (/\bjambalaya\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'a chaotically mixed plumage of warm spicy tones — oranges, reds, and deep golds swirled together in an irregular patchwork' };
+  }
+  if (/\bwasabi\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'vivid chartreuse-green plumage of startling intensity, almost neon against any natural background' };
+  }
+
+  // Gem / mineral / color cues — name tokens describe a material sheen or vivid hue
+  if (/\bemerald\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'jewel-like emerald-green plumage with a deep glassy iridescence, like a polished gemstone in direct light' };
+  }
+  if (/\bviolet\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'soft violet-hued plumage that shifts between blue and purple depending on the angle of light' };
+  }
+  if (/\bcobalt\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'intensely vivid cobalt-blue feathers that appear almost electrically saturated, as if lit from within' };
+  }
+  if (/\bamber\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'warm amber-toned plumage with a translucent honey-like quality that glows when backlit' };
+  }
+  if (/\bcopper\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'metallic copper-sheened feathers that catch sunlight with a warm reddish-gold glow' };
+  }
+  if (/\bgolden\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'lustrous golden-yellow plumage with a warm burnished gleam, as if every feather were gilded' };
+  }
+  if (/\bobsidian\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'glassy pitch-black plumage with a mirror-like obsidian sheen that reflects surroundings like polished volcanic glass' };
+  }
+  if (/\bchampagne\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'pale creamy-gold plumage with a soft effervescent shimmer, like champagne held up to the light' };
+  }
+  if (/\bcrystal\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'pale near-translucent plumage with a crystalline prismatic quality that scatters light into faint rainbow reflections' };
+  }
+
+  // Character / creature cues — name tokens suggest a personality or creature archetype
+  if (/\bbuccaneer\b/.test(lower)) {
+    // 50/50: jaunty eye patch vs. natural plumage mask
+    return birdNameHash(birdName) % 2 === 0
+      ? { kind: 'accessory', description: 'wearing a small jaunty eye patch over one eye, sitting naturally against its feathers, giving it a swashbuckling air' }
+      : { kind: 'anatomical', description: 'a bold contrasting eye-stripe pattern that sweeps dramatically across its face like a natural mask, giving it a dashing adventurous look' };
+  }
+  if (/\bastronaut\b/.test(lower)) {
+    // 50/50: clear bubble helmet vs. silvery spacesuit sheen
+    return birdNameHash(birdName) % 2 === 0
+      ? { kind: 'accessory', description: 'wearing a clear spherical space helmet fitted snugly over its head, slightly too large, with its plumage and beak visible inside' }
+      : { kind: 'anatomical', description: 'a full-body silvery iridescent sheen across its plumage, like a reflective spacesuit, with a slightly puffed suited-up silhouette' };
+  }
+  if (/\bparadiso\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'extravagantly long ribbon-like tail plumes in vivid colors that cascade and drift dramatically behind it' };
+  }
+  if (/\btotem\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'bold stacked horizontal bands of strongly contrasting colors running down its chest and belly, like a totem pole pattern' };
+  }
+  if (/\baxolotl\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'delicate frilly plume extensions fanning out from behind its head and neck, resembling the iconic external gill tufts of an axolotl' };
+  }
+  if (/\bclairvoyant\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'unusually large luminous eyes that seem to glow with a soft otherworldly inner light, giving it an uncannily knowing expression' };
+  }
+  if (/jelly[\s-]?bean/.test(lower)) {
+    return { kind: 'anatomical', description: 'plumage dotted with smooth oval spots of bright candy-like colors — greens, pinks, and yellows — scattered randomly across its body' };
+  }
+
+  // Emotion / bearing cues — name tokens suggest an expressive demeanor
+  if (/\bproud\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'chest held prominently forward and head raised high, feathers fanned in a self-important display of obvious pride' };
+  }
+  if (/\bhopeful\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'an alert upward gaze and expectant posture, as if awaiting something wonderful just out of frame' };
+  }
+  if (/\bshy\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'feathers slightly fluffed and head tilted modestly to one side, one eye half-averted in a charmingly bashful expression' };
+  }
+  if (/\blonely\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'feathers lightly ruffled and gaze directed wistfully into the middle distance, with a quietly contemplative bearing' };
+  }
+  if (/\bgentle\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'a relaxed soft posture with feathers smoothed and eyes half-closed in a calm contented expression' };
+  }
+  if (/\bcareless\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'delightfully disheveled feathers in an endearingly carefree state, as if it recently emerged from an enthusiastic dust bath and decided not to tidy up' };
+  }
+  if (/\brestless\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'a visibly unsettled posture with tail bobbing, one foot slightly raised, and eyes darting alertly in multiple directions' };
   }
 
   return null;
@@ -473,17 +590,17 @@ function buildFakeImagePrompt(birdName: string): string {
     return `Photorealistic wildlife photograph of a ${birdName} ${pose} in a ${habitat}, ${lighting}, shallow depth of field, ${camera}. The image must look like a real camera photo of the bird itself. ${antiSilhouette} ${overrideInstruction}`;
   }
 
-  // Name-cue wild-card path: always single bird, driven by name token
+  const hash = birdNameHash(birdName);
+
+  // Name-cue wild-card path: single bird, driven by name token (~65% of matched birds)
   const nameCue = detectWildCardCue(birdName);
-  if (!MULTI_ONLY && nameCue) {
+  if (!MULTI_ONLY && nameCue && hash < NAME_CUE_RATE) {
     const pose = pickRandom(getCompatiblePoses(birdName, group));
     if (nameCue.kind === 'accessory') {
       return `Photorealistic wildlife photograph of a ${birdName} ${pose} in a ${habitat}, ${lighting}, shallow depth of field, ${camera}. The image must look like a real camera photo of the bird itself. ${antiSilhouette} This bird is ${nameCue.description}. The accessory must look naturally worn or balanced — not held, placed beside it, or floating in the air. Outside of that single accessory, ${environmentClause} Do not include multiple birds.`;
     }
     return `Photorealistic wildlife photograph of a ${birdName} ${pose} in a ${habitat}, ${lighting}, shallow depth of field, ${camera}. The image must look like a real camera photo of the bird itself. ${antiSilhouette} This bird has ${nameCue.description}. ${environmentClause} Do not include multiple birds.`;
   }
-
-  const hash = birdNameHash(birdName);
 
   // Generic wild-card path (~12%, hash < WILD_CARD_RATE): anatomical absurdity, single bird
   if (!MULTI_ONLY && hash < WILD_CARD_RATE) {
