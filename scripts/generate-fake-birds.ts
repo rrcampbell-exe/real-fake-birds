@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -10,6 +10,7 @@ import { slugifyBirdName } from '../src/lib/utils/slugify';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FAKE_BIRDS_PATH = join(__dirname, 'data', 'fake-birds.json');
+const SEED_BIRDS_PATH = join(__dirname, 'data', 'seed-birds.json');
 
 const COUNT = (() => {
   const index = process.argv.indexOf('--count');
@@ -25,6 +26,20 @@ const COUNT = (() => {
 const DRY_RUN = process.argv.includes('--dry-run');
 const SEED = process.argv.includes('--seed');
 const MAX_ATTEMPTS = COUNT * 50;
+
+const NEW_BIRDS_OUT = (() => {
+  const index = process.argv.indexOf('--new-birds-out');
+  if (index === -1) {
+    return undefined;
+  }
+
+  const raw = process.argv[index + 1];
+  if (!raw || raw.trim() === '') {
+    throw new Error('The --new-birds-out flag requires a non-empty output path.');
+  }
+
+  return raw;
+})();
 
 type GeneratedBirdResult = {
   birdName: string;
@@ -43,6 +58,18 @@ function normalizeGeneratedBirdName(name: string): string {
 
 function loadExistingBirds(): string[] {
   return JSON.parse(readFileSync(FAKE_BIRDS_PATH, 'utf-8')) as string[];
+}
+
+function loadRealBirdNames(): Set<string> {
+  if (!existsSync(SEED_BIRDS_PATH)) return new Set();
+  const names = JSON.parse(readFileSync(SEED_BIRDS_PATH, 'utf-8')) as string[];
+  return new Set(names.map((name) => name.toLowerCase().trim()));
+}
+
+function loadRealBirdKeys(): Set<string> {
+  if (!existsSync(SEED_BIRDS_PATH)) return new Set();
+  const names = JSON.parse(readFileSync(SEED_BIRDS_PATH, 'utf-8')) as string[];
+  return new Set(names.map((name) => slugifyBirdName(name)));
 }
 
 function seedBird(birdName: string): void {
@@ -65,6 +92,14 @@ async function main() {
   const existingBirds = loadExistingBirds();
   const existingNames = new Set(existingBirds);
   const existingKeys = new Set(existingBirds.map((birdName) => slugifyBirdName(birdName)));
+
+  // Also dedupe against real birds so fake candidates can't collide with real species
+  const realBirdNames = loadRealBirdNames();
+  const realBirdKeys = loadRealBirdKeys();
+  if (realBirdNames.size > 0) {
+    log(`Loaded ${realBirdNames.size} real bird names for dedupe.`);
+  }
+
   const generatedBirds: GeneratedBirdResult[] = [];
 
   let attempts = 0;
@@ -79,6 +114,12 @@ async function main() {
     const birdKey = slugifyBirdName(birdName);
 
     if (!birdName || existingNames.has(birdName) || existingKeys.has(birdKey)) {
+      continue;
+    }
+
+    // Reject collision with real birds
+    if (realBirdNames.has(birdName.toLowerCase().trim()) || realBirdKeys.has(birdKey)) {
+      log(`Skipping "${birdName}" — collides with a real bird.`);
       continue;
     }
 
@@ -104,6 +145,12 @@ async function main() {
   const updatedBirds = [...existingBirds, ...generatedBirds.map((bird) => bird.birdName)].sort((left, right) => left.localeCompare(right));
   writeFileSync(FAKE_BIRDS_PATH, JSON.stringify(updatedBirds, null, 2) + '\n');
   log(`Appended ${generatedBirds.length} birds to ${FAKE_BIRDS_PATH}`);
+
+  if (NEW_BIRDS_OUT) {
+    const newBirdNames = generatedBirds.map((bird) => bird.birdName);
+    writeFileSync(NEW_BIRDS_OUT, JSON.stringify(newBirdNames, null, 2) + '\n');
+    log(`Wrote ${newBirdNames.length} new bird names to ${NEW_BIRDS_OUT}`);
+  }
 
   if (!SEED) {
     return;

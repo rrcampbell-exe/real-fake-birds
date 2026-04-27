@@ -51,6 +51,8 @@ const SKIP_EXISTING = process.argv.includes('--skip-existing');
 const ONLY_FAILED = process.argv.includes('--only-failed');
 
 const FAKE_MODE = process.argv.includes('--fake');
+const MULTI_ONLY = process.argv.includes('--multi-only'); // force multi-bird compositions (for targeted sample testing)
+const FROM_SAMPLES = process.argv.includes('--from-samples'); // upload pre-generated samples from FAKE_SAMPLES_DIR to R2 (skips generation)
 const SAMPLE_COUNT = (() => {
   const val = getFlagValue('--sample');
   return val ? parseInt(val, 10) : undefined;
@@ -181,12 +183,55 @@ const BIRD_TYPE_TO_GROUP: Record<string, string> = {
   Chough: 'urban', Swallow: 'urban', Martin: 'urban', Swift: 'urban',
   Kingbird: 'urban', Cuckoo: 'urban',
   // Large ground birds
-  Ostrich: 'savanna', Emu: 'savanna', Cassowary: 'savanna', Peafowl: 'savanna',
-  Fowl: 'savanna', Hummingbird: 'forest',
+  Ostrich: 'savanna', Emu: 'savanna', Cassowary: 'savanna', Rhea: 'savanna',
+  Peafowl: 'savanna', Fowl: 'savanna', Hummingbird: 'forest',
   // Nocturnal
   Owl: 'nocturnal', Nightjar: 'nocturnal', Nighthawk: 'nocturnal', Frogmouth: 'nocturnal',
   Oilbird: 'nocturnal', Kiwi: 'nocturnal',
 };
+
+// Bird types that cannot soar or sustain powered aerial flight; flight poses are excluded for these.
+const FLIGHTLESS_OR_POOR_FLIER_TYPES = new Set([
+  'Ostrich', 'Emu', 'Cassowary', 'Rhea', 'Kiwi',    // true flightless
+  'Penguin', 'Puffin', 'Auk', 'Auklet', 'Murre',    // non-soaring / aquatic fliers
+]);
+
+// Bird types too large to perch in trees or fit inside cavities; tree/branch poses are excluded.
+const LARGE_GROUND_BIRD_TYPES = new Set([
+  'Ostrich', 'Emu', 'Cassowary', 'Rhea',
+]);
+
+// Poses that presuppose a tree, branch, or cavity; excluded for large ground birds.
+const TREE_AND_PERCH_POSES = new Set([
+  'perched on a branch',
+  'singing from a treetop',
+  'landing on a branch',
+  'climbing a tree trunk',
+  'peeking from a cavity',
+  'displaying with wings half-spread on a branch',
+  'investigating a hollow in a tree trunk',
+  'watching intently from a low branch just above the ground',
+  'balancing on a swaying reed stem',
+]);
+
+// Poses that require standing or swimming water; excluded when the habitat is not water-adjacent.
+const WATER_SPECIFIC_POSES = new Set([
+  'wading in shallow water',
+  'swimming on calm water',
+  'diving toward water',
+]);
+
+// Habitat groups that include a water body (enables water poses and water-based compositions).
+const WATER_ADJACENT_GROUPS = new Set(['waterfowl', 'shorebird', 'seabird', 'wetland']);
+
+// Poses that require sustained aerial flight; filtered out for flightless/poor-flier types.
+const FLIGHT_ONLY_POSES = new Set([
+  'mid-flight with wings spread',
+  'banking turn in flight',
+  'hovering',
+  'catching an insect mid-air',
+  'in coordinated flight against an open sky',
+]);
 
 const POSES = [
   'perched on a branch', 'mid-flight with wings spread', 'foraging on the ground',
@@ -195,16 +240,23 @@ const POSES = [
   'standing alert on a rock', 'stretching wings', 'landing on a branch',
   'carrying nesting material in beak', 'catching an insect mid-air',
   'swimming on calm water', 'climbing a tree trunk', 'running across open ground',
-  'peeking from a cavity', 'silhouetted against the sky',
+  'peeking from a cavity',
+  // Additional variety
+  'displaying with wings half-spread on a branch',
+  'investigating a hollow in a tree trunk',
+  'drinking from a shallow stream',
+  'watching intently from a low branch just above the ground',
+  'balancing on a swaying reed stem',
 ];
 
 const LIGHTING = [
-  'golden hour dawn light', 'harsh midday sun', 'soft overcast light', 'dusk silhouette lighting',
-  'misty morning light', 'dappled forest light', 'backlit rim glow', 'cool blue-hour light',
+  'golden hour dawn light', 'harsh midday sun', 'soft overcast light',
+  'misty morning light', 'dappled forest light', 'backlit rim glow with frontal fill light', 'cool blue-hour light',
 ];
 
 const CAMERA_STYLES = [
   '400mm telephoto lens', '600mm super-telephoto lens', '200mm lens with creamy bokeh',
+  '500mm telephoto lens with natural background separation', '300mm f/2.8 lens wide open for soft background',
 ];
 
 function pickRandom<T>(arr: T[]): T {
@@ -226,11 +278,31 @@ function extractBirdType(birdName: string): string | null {
   return null;
 }
 
-function getHabitatForBird(birdName: string): string {
+function getHabitatForBird(birdName: string): { habitat: string; group: string } {
   const birdType = extractBirdType(birdName);
-  const group = birdType ? BIRD_TYPE_TO_GROUP[birdType] : undefined;
-  const habitats = group ? HABITAT_GROUPS[group] : HABITAT_GROUPS.fallback;
-  return pickRandom(habitats ?? HABITAT_GROUPS.fallback);
+  const group = (birdType ? BIRD_TYPE_TO_GROUP[birdType] : undefined) ?? 'fallback';
+  const habitats = HABITAT_GROUPS[group] ?? HABITAT_GROUPS.fallback;
+  return { habitat: pickRandom(habitats), group };
+}
+
+/**
+ * Returns the subset of POSES that are contextually appropriate for this bird type and habitat group.
+ * Filters: flightless (no flight poses), large ground birds (no tree/perch poses),
+ * non-water habitats (no water-specific poses).
+ */
+function getCompatiblePoses(birdName: string, habitatGroup: string): string[] {
+  const birdType = extractBirdType(birdName);
+  let poses = POSES;
+  if (birdType && FLIGHTLESS_OR_POOR_FLIER_TYPES.has(birdType)) {
+    poses = poses.filter((p) => !FLIGHT_ONLY_POSES.has(p));
+  }
+  if (birdType && LARGE_GROUND_BIRD_TYPES.has(birdType)) {
+    poses = poses.filter((p) => !TREE_AND_PERCH_POSES.has(p));
+  }
+  if (!WATER_ADJACENT_GROUPS.has(habitatGroup)) {
+    poses = poses.filter((p) => !WATER_SPECIFIC_POSES.has(p));
+  }
+  return poses.length > 0 ? poses : ['foraging on the ground', 'standing alert on a rock'];
 }
 
 const FAKE_IMAGE_PROMPT_OVERRIDES: Record<string, string> = {
@@ -238,14 +310,315 @@ const FAKE_IMAGE_PROMPT_OVERRIDES: Record<string, string> = {
   'Revolver-billed Chickadee': 'Show a chickadee with an unmistakably unusual but fully organic oversized beak that still reads as a natural bird beak made of keratin, with a bold curved profile and visible organic texture. Do not depict an ordinary standard chickadee bill. Do not depict anything metallic, tubular, barrel-shaped, trigger-like, muzzle-like, mechanical, or weapon-like. The result should feel clearly fictional yet biologically plausible in a wildlife photograph.',
 };
 
+// ---------------------------------------------------------------------------
+// Wild-card mechanic
+//
+// Two independent systems:
+//   1. Name-cue wild-cards (always-on): any bird whose name contains a
+//      recognized token (hat, tie, crown, etc.) always receives a thematic
+//      treatment — independent of the hash.
+//   2. Generic anatomical wild-cards (~12%, hash-gated): birds with no name
+//      cue receive a random absurdist anatomical trait when their hash falls
+//      below WILD_CARD_RATE.
+// ---------------------------------------------------------------------------
+
+const WILD_CARD_RATE = 12;  // percent — generic anatomical wild-card gate
+const NAME_CUE_RATE = 65;   // percent — apply a matched name cue this fraction of the time; others fall through to standard path
+
+/**
+ * Deterministic hash so the same bird always gets the same wild-card treatment.
+ * Uses a djb2-style accumulation, returning a number 0–99.
+ */
+function birdNameHash(birdName: string): number {
+  let hash = 5381;
+  for (let i = 0; i < birdName.length; i++) {
+    hash = ((hash << 5) + hash + birdName.charCodeAt(i)) & 0x7fffffff;
+  }
+  return hash % 100;
+}
+
+type WildCardCueKind = 'accessory' | 'anatomical';
+
+interface WildCardCue {
+  kind: WildCardCueKind;
+  description: string;
+}
+
+/** Returns a strong, name-motivated cue, or null if no strong token is found. */
+function detectWildCardCue(birdName: string): WildCardCue | null {
+  const lower = birdName.toLowerCase();
+
+  // Accessory cues — motivated by explicit name tokens
+  if (/\bhat\b|\bberet\b|\bfedora\b|\bbonnet\b/.test(lower)) {
+    return { kind: 'accessory', description: 'wearing a small hat that matches its name, naturally positioned on its head' };
+  }
+
+  // Anatomical / plumage cues — all patterns validated against the fake bird catalog
+  if (/crowned/.test(lower)) {
+    // e.g. "Red-crowned Crane", "Black-crowned Fulmar" — exaggerate the crown marking
+    return { kind: 'anatomical', description: 'a dramatically oversized, vividly colored crown patch that radiates outward from the top of its head almost like a glowing halo' };
+  }
+  if (/\bdisco\b|\bglitter\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'extraordinarily iridescent plumage that catches light from every angle like a mirror-ball' };
+  }
+  if (/\bpearl\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'an opalescent pearl-like sheen across its entire plumage that shifts through soft iridescent hues depending on the angle of light' };
+  }
+  if (/\bmidnight\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'extraordinarily deep, light-absorbing matte-black plumage that seems to consume all light around it' };
+  }
+  if (/\bcosmic\b|\bgalactic\b|\bstellar\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'plumage with a deep-space quality: an inky base scattered with tiny luminous points of light, giving it a star-field appearance' };
+  }
+  if (/\bsunburst\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'a dramatic radiating starburst of contrasting feathers spreading outward from its chest like a halo' };
+  }
+  if (/\bcamouflage\b|\bcamo\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'plumage in a precise disruptive camouflage pattern of earthy tones that makes it nearly vanish against its background' };
+  }
+  if (/\bcyber\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'plumage overlaid with geometric circuit-board-like markings in electric colors, as if its feathers are living technology' };
+  }
+  if (/\bdead\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'ghostly pale, near-colorless plumage with hollow-looking dark-rimmed eyes, giving it a spectral appearance' };
+  }
+  if (/\bgiant\b|\bcolossal\b|\benormous\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'dramatically large size relative to the surrounding vegetation, towering over nearby branches' };
+  }
+
+  // Botanical / food-as-color cues — name tokens describe a color or texture
+  if (/\beggplant\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'deep purple-black plumage with a rich glossy sheen, like polished eggplant skin' };
+  }
+  if (/\bparsley\b/.test(lower)) {
+    // ~1-in-3 chance of the accessory version
+    return birdNameHash(birdName) % 3 === 0
+      ? { kind: 'accessory', description: 'wearing a small bright sprig of fresh parsley tucked neatly into its breast feathers like a boutonnière' }
+      : { kind: 'anatomical', description: 'bright leafy-green speckled markings scattered across its plumage like fresh parsley' };
+  }
+  if (/\blaurel\b/.test(lower)) {
+    // ~1-in-3 chance of an actual laurel wreath on its head
+    return birdNameHash(birdName) % 3 === 0
+      ? { kind: 'accessory', description: 'wearing a neatly woven laurel wreath balanced on top of its head like a champion\'s crown' }
+      : { kind: 'anatomical', description: 'a ring of dense layered overlapping feathers encircling its neck like a natural laurel wreath' };
+  }
+  if (/\bapple\b/.test(lower)) {
+    // ~1-in-3 chance of a tiny apple balanced on its head
+    return birdNameHash(birdName) % 3 === 0
+      ? { kind: 'accessory', description: 'balancing a small perfectly round red apple on top of its head with implausible confidence' }
+      : { kind: 'anatomical', description: 'vivid patches of polished red and bright green across its breast, like the skin of a two-toned apple' };
+  }
+  if (/\bjambalaya\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'a chaotically mixed plumage of warm spicy tones — oranges, reds, and deep golds swirled together in an irregular patchwork' };
+  }
+  if (/\bwasabi\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'vivid chartreuse-green plumage of startling intensity, almost neon against any natural background' };
+  }
+
+  // Gem / mineral / color cues — name tokens describe a material sheen or vivid hue
+  if (/\bemerald\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'jewel-like emerald-green plumage with a deep glassy iridescence, like a polished gemstone in direct light' };
+  }
+  if (/\bviolet\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'soft violet-hued plumage that shifts between blue and purple depending on the angle of light' };
+  }
+  if (/\bcobalt\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'intensely vivid cobalt-blue feathers that appear almost electrically saturated, as if lit from within' };
+  }
+  if (/\bamber\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'warm amber-toned plumage with a translucent honey-like quality that glows when backlit' };
+  }
+  if (/\bcopper\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'metallic copper-sheened feathers that catch sunlight with a warm reddish-gold glow' };
+  }
+  if (/\bgolden\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'lustrous golden-yellow plumage with a warm burnished gleam, as if every feather were gilded' };
+  }
+  if (/\bobsidian\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'glassy pitch-black plumage with a mirror-like obsidian sheen that reflects surroundings like polished volcanic glass' };
+  }
+  if (/\bchampagne\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'pale creamy-gold plumage with a soft effervescent shimmer, like champagne held up to the light' };
+  }
+  if (/\bcrystal\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'pale near-translucent plumage with a crystalline prismatic quality that scatters light into faint rainbow reflections' };
+  }
+
+  // Character / creature cues — name tokens suggest a personality or creature archetype
+  if (/\bbuccaneer\b/.test(lower)) {
+    // 50/50: jaunty eye patch vs. natural plumage mask
+    return birdNameHash(birdName) % 2 === 0
+      ? { kind: 'accessory', description: 'wearing a small jaunty eye patch over one eye, sitting naturally against its feathers, giving it a swashbuckling air' }
+      : { kind: 'anatomical', description: 'a bold contrasting eye-stripe pattern that sweeps dramatically across its face like a natural mask, giving it a dashing adventurous look' };
+  }
+  if (/\bastronaut\b/.test(lower)) {
+    // 50/50: clear bubble helmet vs. silvery spacesuit sheen
+    return birdNameHash(birdName) % 2 === 0
+      ? { kind: 'accessory', description: 'wearing a clear spherical space helmet fitted snugly over its head, slightly too large, with its plumage and beak visible inside' }
+      : { kind: 'anatomical', description: 'a full-body silvery iridescent sheen across its plumage, like a reflective spacesuit, with a slightly puffed suited-up silhouette' };
+  }
+  if (/\bparadiso\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'extravagantly long ribbon-like tail plumes in vivid colors that cascade and drift dramatically behind it' };
+  }
+  if (/\btotem\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'bold stacked horizontal bands of strongly contrasting colors running down its chest and belly, like a totem pole pattern' };
+  }
+  if (/\baxolotl\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'delicate frilly plume extensions fanning out from behind its head and neck, resembling the iconic external gill tufts of an axolotl' };
+  }
+  if (/\bclairvoyant\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'unusually large luminous eyes that seem to glow with a soft otherworldly inner light, giving it an uncannily knowing expression' };
+  }
+  if (/jelly[\s-]?bean/.test(lower)) {
+    return { kind: 'anatomical', description: 'plumage dotted with smooth oval spots of bright candy-like colors — greens, pinks, and yellows — scattered randomly across its body' };
+  }
+
+  // Emotion / bearing cues — name tokens suggest an expressive demeanor
+  if (/\bproud\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'chest held prominently forward and head raised high, feathers fanned in a self-important display of obvious pride' };
+  }
+  if (/\bhopeful\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'an alert upward gaze and expectant posture, as if awaiting something wonderful just out of frame' };
+  }
+  if (/\bshy\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'feathers slightly fluffed and head tilted modestly to one side, one eye half-averted in a charmingly bashful expression' };
+  }
+  if (/\blonely\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'feathers lightly ruffled and gaze directed wistfully into the middle distance, with a quietly contemplative bearing' };
+  }
+  if (/\bgentle\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'a relaxed soft posture with feathers smoothed and eyes half-closed in a calm contented expression' };
+  }
+  if (/\bcareless\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'delightfully disheveled feathers in an endearingly carefree state, as if it recently emerged from an enthusiastic dust bath and decided not to tidy up' };
+  }
+  if (/\brestless\b/.test(lower)) {
+    return { kind: 'anatomical', description: 'a visibly unsettled posture with tail bobbing, one foot slightly raised, and eyes darting alertly in multiple directions' };
+  }
+
+  return null;
+}
+
+const WILD_CARD_GENERIC_ANATOMICAL = [
+  'subtly oversized head relative to its body, giving it a comically top-heavy look',
+  'unusually long tail feathers that trail behind it like a bridal train',
+  'a crest or tuft of feathers that stands dramatically upright like a punk hairdo',
+  'an extraordinarily wide, flat bill that looks impractically large for its face',
+  'tiny vestigial wing stumps that make it look like it has perpetually folded T-rex arms',
+  'plumage that appears to change hue depending on the viewing angle, like a holographic sticker',
+];
+
+// ---------------------------------------------------------------------------
+// Multi-bird compositions (~20% of standard-path birds)
+// ---------------------------------------------------------------------------
+
+const MULTI_RATE = 20; // percent; uses hash range [WILD_CARD_RATE, WILD_CARD_RATE + MULTI_RATE)
+
+interface MultiCompositionTemplate {
+  /** Returns the subject+activity string that replaces "a {birdName} {pose}". */
+  describe: (birdName: string) => string;
+  /** Ensures all birds feel native and coherent in the scene. */
+  coherenceNote: string;
+  /** If true, excluded for flightless/poor-flier bird types. */
+  requiresFlight?: boolean;
+  /** If true, excluded when the habitat group is not water-adjacent. */
+  requiresWater?: boolean;
+}
+
+const MULTI_COMPOSITIONS: MultiCompositionTemplate[] = [
+  {
+    describe: (n) => `a small flock of ${n} foraging on the ground`,
+    coherenceNote: 'Each bird is at a different stage of foraging — one may be pecking at the ground, another scanning alertly with head raised, another walking between spots. They face independently in varied directions, their spacing unscripted and natural — not posed, not aligned, not staged, and not all performing the same motion simultaneously.',
+  },
+  {
+    describe: (n) => `a male and female ${n} side by side, one actively preening while the other rests or looks alertly into the distance`,
+    coherenceNote: 'The two birds show subtle plumage differences between sexes; they are engaged in different activities and feel naturally placed relative to each other — not mirroring each other or performing the same action.',
+  },
+  {
+    describe: (n) => `an adult ${n} feeding two begging fledglings`,
+    coherenceNote: 'The fledglings are slightly smaller and fluffier than the adult and hold their beaks open; all three birds are integrated naturally into the scene.',
+  },
+  {
+    describe: (n) => `two ${n} at the entrance to a nest cavity`,
+    coherenceNote: 'Both birds are oriented toward the nest entrance and appear engaged with nesting activity; the nest is integrated into natural surroundings.',
+  },
+  {
+    describe: (n) => `a loose group of ${n} roosting together on a shared perch`,
+    coherenceNote: 'The birds are spaced naturally along the perch with feathers relaxed in a resting posture; each faces a slightly different direction and looks independently at ease — not uniformly aligned, not posed or staged for a photograph.',
+  },
+  {
+    describe: (n) => `a loose flock of ${n} in flight against an open sky`,
+    coherenceNote: 'The birds are loosely spaced at varied distances and slightly different heights — not packed tightly or evenly spaced. Each bird is captured at a different phase of its wingbeat so no two birds look identical. The flock feels alive and unscripted, not synchronized or parade-like.',
+    requiresFlight: true,
+  },
+  {
+    describe: (n) => `two ${n} bathing together in a shallow pool, water droplets catching the light`,
+    coherenceNote: 'Both birds are independently splashing and bathing; the water surface shows natural turbulence from their movement. They are not posed symmetrically — each is caught mid-action in a slightly different position.',
+    requiresWater: true,
+  },
+];
+
+function selectMultiBirdComposition(birdName: string, habitatGroup: string): MultiCompositionTemplate | null {
+  const hash = birdNameHash(birdName);
+  if (!MULTI_ONLY && (hash < WILD_CARD_RATE || hash >= WILD_CARD_RATE + MULTI_RATE)) return null;
+
+  const birdType = extractBirdType(birdName);
+  const isFlightless = birdType ? FLIGHTLESS_OR_POOR_FLIER_TYPES.has(birdType) : false;
+  const isWaterAdjacent = WATER_ADJACENT_GROUPS.has(habitatGroup);
+  const eligible = MULTI_COMPOSITIONS.filter(
+    (c) => (!c.requiresFlight || !isFlightless) && (!c.requiresWater || isWaterAdjacent),
+  );
+
+  return eligible.length > 0 ? eligible[hash % eligible.length] : null;
+}
+
 function buildFakeImagePrompt(birdName: string): string {
-  const habitat = getHabitatForBird(birdName);
-  const pose = pickRandom(POSES);
+  const { habitat, group } = getHabitatForBird(birdName);
   const lighting = pickRandom(LIGHTING);
   const camera = pickRandom(CAMERA_STYLES);
   const overrideInstruction = FAKE_IMAGE_PROMPT_OVERRIDES[birdName];
 
-  return `Photorealistic wildlife photograph of a ${birdName} ${pose} in a ${habitat}, ${lighting}, shallow depth of field, ${camera}. The image must look like a real camera photo of the bird itself. Show only natural elements that belong in a bird photograph, such as branches, leaves, water, sky, rock, or grass. Do not include any human-made object anywhere in the frame. Do not include cameras, camera straps, lenses, tripods, people, hands, sketchbooks, notebooks, pens, pencils, paintbrushes, easels, drawings, paintings, illustrations, diagrams, text, labels, watermarks, frames, collages, cages, feeders, or multiple birds.${overrideInstruction ? ` ${overrideInstruction}` : ''}`;
+  const antiSilhouette = 'The bird must be clearly and directly lit so that its plumage colors and field marks are fully visible; it must never read as a silhouette, shadow shape, outline, or backlit form.';
+
+  const environmentClause = group === 'urban'
+    ? 'Show the bird in a realistic urban or suburban environment; human infrastructure such as power lines, building ledges, rooftops, fences, and park benches is permitted. Do not include people, hands, cameras, tripods, text, labels, watermarks, or cages.'
+    : 'Show only natural elements that belong in a bird photograph, such as branches, leaves, water, sky, rock, or grass. Do not include any human-made object anywhere in the frame. Do not include cameras, camera straps, lenses, tripods, people, hands, text, labels, watermarks, frames, collages, or cages.';
+
+  // Override path: takes full control of constraints (always single bird)
+  if (overrideInstruction) {
+    const pose = pickRandom(getCompatiblePoses(birdName, group));
+    return `Photorealistic wildlife photograph of a ${birdName} ${pose} in a ${habitat}, ${lighting}, shallow depth of field, ${camera}. The image must look like a real camera photo of the bird itself. ${antiSilhouette} ${overrideInstruction}`;
+  }
+
+  const hash = birdNameHash(birdName);
+
+  // Name-cue wild-card path: single bird, driven by name token (~65% of matched birds)
+  const nameCue = detectWildCardCue(birdName);
+  if (!MULTI_ONLY && nameCue && hash < NAME_CUE_RATE) {
+    const pose = pickRandom(getCompatiblePoses(birdName, group));
+    if (nameCue.kind === 'accessory') {
+      return `Photorealistic wildlife photograph of a ${birdName} ${pose} in a ${habitat}, ${lighting}, shallow depth of field, ${camera}. The image must look like a real camera photo of the bird itself. ${antiSilhouette} This bird is ${nameCue.description}. The accessory must look naturally worn or balanced — not held, placed beside it, or floating in the air. Outside of that single accessory, ${environmentClause} Do not include multiple birds.`;
+    }
+    return `Photorealistic wildlife photograph of a ${birdName} ${pose} in a ${habitat}, ${lighting}, shallow depth of field, ${camera}. The image must look like a real camera photo of the bird itself. ${antiSilhouette} This bird has ${nameCue.description}. ${environmentClause} Do not include multiple birds.`;
+  }
+
+  // Generic wild-card path (~12%, hash < WILD_CARD_RATE): anatomical absurdity, single bird
+  if (!MULTI_ONLY && hash < WILD_CARD_RATE) {
+    const pose = pickRandom(getCompatiblePoses(birdName, group));
+    const generic = WILD_CARD_GENERIC_ANATOMICAL[hash % WILD_CARD_GENERIC_ANATOMICAL.length];
+    return `Photorealistic wildlife photograph of a ${birdName} ${pose} in a ${habitat}, ${lighting}, shallow depth of field, ${camera}. The image must look like a real camera photo of the bird itself. ${antiSilhouette} This bird has ${generic}. ${environmentClause} Do not include multiple birds.`;
+  }
+
+  // Multi-bird composition path (~20%, hash in [WILD_CARD_RATE, WILD_CARD_RATE + MULTI_RATE); or all birds when --multi-only)
+  const composition = selectMultiBirdComposition(birdName, group);
+  if (composition) {
+    const asyncNote = 'Each bird in the scene behaves independently — they are not all performing the same action or gesture at the same moment; their postures, directions, and activities vary naturally as if caught in an unscripted candid moment.';
+    return `Photorealistic wildlife photograph of ${composition.describe(birdName)} in a ${habitat}, ${lighting}, shallow depth of field, ${camera}. The image must look like a real camera photo of the birds in their natural setting. ${antiSilhouette} ${composition.coherenceNote} ${asyncNote} ${environmentClause}`;
+  }
+
+  // Standard single-bird path
+  const pose = pickRandom(getCompatiblePoses(birdName, group));
+  return `Photorealistic wildlife photograph of a ${birdName} ${pose} in a ${habitat}, ${lighting}, shallow depth of field, ${camera}. The image must look like a real camera photo of the bird itself. ${antiSilhouette} ${environmentClause} Do not include multiple birds.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1207,7 +1580,68 @@ async function main() {
   return mainReal();
 }
 
+async function uploadSamplesFromDisk(): Promise<void> {
+  if (!DRY_RUN && (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY)) {
+    console.error('Missing R2 credentials. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY.');
+    process.exit(1);
+  }
+
+  if (!existsSync(FAKE_SAMPLES_DIR)) {
+    console.error(`No samples directory found at ${FAKE_SAMPLES_DIR}. Run with --fake --sample N first.`);
+    process.exit(1);
+  }
+
+  const slugs = readdirSync(FAKE_SAMPLES_DIR).filter((name) => {
+    const full = join(FAKE_SAMPLES_DIR, name);
+    return existsSync(join(full, 'image.webp')) && existsSync(join(full, 'thumb.webp')) && existsSync(join(full, 'fact.json'));
+  });
+
+  if (slugs.length === 0) {
+    console.error('No complete sample directories found (need image.webp, thumb.webp, fact.json).');
+    process.exit(1);
+  }
+
+  log(`[FAKE] Uploading ${slugs.length} samples from disk to R2${DRY_RUN ? ' (dry-run)' : ''}...`);
+  log('');
+
+  let uploaded = 0;
+  let failed = 0;
+
+  for (const slug of slugs) {
+    const sampleDir = join(FAKE_SAMPLES_DIR, slug);
+    const prefix = `birds/fake/${slug}`;
+    log(`Uploading: ${slug}`);
+    try {
+      const imageWebp = readFileSync(join(sampleDir, 'image.webp'));
+      const thumbWebp = readFileSync(join(sampleDir, 'thumb.webp'));
+      const factJson = readFileSync(join(sampleDir, 'fact.json'), 'utf-8');
+
+      await uploadToR2(`${prefix}/image.webp`, imageWebp, 'image/webp', IMAGE_CACHE_CONTROL);
+      await uploadToR2(`${prefix}/thumb.webp`, thumbWebp, 'image/webp', IMAGE_CACHE_CONTROL);
+      await uploadToR2(`${prefix}/image-thumb.webp`, thumbWebp, 'image/webp', IMAGE_CACHE_CONTROL);
+      await uploadToR2(`${prefix}/fact.json`, factJson, 'application/json', FACT_CACHE_CONTROL);
+
+      log(`  ✓ Done`);
+      uploaded++;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      warn(`  ✗ Failed: ${message}`);
+      failed++;
+    }
+    log('');
+  }
+
+  log('='.repeat(50));
+  log(`Done! ${uploaded} uploaded, ${failed} failed.`);
+
+  if (failed > 0) process.exit(1);
+}
+
 async function mainFake() {
+  if (FROM_SAMPLES) {
+    return uploadSamplesFromDisk();
+  }
+
   const singleBird = getFlagValue('--bird');
   const isSampleMode = SAMPLE_COUNT !== undefined;
 

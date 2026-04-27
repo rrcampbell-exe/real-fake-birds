@@ -16,7 +16,9 @@ const GDPR_COUNTRY_CODES = new Set([
 
 const REGION_COOKIE = 'rfb-region';
 
-function buildCsp(nonce: string): string {
+export function buildCsp(nonce: string): string {
+  // Keep this host in sync with NEXT_PUBLIC_POSTHOG_HOST used by AnalyticsProvider.
+  const postHogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com';
   const directives = [
     `default-src 'self'`,
     // 'strict-dynamic' lets scripts loaded by a nonced script load further scripts.
@@ -28,7 +30,7 @@ function buildCsp(nonce: string): string {
     `img-src 'self' data: https://upload.wikimedia.org https://cdn.realfakebirds.app`,
     `font-src 'self'`,
     `media-src 'self'`,
-    `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://challenges.cloudflare.com https://vitals.vercel-insights.com`,
+    `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://challenges.cloudflare.com https://vitals.vercel-insights.com ${postHogHost}`,
     `frame-src https://challenges.cloudflare.com`,
     `object-src 'none'`,
     `base-uri 'self'`,

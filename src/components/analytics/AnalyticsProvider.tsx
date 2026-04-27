@@ -41,20 +41,26 @@ export default function AnalyticsProvider() {
       return;
     }
 
-    posthog.init(postHogKey, {
-      api_host: postHogHost,
-      autocapture: false,
-      capture_pageview: false,
-      capture_pageleave: false,
-      persistence: 'localStorage+cookie',
-      person_profiles: 'identified_only',
-    });
+    try {
+      posthog.init(postHogKey, {
+        api_host: postHogHost,
+        autocapture: false,
+        capture_pageview: false,
+        capture_pageleave: false,
+        persistence: 'localStorage+cookie',
+        person_profiles: 'identified_only',
+      });
 
-    posthog.onFeatureFlags(() => {
-      window.dispatchEvent(new Event('analytics-feature-flags-loaded'));
-    });
+      posthog.onFeatureFlags(() => {
+        window.dispatchEvent(new Event('analytics-feature-flags-loaded'));
+      });
 
-    hasInitializedPostHog = true;
+      hasInitializedPostHog = true;
+    } catch (err) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[analytics] PostHog initialization failed:', err);
+      }
+    }
   }, [consentVersion]);
 
   useEffect(() => {

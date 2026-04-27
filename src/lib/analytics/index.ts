@@ -136,7 +136,10 @@ export function track(
           : properties
       )
     );
-  } catch {
+  } catch (err) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[analytics] Failed to capture event:', eventName, err);
+    }
     return;
   }
 }

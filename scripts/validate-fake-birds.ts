@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { slugifyBirdName } from '../src/lib/utils/slugify';
@@ -39,6 +39,21 @@ const MODERATION_RETRY_BASE_MS = 1500;
 
 const MODERATE_TEXT = process.argv.includes('--moderate-text') || process.argv.includes('--moderate');
 const MODERATE_IMAGES = process.argv.includes('--moderate-images') || process.argv.includes('--moderate');
+const QUARANTINE = process.argv.includes('--quarantine');
+
+const BIRDS_FILE = (() => {
+  const index = process.argv.indexOf('--birds-file');
+  if (index === -1) {
+    return undefined;
+  }
+
+  const raw = process.argv[index + 1];
+  if (!raw || raw.trim() === '' || raw.startsWith('--')) {
+    throw new Error('The --birds-file flag must be followed by a non-empty path.');
+  }
+
+  return raw;
+})();
 
 const LIMIT = (() => {
   const index = process.argv.indexOf('--limit');
@@ -384,13 +399,64 @@ function asNonEmptyString(value: unknown): string | null {
 }
 
 function loadExpectedBirds(): ExpectedBird[] {
-  const birdNames = JSON.parse(readFileSync(DATA_PATH, 'utf-8')) as string[];
+  const sourcePath = BIRDS_FILE ?? DATA_PATH;
+  if (BIRDS_FILE && !existsSync(BIRDS_FILE)) {
+    throw new Error(`--birds-file path does not exist: ${BIRDS_FILE}`);
+  }
+  const birdNames = JSON.parse(readFileSync(sourcePath, 'utf-8')) as string[];
   const expected = birdNames.map((birdName) => ({
     birdName,
     birdKey: slugifyBirdName(birdName),
   }));
 
   return LIMIT ? expected.slice(0, LIMIT) : expected;
+}
+
+async function quarantineBirds(flaggedKeys: string[]): Promise<void> {
+  if (flaggedKeys.length === 0) return;
+
+  // Remove from fake-birds.json
+  const allNames = JSON.parse(readFileSync(DATA_PATH, 'utf-8')) as string[];
+  const flaggedKeySet = new Set(flaggedKeys);
+  const surviving = allNames.filter((name) => !flaggedKeySet.has(slugifyBirdName(name)));
+  writeFileSync(DATA_PATH, JSON.stringify(surviving, null, 2) + '\n');
+  log(`Quarantine: removed ${allNames.length - surviving.length} bird(s) from fake-birds.json`);
+
+  // Delete R2 prefixes for flagged birds
+  const client = await getR2Client();
+  const { ListObjectsV2Command, DeleteObjectsCommand } = await import('@aws-sdk/client-s3');
+  const keysToDelete: string[] = [];
+
+  for (const birdKey of flaggedKeys) {
+    const prefix = `birds/fake/${birdKey}/`;
+    let continuationToken: string | undefined;
+    do {
+      const response = await client.send(
+        new ListObjectsV2Command({ Bucket: R2_BUCKET_NAME, Prefix: prefix, ContinuationToken: continuationToken }),
+      ) as { Contents?: Array<{ Key?: string }>; IsTruncated?: boolean; NextContinuationToken?: string };
+      for (const item of response.Contents ?? []) {
+        if (item.Key) keysToDelete.push(item.Key);
+      }
+      continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
+    } while (continuationToken);
+  }
+
+  if (keysToDelete.length === 0) {
+    log('Quarantine: no R2 objects found for flagged birds.');
+    return;
+  }
+
+  for (let i = 0; i < keysToDelete.length; i += 1000) {
+    const batch = keysToDelete.slice(i, i + 1000);
+    await client.send(
+      new DeleteObjectsCommand({
+        Bucket: R2_BUCKET_NAME,
+        Delete: { Objects: batch.map((key) => ({ Key: key })), Quiet: false },
+      }),
+    );
+  }
+
+  log(`Quarantine: deleted ${keysToDelete.length} R2 object(s) across ${flaggedKeys.length} prefix(es).`);
 }
 
 function buildObjectMap(keys: string[]): Map<string, Set<string>> {
@@ -620,7 +686,16 @@ async function main() {
     warn(`First moderation issue: ${moderationIssues[0]?.message}`);
   }
 
-  process.exitCode = completenessIssues.length > 0 || moderationIssues.length > 0 ? 1 : 0;
+  const allIssues = [...completenessIssues, ...moderationIssues];
+  if (QUARANTINE && allIssues.length > 0) {
+    const flaggedKeys = [...new Set(allIssues.map((issue) => issue.birdKey))];
+    warn(`Quarantining ${flaggedKeys.length} flagged bird(s): ${flaggedKeys.join(', ')}`);
+    await quarantineBirds(flaggedKeys);
+    // Exit cleanly after quarantine — remaining birds are safe
+    process.exitCode = 0;
+  } else {
+    process.exitCode = allIssues.length > 0 ? 1 : 0;
+  }
 }
 
 void main().catch((error) => {
