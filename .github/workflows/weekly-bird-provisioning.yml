@@ -2,8 +2,9 @@ name: Weekly Bird Provisioning
 
 on:
   schedule:
-    # 06:00 UTC Monday = midnight US Central (CDT, UTC-6) — aligns with weekly challenge rollover
-    - cron: '0 6 * * 1'
+    # 00:07 America/Chicago Monday — aligns with weekly challenge rollover; off-minute reduces GitHub queue load
+    - cron: '7 0 * * 1'
+      timezone: "America/Chicago"
   workflow_dispatch:
     inputs:
       fake_count:
@@ -180,6 +181,15 @@ jobs:
         with:
           name: moderation-report
           path: scripts/.tmp/fake-bird-validation-report.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Upload seed run reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seed-run-reports
+          path: scripts/.tmp/seed-cdn-runs/
           if-no-files-found: ignore
           retention-days: 30
 
