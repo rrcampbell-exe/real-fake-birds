@@ -30,7 +30,7 @@
     "backfill:sciname": "npx tsx scripts/backfill-cdn-sciname.ts",
     "backfill:sciname:dry-run": "npx tsx scripts/backfill-cdn-sciname.ts --dry-run",
     "migrate": "SUPABASE_PROJECT_REF=pyizgeecjvbxgbjwpcjj supabase db push",
-    "migrate:prod": "SUPABASE_PROJECT_REF=bbmuqhogdpadbirwllrw npm run migrate"
+    "migrate:prod": "SUPABASE_PROJECT_REF=bbmuqhogdpadbirwllrw supabase db push"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.0",

@@ -226,6 +226,18 @@ jobs:
 
       - name: Create auto-merge PR
         if: ${{ env.DRY_RUN != 'true' && steps.commit.outputs.has_changes == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_BODY: |
+            Automated weekly bird provisioning.
+
+            - Exported real-bird catalogs from preview and production Supabase
+            - Seeded any missing real-bird CDN assets
+            - Generated and seeded ${{ env.FAKE_COUNT }} new fake birds
+            - Moderated new fake birds; quarantined any flagged outputs
+            - Regenerated CDN manifest with updated plausibility scores
+
+            Moderation report is attached as a workflow artifact.
         run: |
           BRANCH="${{ steps.commit.outputs.branch }}"
           TODAY="$(date -u +%Y-%m-%d)"
@@ -233,15 +245,5 @@ jobs:
             --base main \
             --head "$BRANCH" \
             --title "chore(birds): weekly bird provisioning ${TODAY}" \
-            --body "Automated weekly bird provisioning.
-
-- Exported real-bird catalogs from preview and production Supabase
-- Seeded any missing real-bird CDN assets
-- Generated and seeded ${{ env.FAKE_COUNT }} new fake birds
-- Moderated new fake birds; quarantined any flagged outputs
-- Regenerated CDN manifest with updated plausibility scores
-
-Moderation report is attached as a workflow artifact."
+            --body "$PR_BODY"
           gh pr merge --auto --squash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
