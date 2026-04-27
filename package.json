@@ -18,6 +18,8 @@
     "seed:force": "npx tsx scripts/seed-cdn.ts",
     "seed:fake": "npx tsx scripts/seed-cdn.ts --fake --skip-existing",
     "seed:fake:force": "npx tsx scripts/seed-cdn.ts --fake",
+    "seed:fake:multi-sample": "npx tsx scripts/seed-cdn.ts --fake --multi-only --sample 10",
+    "seed:fake:from-samples": "npx tsx scripts/seed-cdn.ts --fake --from-samples",
     "generate:fake": "npx tsx scripts/generate-fake-birds.ts",
     "generate:fake:seed": "npx tsx scripts/generate-fake-birds.ts --seed",
     "prune:fake": "npx tsx scripts/prune-fake-birds.ts",
@@ -26,7 +28,9 @@
     "validate:fake:moderate": "npx tsx scripts/validate-fake-birds.ts --moderate-text",
     "validate:fake:moderate:images": "npx tsx scripts/validate-fake-birds.ts --moderate-text --moderate-images",
     "backfill:sciname": "npx tsx scripts/backfill-cdn-sciname.ts",
-    "backfill:sciname:dry-run": "npx tsx scripts/backfill-cdn-sciname.ts --dry-run"
+    "backfill:sciname:dry-run": "npx tsx scripts/backfill-cdn-sciname.ts --dry-run",
+    "migrate": "SUPABASE_PROJECT_REF=pyizgeecjvbxgbjwpcjj supabase db push",
+    "migrate:prod": "SUPABASE_PROJECT_REF=bbmuqhogdpadbirwllrw npm run migrate"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.0",
