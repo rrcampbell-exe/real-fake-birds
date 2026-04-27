@@ -107,6 +107,7 @@ function createGameState(overrides: Partial<ReturnType<typeof useGameState>> = {
     seedsBalance: 100,
     seedsEarned: 0,
     showQuestion: true,
+    isOfflineReplay: false,
     specialHintAction: null,
     tryAgain: vi.fn(),
     ...overrides,

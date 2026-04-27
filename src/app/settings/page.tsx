@@ -30,6 +30,7 @@ import {
   unlockThemeName,
   writeBirdScore,
 } from '@/lib/utils/player-progress';
+import { hapticMedium } from '@/lib/haptics';
 
 function shouldShowIosAudioNotice(): boolean {
   if (typeof window === 'undefined') return false;
@@ -171,6 +172,7 @@ export default function SettingsPage() {
               seed_cost: pendingPurchase.seedCost,
             });
             trackFirstPurchase('theme');
+            void hapticMedium();
           }
 
           setPendingPurchaseThemeName(null);
@@ -202,6 +204,7 @@ export default function SettingsPage() {
         seed_cost: pendingPurchase.seedCost,
       });
       trackFirstPurchase('theme');
+      void hapticMedium();
       setPendingPurchaseThemeName(null);
     }
   };

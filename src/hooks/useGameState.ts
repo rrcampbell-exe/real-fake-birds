@@ -12,6 +12,7 @@ import {
   recordBirdEncounter,
   revealBirdImage,
   writeCurrentRoundJournalBirdKey,
+  readBirdJournal,
 } from '@/lib/utils/bird-journal';
 import {
   CURRENT_HINTS_STORAGE_KEY,
@@ -112,6 +113,7 @@ export function useGameState(options?: UseGameStateOptions) {
   const [fakeBirdImageRevealed, setFakeBirdImageRevealed] = useState(false);
   const [fakeImageNotice, setFakeImageNotice] = useState<string | null>(null);
   const [isSignedIn, setIsSignedIn] = useState(false);
+  const [isOfflineReplay, setIsOfflineReplay] = useState(false);
   const flushTimeoutRef = useRef<number | null>(null);
   const birdScore = useStoredJson(BIRD_SCORE_STORAGE_KEY, defaultBirdScore);
   const birdJournalStore = useStoredJson(BIRD_JOURNAL_STORAGE_KEY, {});
@@ -159,6 +161,7 @@ export function useGameState(options?: UseGameStateOptions) {
     setFakeImageNotice(null);
     setHintLoading({ fact: false, image: false });
     setFakeBirdImageRevealed(false);
+    setIsOfflineReplay(false);
     writeCurrentRoundJournalBirdKey(null);
   }, [birdDataKey, hintsKey]);
 
@@ -253,6 +256,63 @@ export function useGameState(options?: UseGameStateOptions) {
   useEffect(() => {
     trackSessionStart(mode);
   }, [mode]);
+
+  // When a fetch fails and the device is offline, fall back to a random bird
+  // from the player's journal so they can keep playing without a network.
+  useEffect(() => {
+    if (!isError) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine) return;
+
+    const journal = readBirdJournal();
+    const entries = Object.values(normalizeBirdJournalStore(journal));
+    if (entries.length === 0) return;
+
+    const entry = entries[Math.floor(Math.random() * entries.length)];
+    if (!entry) return;
+
+    setIsError(false);
+    setIsOfflineReplay(true);
+    setIsReal(entry.isReal);
+    setSciName(entry.metadata.sciName ?? null);
+    setRegionLabel(entry.metadata.regionLabel ?? null);
+    setFact(entry.metadata.fact ?? null);
+    setSummary(entry.metadata.summary ?? null);
+    setArticleUrl(entry.metadata.articleUrl ?? null);
+    setImageUrl(entry.metadata.imageUrl ?? null);
+    setImageThumbUrl(entry.metadata.imageThumbUrl ?? null);
+    setFallbackImageUrl(null);
+    setContentSource(entry.metadata.contentSource ?? null);
+    setAttribution(entry.metadata.attribution ?? null);
+    setDescription(entry.metadata.description ?? null);
+    setIsLoading(false);
+    setBirdData(entry.birdName);
+  }, [isError]);
+
+  // Background connectivity polling while in offline replay mode.
+  // When connectivity is restored, silently advance to the next round.
+  useEffect(() => {
+    if (!isOfflineReplay || hasAnswered) return;
+
+    const POLL_INTERVAL_MS = 30_000;
+    const timerId = window.setInterval(() => {
+      if (typeof navigator !== 'undefined' && navigator.onLine) {
+        resetRoundState();
+        setFetchKey((k) => k + 1);
+      }
+    }, POLL_INTERVAL_MS);
+
+    const handleOnline = () => {
+      resetRoundState();
+      setFetchKey((k) => k + 1);
+    };
+
+    window.addEventListener('online', handleOnline, { once: true });
+
+    return () => {
+      window.clearInterval(timerId);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [isOfflineReplay, hasAnswered, resetRoundState]);
 
   useEffect(() => {
     if (!hasSupabaseEnv()) {
@@ -579,6 +639,7 @@ export function useGameState(options?: UseGameStateOptions) {
     fakeImageNotice,
     seedsBalance: birdScore.seeds,
     showQuestion,
+    isOfflineReplay,
     handleAnswer,
     requestHint,
     revealFakeBirdImage,

@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { WifiOff } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useGameState } from '@/hooks/useGameState';
@@ -190,6 +191,7 @@ export default function GameSection() {
     fakeImageNotice,
     seedsBalance,
     showQuestion,
+    isOfflineReplay,
     handleAnswer,
     requestHint,
     revealFakeBirdImage,
@@ -294,8 +296,77 @@ export default function GameSection() {
     };
   }, [activeToastRoundId, currentToastIndex, expiredToastRoundId, sortedToasts]);
 
+  // Pull-to-refresh: detect a downward drag from the page top and trigger tryAgain.
+  const containerRef = useRef<HTMLDivElement>(null);
+  const pullStartY = useRef<number | null>(null);
+  const [isPulling, setIsPulling] = useState(false);
+  const PULL_THRESHOLD = 72;
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (window.scrollY === 0) {
+        pullStartY.current = e.touches[0]?.clientY ?? null;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (pullStartY.current === null) return;
+      const deltaY = (e.touches[0]?.clientY ?? 0) - pullStartY.current;
+      if (deltaY > 0 && window.scrollY === 0) {
+        setIsPulling(deltaY >= PULL_THRESHOLD);
+        e.preventDefault();
+      }
+    };
+
+    const handleTouchEnd = () => {
+      if (isPulling) {
+        tryAgain();
+      }
+      pullStartY.current = null;
+      setIsPulling(false);
+    };
+
+    container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    container.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isPulling, tryAgain]);
+
   return (
-    <div className="box-border flex min-h-[calc(100dvh-7rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] flex-1 flex-col items-center justify-center gap-6 py-6 md:min-h-0 md:py-4">
+    <div
+      ref={containerRef}
+      className="box-border flex min-h-[calc(100dvh-7rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] flex-1 flex-col items-center justify-center gap-6 py-6 md:min-h-0 md:py-4"
+    >
+      {isPulling && (
+        <div className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center pt-3">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-1.5 text-xs font-semibold text-[var(--color-muted)] shadow-[var(--shadow-card)]">
+            <motion.span
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
+              className="inline-block"
+            >
+              ↻
+            </motion.span>
+            Release to refresh
+          </div>
+        </div>
+      )}
+      {isOfflineReplay && (
+        <div className="w-full max-w-md mx-auto px-4">
+          <div className="flex items-center gap-2 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-2 text-xs font-medium text-[var(--color-muted)]">
+            <WifiOff size={13} className="shrink-0 text-[var(--color-error)]" />
+            <span>You're offline. Playing from your journal.</span>
+          </div>
+        </div>
+      )}
       {/* Title + slogan — visible only on mobile (desktop shows it in TopNav) */}
       <div className="text-center px-4 md:hidden">
         <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-[0.05em]">

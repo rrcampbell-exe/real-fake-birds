@@ -14,7 +14,10 @@ export default function Error({ onTryAgain }: ErrorProps) {
   const [isOffline, setIsOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
 
   useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
+    const handleOnline = () => {
+      setIsOffline(false);
+      onTryAgain();
+    };
     const handleOffline = () => setIsOffline(true);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -22,7 +25,7 @@ export default function Error({ onTryAgain }: ErrorProps) {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
+  }, [onTryAgain]);
 
   useEffect(() => {
     play('error');
