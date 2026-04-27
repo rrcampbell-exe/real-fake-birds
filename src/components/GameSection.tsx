@@ -33,6 +33,9 @@ const TOAST_LIFETIME_ROUTINE_MS = 3000;
 const TOAST_LIFETIME_EXTENDED_MS = 5200;
 const TOAST_GAP_MS = 300;
 
+/** Minimum downward drag distance (px) from the page top to trigger a refresh. */
+const PULL_TO_REFRESH_THRESHOLD_PX = 72;
+
 function buildDailyStreakToastDetail(roundResult: GameRoundResult): string {
   return roundResult.dailyMissionStreak
     ? `Your daily streak is now ${roundResult.dailyMissionStreak} day${roundResult.dailyMissionStreak > 1 ? 's' : ''}! Have +${roundResult.missionSetBonusSeedsEarned} bonus seeds as a treat.`
@@ -297,10 +300,10 @@ export default function GameSection() {
   }, [activeToastRoundId, currentToastIndex, expiredToastRoundId, sortedToasts]);
 
   // Pull-to-refresh: detect a downward drag from the page top and trigger tryAgain.
+  // The threshold of 72px balances sensitivity and accidental trigger prevention.
   const containerRef = useRef<HTMLDivElement>(null);
   const pullStartY = useRef<number | null>(null);
   const [isPulling, setIsPulling] = useState(false);
-  const PULL_THRESHOLD = 72;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -314,9 +317,15 @@ export default function GameSection() {
 
     const handleTouchMove = (e: TouchEvent) => {
       if (pullStartY.current === null) return;
+      // Re-check scroll position on each move to handle subtle scrolls between start and move.
+      if (window.scrollY > 0) {
+        pullStartY.current = null;
+        setIsPulling(false);
+        return;
+      }
       const deltaY = (e.touches[0]?.clientY ?? 0) - pullStartY.current;
-      if (deltaY > 0 && window.scrollY === 0) {
-        setIsPulling(deltaY >= PULL_THRESHOLD);
+      if (deltaY > 0) {
+        setIsPulling(deltaY >= PULL_TO_REFRESH_THRESHOLD_PX);
         e.preventDefault();
       }
     };

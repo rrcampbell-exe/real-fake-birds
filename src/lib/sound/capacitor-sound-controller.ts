@@ -38,6 +38,12 @@ const DEFAULT_SETTINGS: SoundSettings = {
   musicVolume: 1,
 };
 
+/** Multiplier applied to SFX volume when a sound runs as a looping background effect. */
+const LOOP_VOLUME_MULTIPLIER = 0.08;
+
+/** Multiplier applied to music volume for the theme song to match the web mix level. */
+const THEME_SONG_VOLUME_MULTIPLIER = 0.18;
+
 type NativeAudioModule = typeof import('@capacitor-community/native-audio');
 
 /**
@@ -114,8 +120,8 @@ export class CapacitorSoundController implements SoundController {
           });
           this.preloaded.add(assetId);
         }
-        await NativeAudio.play({ assetId });
         await NativeAudio.setVolume({ assetId, volume: this.settings.sfxVolume });
+        await NativeAudio.play({ assetId });
       } catch {
         // Ignore playback errors.
       }
@@ -142,7 +148,7 @@ export class CapacitorSoundController implements SoundController {
           this.preloaded.add(assetId);
         }
         await NativeAudio.loop({ assetId });
-        await NativeAudio.setVolume({ assetId, volume: this.settings.sfxVolume * 0.08 });
+        await NativeAudio.setVolume({ assetId, volume: this.settings.sfxVolume * LOOP_VOLUME_MULTIPLIER });
       } catch {
         this.activeLoops.delete(assetId);
       }
@@ -195,8 +201,8 @@ export class CapacitorSoundController implements SoundController {
           this.preloaded.add(songId);
         }
         this.activeThemeSongId = songId;
+        await NativeAudio.setVolume({ assetId: songId, volume: this.settings.musicVolume * THEME_SONG_VOLUME_MULTIPLIER });
         await NativeAudio.loop({ assetId: songId });
-        await NativeAudio.setVolume({ assetId: songId, volume: this.settings.musicVolume * 0.18 });
       } catch {
         this.activeThemeSongId = null;
       }
