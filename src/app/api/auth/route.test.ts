@@ -733,4 +733,229 @@ describe('auth route', () => {
       ])
     ).toBe(false);
   });
+
+  describe('weekly leaderboard rollover', () => {
+    const STALE_WEEK_START = '2020-01-06';
+
+    const staleLeaderboardRow = {
+      user_id: 'user-1',
+      username_canonical: null,
+      current_week_start: STALE_WEEK_START,
+      weekly_birds_seen: 0,
+      weekly_birds_identified: 0,
+      weekly_seeds_earned: 0,
+      weekly_best_streak: 0,
+      weekly_new_birds_discovered: 0,
+      weekly_fake_birds_identified: 0,
+      weekly_real_birds_identified: 0,
+      weekly_unique_birds_seen: 0,
+      weekly_seen_bird_keys: [],
+    };
+
+    const minimalProgressBody = {
+      action: 'sync-local-progress',
+      progress: {
+        score: { birdsSeen: 0, birdsIdentified: 0, currentStreak: 0, bestStreak: 0, currentDailyStreak: 0, bestDailyStreak: 0, seeds: 0 },
+        unlockedThemes: [],
+        milestones: [],
+        dailyChallengeHistory: [],
+        dailyMissionHistory: [],
+        journalEntries: [],
+        birdhouse: { real: [], fake: [], updatedAt: '2020-01-01T00:00:00.000Z' },
+      },
+    };
+
+    it('finalization update uses .lt guard so the reset cannot be silently skipped', async () => {
+      mockedHasSupabaseEnv.mockReturnValue(true);
+      mockAuthenticatedUser();
+
+      const finalizationUpdateLt = vi.fn().mockResolvedValue({ count: 1, error: null });
+      const finalizationUpdateEq = vi.fn().mockReturnValue({ lt: finalizationUpdateLt });
+      const safetyNetLt = vi.fn().mockResolvedValue({ count: 0, error: null });
+      const safetyNetEq = vi.fn().mockReturnValue({ lt: safetyNetLt });
+
+      const leaderboardUpdate = vi.fn()
+        .mockReturnValueOnce({ eq: finalizationUpdateEq }) // finalization
+        .mockReturnValueOnce({ eq: safetyNetEq });         // safety net
+
+      mockedCreateSupabaseAdminClient.mockReturnValue({
+        from: vi.fn((table: string) => {
+          if (table === 'leaderboard_stats') {
+            return {
+              select: vi.fn().mockReturnValue({
+                not: vi.fn().mockReturnValue({
+                  lt: vi.fn().mockResolvedValue({ data: [staleLeaderboardRow] }),
+                }),
+              }),
+              update: leaderboardUpdate,
+              upsert: vi.fn().mockResolvedValue({ error: null }),
+            };
+          }
+
+          if (table === 'player_progress') {
+            return {
+              select: vi.fn().mockReturnValue({
+                in: vi.fn().mockResolvedValue({ data: [] }),
+              }),
+              upsert: vi.fn().mockResolvedValue({ error: null }),
+            };
+          }
+
+          if (table === 'profiles') {
+            return {
+              select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+                }),
+              }),
+            };
+          }
+
+          if (table === 'birdhouse') {
+            return {
+              select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+                }),
+              }),
+              upsert: vi.fn().mockResolvedValue({ error: null }),
+            };
+          }
+
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+              }),
+            }),
+            upsert: vi.fn().mockResolvedValue({ error: null }),
+          };
+        }),
+      } as never);
+
+      const response = await POST(
+        new Request('http://localhost/api/auth', {
+          method: 'POST',
+          body: JSON.stringify(minimalProgressBody),
+          headers: { 'Content-Type': 'application/json' },
+        }) as never
+      );
+
+      expect(response.status).toBe(200);
+
+      // Finalization: update includes previous_week_start and reset weekly fields
+      expect(leaderboardUpdate).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          current_week_start: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+          weekly_birds_seen: 0,
+          weekly_seen_bird_keys: [],
+          previous_week_start: STALE_WEEK_START,
+          previous_week_participated: false,
+        }),
+        { count: 'exact' }
+      );
+
+      // Finalization update uses .lt not .eq so it cannot silently miss a row
+      // that was already advanced to the new week by another write path
+      expect(finalizationUpdateEq).toHaveBeenCalledWith('user_id', 'user-1');
+      expect(finalizationUpdateLt).toHaveBeenCalledWith(
+        'current_week_start',
+        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)
+      );
+
+      // Safety-net update fires and also uses .lt
+      expect(leaderboardUpdate).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ weekly_birds_seen: 0, weekly_seen_bird_keys: [] })
+      );
+      expect(safetyNetEq).toHaveBeenCalledWith('user_id', 'user-1');
+      expect(safetyNetLt).toHaveBeenCalledWith(
+        'current_week_start',
+        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)
+      );
+    });
+
+    it('sync-local-progress fires safety-net weekly reset even when finalization found no stale rows', async () => {
+      mockedHasSupabaseEnv.mockReturnValue(true);
+      mockAuthenticatedUser();
+
+      const safetyNetLt = vi.fn().mockResolvedValue({ count: 0, error: null });
+      const safetyNetEq = vi.fn().mockReturnValue({ lt: safetyNetLt });
+      const leaderboardUpdate = vi.fn().mockReturnValue({ eq: safetyNetEq });
+
+      mockedCreateSupabaseAdminClient.mockReturnValue({
+        from: vi.fn((table: string) => {
+          if (table === 'leaderboard_stats') {
+            return {
+              select: vi.fn().mockReturnValue({
+                not: vi.fn().mockReturnValue({
+                  lt: vi.fn().mockResolvedValue({ data: [] }), // no stale rows
+                }),
+              }),
+              update: leaderboardUpdate,
+              upsert: vi.fn().mockResolvedValue({ error: null }),
+            };
+          }
+
+          if (table === 'player_progress') {
+            return { upsert: vi.fn().mockResolvedValue({ error: null }) };
+          }
+
+          if (table === 'profiles') {
+            return {
+              select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+                }),
+              }),
+            };
+          }
+
+          if (table === 'birdhouse') {
+            return {
+              select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+                }),
+              }),
+              upsert: vi.fn().mockResolvedValue({ error: null }),
+            };
+          }
+
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+              }),
+            }),
+            upsert: vi.fn().mockResolvedValue({ error: null }),
+          };
+        }),
+      } as never);
+
+      const response = await POST(
+        new Request('http://localhost/api/auth', {
+          method: 'POST',
+          body: JSON.stringify(minimalProgressBody),
+          headers: { 'Content-Type': 'application/json' },
+        }) as never
+      );
+
+      expect(response.status).toBe(200);
+
+      // Safety-net update is always issued, even when finalization had nothing to do
+      expect(leaderboardUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ weekly_birds_seen: 0, weekly_seen_bird_keys: [] })
+      );
+      expect(safetyNetEq).toHaveBeenCalledWith('user_id', 'user-1');
+      expect(safetyNetLt).toHaveBeenCalledWith(
+        'current_week_start',
+        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)
+      );
+
+      // The safety-net update (not the finalization update) is the only leaderboard update call
+      expect(leaderboardUpdate).toHaveBeenCalledTimes(1);
+    });
+  });
 });
