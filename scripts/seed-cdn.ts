@@ -1429,6 +1429,9 @@ interface SeedResult {
   status: 'seeded' | 'skipped' | 'failed';
   error?: string;
   skipReason?: string;
+  /** True when the failure is due to missing Wikipedia data (no summary or no image). These are
+   * expected gaps in coverage and do not indicate a processing or infrastructure error. */
+  wikiUnavailable?: boolean;
 }
 
 async function seedBird(birdName: string, taxonomyLookup: BirdTaxonomyLookup | null): Promise<SeedResult> {
@@ -1453,10 +1456,10 @@ async function seedBird(birdName: string, taxonomyLookup: BirdTaxonomyLookup | n
     // 1. Fetch Wikipedia summary
     log(`  Fetching Wikipedia summary...`);
     const wiki = await fetchBestWikipediaSummary(birdName);
-    if (!wiki) throw new Error('Wikipedia summary not found');
+    if (!wiki) return { birdName, birdKey, status: 'failed', error: 'Wikipedia summary not found', wikiUnavailable: true };
 
     const originalImageUrl = getPreferredImageUrl(wiki);
-    if (!originalImageUrl) throw new Error('No Wikipedia image found');
+    if (!originalImageUrl) return { birdName, birdKey, status: 'failed', error: 'No Wikipedia image found', wikiUnavailable: true };
 
     // 2. Fetch attribution from Wikimedia Commons
     log(`  Fetching image attribution...`);
@@ -1872,11 +1875,24 @@ async function mainReal() {
   log(`Done! ${seededCount} seeded, ${skippedCount} skipped, ${failedCount} failed.`);
 
   if (failedCount > 0) {
-    log('Failed birds:');
-    for (const result of results.filter((candidate) => candidate.status === 'failed')) {
-      log(`  - ${result.birdName}: ${result.error}`);
+    const wikiOnlyFailures = results.filter((r) => r.status === 'failed' && r.wikiUnavailable);
+    const hardFailures = results.filter((r) => r.status === 'failed' && !r.wikiUnavailable);
+
+    if (wikiOnlyFailures.length > 0) {
+      warn(`Warning: ${wikiOnlyFailures.length} bird(s) skipped due to missing Wikipedia data (no image or summary):`);
+      for (const result of wikiOnlyFailures) {
+        warn(`  - ${result.birdName}: ${result.error}`);
+      }
     }
-    process.exit(1);
+
+    if (hardFailures.length > 0) {
+      log('Failed birds (processing/infrastructure errors):');
+      for (const result of hardFailures) {
+        log(`  - ${result.birdName}: ${result.error}`);
+      }
+      process.exit(1);
+    }
+    // All failures were Wikipedia data gaps — not a pipeline error
   }
 }
 
