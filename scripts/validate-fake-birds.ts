@@ -587,7 +587,7 @@ async function main() {
     }
   }
 
-  if (LIMIT === undefined) {
+  if (LIMIT === undefined && !BIRDS_FILE) {
     for (const birdKey of objectMap.keys()) {
       if (expectedBirds.some((bird) => bird.birdKey === birdKey)) {
         continue;
