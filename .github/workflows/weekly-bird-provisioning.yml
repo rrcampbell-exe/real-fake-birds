@@ -96,18 +96,14 @@ jobs:
           retention-days: 3
 
 # ---------------------------------------------------------------------------
-# Job 2: Provision — merge catalogs, seed, generate, moderate, manifest, PR
+# Job 2: Merge catalogs — download export artifacts and produce seed-birds.json
 # ---------------------------------------------------------------------------
-  provision:
-    name: Provision birds
+  merge-catalogs:
+    name: Merge bird catalogs
     needs: [export-dev, export-prod]
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 10
     environment: Production – real-fake-birds
-
-    env:
-      DRY_RUN: ${{ github.event.inputs.dry_run == 'true' }}
-      FAKE_COUNT: ${{ github.event.inputs.fake_count || 100 }}
 
     steps:
       - name: Check out repository
@@ -137,6 +133,50 @@ jobs:
       - name: Merge catalogs into seed-birds.json
         run: npx tsx scripts/export-real-birds.ts --merge-only
 
+      - name: Upload merged catalogs
+        uses: actions/upload-artifact@v4
+        with:
+          name: merged-catalogs
+          path: |
+            scripts/data/dev-birds.json
+            scripts/data/prod-birds.json
+            scripts/data/seed-birds.json
+          retention-days: 3
+
+# ---------------------------------------------------------------------------
+# Job 3a: Seed real birds (non-blocking — partial Wikipedia failures are OK)
+# Runs in parallel with Job 3b after merge-catalogs completes.
+# ---------------------------------------------------------------------------
+  seed-real:
+    name: Seed real birds
+    needs: [merge-catalogs]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: Production – real-fake-birds
+    continue-on-error: true  # partial image/summary failures must not block fake-bird generation
+
+    env:
+      DRY_RUN: ${{ github.event.inputs.dry_run == 'true' }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download merged catalogs
+        uses: actions/download-artifact@v4
+        with:
+          name: merged-catalogs
+          path: scripts/data/
+
       - name: Seed real birds (skip existing)
         if: ${{ env.DRY_RUN != 'true' }}
         run: npx tsx scripts/seed-cdn.ts --skip-existing
@@ -146,6 +186,48 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           EBIRD_API_KEY: ${{ secrets.EBIRD_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Upload seed run reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seed-run-reports
+          path: scripts/.tmp/seed-cdn-runs/
+          if-no-files-found: ignore
+          retention-days: 30
+
+# ---------------------------------------------------------------------------
+# Job 3b: Generate and seed fake birds (runs in parallel with Job 3a)
+# ---------------------------------------------------------------------------
+  seed-fake:
+    name: Generate and seed fake birds
+    needs: [merge-catalogs]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: Production – real-fake-birds
+
+    env:
+      DRY_RUN: ${{ github.event.inputs.dry_run == 'true' }}
+      FAKE_COUNT: ${{ github.event.inputs.fake_count || 100 }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download merged catalogs
+        uses: actions/download-artifact@v4
+        with:
+          name: merged-catalogs
+          path: scripts/data/
 
       - name: Generate new fake birds
         if: ${{ env.DRY_RUN != 'true' }}
@@ -184,14 +266,59 @@ jobs:
           if-no-files-found: ignore
           retention-days: 30
 
-      - name: Upload seed run reports
-        if: always()
+      - name: Upload fake-birds data
+        if: ${{ env.DRY_RUN != 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: seed-run-reports
-          path: scripts/.tmp/seed-cdn-runs/
+          name: fake-birds-data
+          path: scripts/data/fake-birds.json
           if-no-files-found: ignore
-          retention-days: 30
+          retention-days: 3
+
+# ---------------------------------------------------------------------------
+# Job 4: Finalize — regenerate manifest, commit, create PR
+# Runs after both seeding jobs; proceeds even if real-bird seeding had partial
+# failures (continue-on-error on seed-real means its result is always 'success').
+# Skipped only if seed-fake itself failed or the workflow was cancelled.
+# ---------------------------------------------------------------------------
+  finalize:
+    name: Finalize and create PR
+    needs: [seed-real, seed-fake]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: Production – real-fake-birds
+    if: ${{ !cancelled() && needs.seed-fake.result == 'success' }}
+
+    env:
+      DRY_RUN: ${{ github.event.inputs.dry_run == 'true' }}
+      FAKE_COUNT: ${{ github.event.inputs.fake_count || 100 }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download merged catalogs
+        uses: actions/download-artifact@v4
+        with:
+          name: merged-catalogs
+          path: scripts/data/
+
+      - name: Download fake-birds data
+        if: ${{ env.DRY_RUN != 'true' }}
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: fake-birds-data
+          path: scripts/data/
 
       - name: Regenerate CDN manifest
         run: npx tsx scripts/score-fake-birds.ts
@@ -232,12 +359,12 @@ jobs:
             Automated weekly bird provisioning.
 
             - Exported real-bird catalogs from preview and production Supabase
-            - Seeded any missing real-bird CDN assets
+            - Seeded any missing real-bird CDN assets (partial failures are non-blocking)
             - Generated and seeded ${{ env.FAKE_COUNT }} new fake birds
             - Moderated new fake birds; quarantined any flagged outputs
             - Regenerated CDN manifest with updated plausibility scores
 
-            Moderation report is attached as a workflow artifact.
+            Moderation report and seed run reports are attached as workflow artifacts.
         run: |
           BRANCH="${{ steps.commit.outputs.branch }}"
           TODAY="$(date -u +%Y-%m-%d)"
