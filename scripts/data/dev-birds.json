@@ -4,20 +4,52 @@
     "bird_name": "African Green-Pigeon"
   },
   {
+    "bird_key": "real:african-hawk-eagle",
+    "bird_name": "African Hawk-Eagle"
+  },
+  {
+    "bird_key": "real:african-jacana",
+    "bird_name": "African Jacana"
+  },
+  {
     "bird_key": "real:african-paradise-flycatcher",
     "bird_name": "African Paradise-Flycatcher"
+  },
+  {
+    "bird_key": "real:african-penduline-tit",
+    "bird_name": "African Penduline-Tit"
+  },
+  {
+    "bird_key": "real:african-swamphen",
+    "bird_name": "African Swamphen"
   },
   {
     "bird_key": "real:african-thrush",
     "bird_name": "African Thrush"
   },
   {
+    "bird_key": "real:american-flamingo",
+    "bird_name": "American Flamingo"
+  },
+  {
     "bird_key": "real:american-herring-gull",
     "bird_name": "American Herring Gull"
   },
   {
+    "bird_key": "real:american-oystercatcher",
+    "bird_name": "American Oystercatcher"
+  },
+  {
+    "bird_key": "real:american-pygmy-kingfisher",
+    "bird_name": "American Pygmy Kingfisher"
+  },
+  {
     "bird_key": "real:american-redstart",
     "bird_name": "American Redstart"
+  },
+  {
+    "bird_key": "real:antarctic-tern",
+    "bird_name": "Antarctic Tern"
   },
   {
     "bird_key": "real:ash-throated-crake",
@@ -32,8 +64,32 @@
     "bird_name": "Bahama Woodstar"
   },
   {
+    "bird_key": "real:banded-martin",
+    "bird_name": "Banded Martin"
+  },
+  {
+    "bird_key": "real:bar-winged-wood-wren",
+    "bird_name": "Bar-winged Wood-Wren"
+  },
+  {
+    "bird_key": "real:bare-throated-tiger-heron",
+    "bird_name": "Bare-throated Tiger-Heron"
+  },
+  {
     "bird_key": "real:barn-swallow",
     "bird_name": "Barn Swallow"
+  },
+  {
+    "bird_key": "real:beautiful-sunbird",
+    "bird_name": "Beautiful Sunbird"
+  },
+  {
+    "bird_key": "real:belted-kingfisher",
+    "bird_name": "Belted Kingfisher"
+  },
+  {
+    "bird_key": "real:black-goshawk",
+    "bird_name": "Black Goshawk"
   },
   {
     "bird_key": "real:black-guillemot",
@@ -48,6 +104,14 @@
     "bird_name": "Black Sawwing"
   },
   {
+    "bird_key": "real:black-swift",
+    "bird_name": "Black Swift"
+  },
+  {
+    "bird_key": "real:black-and-white-mannikin",
+    "bird_name": "Black-and-white Mannikin"
+  },
+  {
     "bird_key": "real:black-bellied-plover",
     "bird_name": "Black-bellied Plover"
   },
@@ -58,6 +122,10 @@
   {
     "bird_key": "real:black-crowned-night-heron",
     "bird_name": "Black-crowned Night Heron"
+  },
+  {
+    "bird_key": "real:black-crowned-tchagra",
+    "bird_name": "Black-crowned Tchagra"
   },
   {
     "bird_key": "real:black-faced-grassquit",
@@ -72,6 +140,10 @@
     "bird_name": "Black-necked Stilt"
   },
   {
+    "bird_key": "real:black-necked-weaver",
+    "bird_name": "Black-necked Weaver"
+  },
+  {
     "bird_key": "real:black-whiskered-vireo",
     "bird_name": "Black-whiskered Vireo"
   },
@@ -80,12 +152,24 @@
     "bird_name": "Blackish Nightjar"
   },
   {
+    "bird_key": "real:blue-cuckooshrike",
+    "bird_name": "Blue Cuckooshrike"
+  },
+  {
     "bird_key": "real:blue-ground-dove",
     "bird_name": "Blue Ground Dove"
   },
   {
+    "bird_key": "real:blue-and-white-swallow",
+    "bird_name": "Blue-and-white Swallow"
+  },
+  {
     "bird_key": "real:blue-breasted-kingfisher",
     "bird_name": "Blue-breasted Kingfisher"
+  },
+  {
+    "bird_key": "real:blue-headed-vireo",
+    "bird_name": "Blue-headed Vireo"
   },
   {
     "bird_key": "real:booted-eagle",
@@ -108,8 +192,16 @@
     "bird_name": "Brown Booby"
   },
   {
+    "bird_key": "real:brown-illadopsis",
+    "bird_name": "Brown Illadopsis"
+  },
+  {
     "bird_key": "real:brown-noddy",
     "bird_name": "Brown Noddy"
+  },
+  {
+    "bird_key": "real:brown-skua",
+    "bird_name": "Brown Skua"
   },
   {
     "bird_key": "real:brown-trembler",
@@ -132,8 +224,16 @@
     "bird_name": "Cape Verde Swift"
   },
   {
+    "bird_key": "real:capuchin-babbler",
+    "bird_name": "Capuchin Babbler"
+  },
+  {
     "bird_key": "real:caribbean-elaenia",
     "bird_name": "Caribbean Elaenia"
+  },
+  {
+    "bird_key": "real:cassins-spinetail",
+    "bird_name": "Cassin's Spinetail"
   },
   {
     "bird_key": "real:chestnut-banded-plover",
@@ -144,12 +244,24 @@
     "bird_name": "Chinstrap Penguin"
   },
   {
+    "bird_key": "real:christmas-shearwater",
+    "bird_name": "Christmas Shearwater"
+  },
+  {
+    "bird_key": "real:chubbs-cisticola",
+    "bird_name": "Chubb's Cisticola"
+  },
+  {
     "bird_key": "real:cinnamon-breasted-bunting",
     "bird_name": "Cinnamon-breasted Bunting"
   },
   {
     "bird_key": "real:clapper-rail",
     "bird_name": "Clapper Rail"
+  },
+  {
+    "bird_key": "real:clappertons-spurfowl",
+    "bird_name": "Clapperton's Spurfowl"
   },
   {
     "bird_key": "real:cocoa-thrush",
@@ -172,8 +284,16 @@
     "bird_name": "Common Quail"
   },
   {
+    "bird_key": "real:common-ringed-plover",
+    "bird_name": "Common Ringed Plover"
+  },
+  {
     "bird_key": "real:common-scimitarbill",
     "bird_name": "Common Scimitarbill"
+  },
+  {
+    "bird_key": "real:common-waxbill",
+    "bird_name": "Common Waxbill"
   },
   {
     "bird_key": "real:congo-pied-hornbill",
@@ -192,6 +312,10 @@
     "bird_name": "Dark-breasted Spinetail"
   },
   {
+    "bird_key": "real:dark-faced-ground-tyrant",
+    "bird_name": "Dark-faced Ground-Tyrant"
+  },
+  {
     "bird_key": "real:diademed-tanager",
     "bird_name": "Diademed Tanager"
   },
@@ -200,8 +324,20 @@
     "bird_name": "Double-spurred Spurfowl"
   },
   {
+    "bird_key": "real:drakensberg-prinia",
+    "bird_name": "Drakensberg Prinia"
+  },
+  {
     "bird_key": "real:eastern-nicator",
     "bird_name": "Eastern Nicator"
+  },
+  {
+    "bird_key": "real:echo-parakeet",
+    "bird_name": "Echo Parakeet"
+  },
+  {
+    "bird_key": "real:egyptian-goose",
+    "bird_name": "Egyptian Goose"
   },
   {
     "bird_key": "real:egyptian-vulture",
@@ -216,6 +352,10 @@
     "bird_name": "Eurasian Curlew"
   },
   {
+    "bird_key": "real:eurasian-kestrel",
+    "bird_name": "Eurasian Kestrel"
+  },
+  {
     "bird_key": "real:eurasian-moorhen",
     "bird_name": "Eurasian Moorhen"
   },
@@ -228,8 +368,20 @@
     "bird_name": "European Bee-eater"
   },
   {
+    "bird_key": "real:fawn-breasted-wren",
+    "bird_name": "Fawn-breasted Wren"
+  },
+  {
     "bird_key": "real:fernandinas-flicker",
     "bird_name": "Fernandina's Flicker"
+  },
+  {
+    "bird_key": "real:fiery-necked-nightjar",
+    "bird_name": "Fiery-necked Nightjar"
+  },
+  {
+    "bird_key": "real:fire-bellied-woodpecker",
+    "bird_name": "Fire-bellied Woodpecker"
   },
   {
     "bird_key": "real:franklins-gull",
@@ -244,6 +396,10 @@
     "bird_name": "Golden-breasted Starling"
   },
   {
+    "bird_key": "real:gray-francolin",
+    "bird_name": "Gray Francolin"
+  },
+  {
     "bird_key": "real:gray-kestrel",
     "bird_name": "Gray Kestrel"
   },
@@ -252,12 +408,24 @@
     "bird_name": "Gray Kingbird"
   },
   {
+    "bird_key": "real:gray-parrot",
+    "bird_name": "Gray Parrot"
+  },
+  {
+    "bird_key": "real:gray-tit-flycatcher",
+    "bird_name": "Gray Tit-Flycatcher"
+  },
+  {
     "bird_key": "real:gray-cowled-wood-rail",
     "bird_name": "Gray-cowled Wood-Rail"
   },
   {
     "bird_key": "real:gray-headed-albatross",
     "bird_name": "Gray-headed Albatross"
+  },
+  {
+    "bird_key": "real:gray-headed-kingfisher",
+    "bird_name": "Gray-headed Kingfisher"
   },
   {
     "bird_key": "real:gray-headed-lovebird",
@@ -270,6 +438,10 @@
   {
     "bird_key": "real:graylag-goose",
     "bird_name": "Graylag Goose"
+  },
+  {
+    "bird_key": "real:great-antshrike",
+    "bird_name": "Great Antshrike"
   },
   {
     "bird_key": "real:great-blue-heron",
@@ -288,6 +460,10 @@
     "bird_name": "Greater Blue-eared Starling"
   },
   {
+    "bird_key": "real:greater-yellowlegs",
+    "bird_name": "Greater Yellowlegs"
+  },
+  {
     "bird_key": "real:green-kingfisher",
     "bird_name": "Green Kingfisher"
   },
@@ -296,12 +472,20 @@
     "bird_name": "Green Woodhoopoe"
   },
   {
+    "bird_key": "real:green-headed-hillstar",
+    "bird_name": "Green-headed Hillstar"
+  },
+  {
     "bird_key": "real:green-throated-carib",
     "bird_name": "Green-throated Carib"
   },
   {
     "bird_key": "real:grenada-flycatcher",
     "bird_name": "Grenada Flycatcher"
+  },
+  {
+    "bird_key": "real:grosbeak-weaver",
+    "bird_name": "Grosbeak Weaver"
   },
   {
     "bird_key": "real:hemprichs-hornbill",
@@ -320,12 +504,20 @@
     "bird_name": "Juan Fernandez Tit-Tyrant"
   },
   {
+    "bird_key": "real:kalahari-scrub-robin",
+    "bird_name": "Kalahari Scrub-Robin"
+  },
+  {
     "bird_key": "real:karoo-lark",
     "bird_name": "Karoo Lark"
   },
   {
     "bird_key": "real:kelp-goose",
     "bird_name": "Kelp Goose"
+  },
+  {
+    "bird_key": "real:kentish-plover",
+    "bird_name": "Kentish Plover"
   },
   {
     "bird_key": "real:killdeer",
@@ -348,6 +540,10 @@
     "bird_name": "Laughing Dove"
   },
   {
+    "bird_key": "real:leaf-love",
+    "bird_name": "Leaf-love"
+  },
+  {
     "bird_key": "real:least-sandpiper",
     "bird_name": "Least Sandpiper"
   },
@@ -356,8 +552,16 @@
     "bird_name": "Lesser Antillean Bullfinch"
   },
   {
+    "bird_key": "real:lesser-blue-eared-starling",
+    "bird_name": "Lesser Blue-eared Starling"
+  },
+  {
     "bird_key": "real:lesser-crested-tern",
     "bird_name": "Lesser Crested Tern"
+  },
+  {
+    "bird_key": "real:lesser-greenlet",
+    "bird_name": "Lesser Greenlet"
   },
   {
     "bird_key": "real:lesser-swamp-warbler",
@@ -372,12 +576,32 @@
     "bird_name": "Levaillant's Woodpecker"
   },
   {
+    "bird_key": "real:little-bittern",
+    "bird_name": "Little Bittern"
+  },
+  {
+    "bird_key": "real:little-egret",
+    "bird_name": "Little Egret"
+  },
+  {
+    "bird_key": "real:little-heron",
+    "bird_name": "Little Heron"
+  },
+  {
     "bird_key": "real:little-swift",
     "bird_name": "Little Swift"
   },
   {
     "bird_key": "real:little-tern",
     "bird_name": "Little Tern"
+  },
+  {
+    "bird_key": "real:lizard-buzzard",
+    "bird_name": "Lizard Buzzard"
+  },
+  {
+    "bird_key": "real:long-billed-curlew",
+    "bird_name": "Long-billed Curlew"
   },
   {
     "bird_key": "real:long-billed-dowitcher",
@@ -404,6 +628,10 @@
     "bird_name": "Mallard"
   },
   {
+    "bird_key": "real:mangrove-cuckoo",
+    "bird_name": "Mangrove Cuckoo"
+  },
+  {
     "bird_key": "real:masked-booby",
     "bird_name": "Masked Booby"
   },
@@ -420,8 +648,24 @@
     "bird_name": "Merlin"
   },
   {
+    "bird_key": "real:mosque-swallow",
+    "bird_name": "Mosque Swallow"
+  },
+  {
     "bird_key": "real:mottled-piculet",
     "bird_name": "Mottled Piculet"
+  },
+  {
+    "bird_key": "real:mourning-collared-dove",
+    "bird_name": "Mourning Collared-Dove"
+  },
+  {
+    "bird_key": "real:mourning-dove",
+    "bird_name": "Mourning Dove"
+  },
+  {
+    "bird_key": "real:northern-gray-headed-sparrow",
+    "bird_name": "Northern Gray-headed Sparrow"
   },
   {
     "bird_key": "real:northern-parula",
@@ -430,6 +674,10 @@
   {
     "bird_key": "real:northern-waterthrush",
     "bird_name": "Northern Waterthrush"
+  },
+  {
+    "bird_key": "real:ornate-flycatcher",
+    "bird_name": "Ornate Flycatcher"
   },
   {
     "bird_key": "real:ovenbird",
@@ -460,6 +708,14 @@
     "bird_name": "Peregrine Falcon"
   },
   {
+    "bird_key": "real:peruvian-sheartail",
+    "bird_name": "Peruvian Sheartail"
+  },
+  {
+    "bird_key": "real:piapiac",
+    "bird_name": "Piapiac"
+  },
+  {
     "bird_key": "real:pied-billed-grebe",
     "bird_name": "Pied-billed Grebe"
   },
@@ -474,6 +730,10 @@
   {
     "bird_key": "real:plain-nightjar",
     "bird_name": "Plain Nightjar"
+  },
+  {
+    "bird_key": "real:principe-speirops",
+    "bird_name": "Principe Speirops"
   },
   {
     "bird_key": "real:prothonotary-warbler",
@@ -500,6 +760,10 @@
     "bird_name": "Red Junglefowl"
   },
   {
+    "bird_key": "real:red-knot",
+    "bird_name": "Red Knot"
+  },
+  {
     "bird_key": "real:red-and-yellow-barbet",
     "bird_name": "Red-and-yellow Barbet"
   },
@@ -524,6 +788,10 @@
     "bird_name": "Red-eyed Puffback"
   },
   {
+    "bird_key": "real:red-faced-cisticola",
+    "bird_name": "Red-faced Cisticola"
+  },
+  {
     "bird_key": "real:red-footed-booby",
     "bird_name": "Red-footed Booby"
   },
@@ -536,8 +804,20 @@
     "bird_name": "Red-legged Honeycreeper"
   },
   {
+    "bird_key": "real:red-necked-phalarope",
+    "bird_name": "Red-necked Phalarope"
+  },
+  {
+    "bird_key": "real:red-tailed-bristlebill",
+    "bird_name": "Red-tailed Bristlebill"
+  },
+  {
     "bird_key": "real:red-tailed-greenbul",
     "bird_name": "Red-tailed Greenbul"
+  },
+  {
+    "bird_key": "real:red-throated-pipit",
+    "bird_name": "Red-throated Pipit"
   },
   {
     "bird_key": "real:red-winged-pytilia",
@@ -548,8 +828,20 @@
     "bird_name": "Reddish Egret"
   },
   {
+    "bird_key": "real:ring-necked-dove",
+    "bird_name": "Ring-necked Dove"
+  },
+  {
     "bird_key": "real:ring-tailed-pigeon",
     "bird_name": "Ring-tailed Pigeon"
+  },
+  {
+    "bird_key": "real:rock-kestrel",
+    "bird_name": "Rock Kestrel"
+  },
+  {
+    "bird_key": "real:rock-pigeon",
+    "bird_name": "Rock Pigeon"
   },
   {
     "bird_key": "real:rose-ringed-parakeet",
@@ -560,8 +852,16 @@
     "bird_name": "Roseate Tern"
   },
   {
+    "bird_key": "real:royal-tern",
+    "bird_name": "Royal Tern"
+  },
+  {
     "bird_key": "real:ruddy-turnstone",
     "bird_name": "Ruddy Turnstone"
+  },
+  {
+    "bird_key": "real:ruddy-breasted-seedeater",
+    "bird_name": "Ruddy-breasted Seedeater"
   },
   {
     "bird_key": "real:rufous-piha",
@@ -580,6 +880,10 @@
     "bird_name": "Rusty Blackbird"
   },
   {
+    "bird_key": "real:rusty-margined-flycatcher",
+    "bird_name": "Rusty-margined Flycatcher"
+  },
+  {
     "bird_key": "real:sabines-spinetail",
     "bird_name": "Sabine's Spinetail"
   },
@@ -594,6 +898,10 @@
   {
     "bird_key": "real:sanderling",
     "bird_name": "Sanderling"
+  },
+  {
+    "bird_key": "real:sandwich-tern",
+    "bird_name": "Sandwich Tern"
   },
   {
     "bird_key": "real:scaly-naped-pigeon",
@@ -612,12 +920,28 @@
     "bird_name": "Seychelles Blue-Pigeon"
   },
   {
+    "bird_key": "real:seychelles-swiftlet",
+    "bird_name": "Seychelles Swiftlet"
+  },
+  {
     "bird_key": "real:sharp-shinned-hawk",
     "bird_name": "Sharp-shinned Hawk"
   },
   {
+    "bird_key": "real:short-billed-dowitcher",
+    "bird_name": "Short-billed Dowitcher"
+  },
+  {
     "bird_key": "real:short-tailed-hawk",
     "bird_name": "Short-tailed Hawk"
+  },
+  {
+    "bird_key": "real:short-tailed-pygmy-tyrant",
+    "bird_name": "Short-tailed Pygmy-Tyrant"
+  },
+  {
+    "bird_key": "real:slate-colored-hawk",
+    "bird_name": "Slate-colored Hawk"
   },
   {
     "bird_key": "real:slender-billed-kite",
@@ -628,6 +952,10 @@
     "bird_name": "Slender-billed Prion"
   },
   {
+    "bird_key": "real:small-billed-elaenia",
+    "bird_name": "Small-billed Elaenia"
+  },
+  {
     "bird_key": "real:snowy-egret",
     "bird_name": "Snowy Egret"
   },
@@ -636,12 +964,28 @@
     "bird_name": "Snowy Owl"
   },
   {
+    "bird_key": "real:soft-plumaged-petrel",
+    "bird_name": "Soft-plumaged Petrel"
+  },
+  {
     "bird_key": "real:solitary-sandpiper",
     "bird_name": "Solitary Sandpiper"
   },
   {
+    "bird_key": "real:sooty-shearwater",
+    "bird_name": "Sooty Shearwater"
+  },
+  {
+    "bird_key": "real:south-african-shelduck",
+    "bird_name": "South African Shelduck"
+  },
+  {
     "bird_key": "real:southern-cordonbleu",
     "bird_name": "Southern Cordonbleu"
+  },
+  {
+    "bird_key": "real:southern-fiscal",
+    "bird_name": "Southern Fiscal"
   },
   {
     "bird_key": "real:southern-giant-petrel",
@@ -656,8 +1000,40 @@
     "bird_name": "Spanish Sparrow"
   },
   {
+    "bird_key": "real:speckled-pigeon",
+    "bird_name": "Speckled Pigeon"
+  },
+  {
     "bird_key": "real:spot-backed-puffbird",
     "bird_name": "Spot-backed Puffbird"
+  },
+  {
+    "bird_key": "real:spot-bellied-bobwhite",
+    "bird_name": "Spot-bellied Bobwhite"
+  },
+  {
+    "bird_key": "real:spotted-honeyguide",
+    "bird_name": "Spotted Honeyguide"
+  },
+  {
+    "bird_key": "real:streak-throated-canastero",
+    "bird_name": "Streak-throated Canastero"
+  },
+  {
+    "bird_key": "real:sulphur-bellied-flycatcher",
+    "bird_name": "Sulphur-bellied Flycatcher"
+  },
+  {
+    "bird_key": "real:superb-sunbird",
+    "bird_name": "Superb Sunbird"
+  },
+  {
+    "bird_key": "real:swallow-tailed-bee-eater",
+    "bird_name": "Swallow-tailed Bee-eater"
+  },
+  {
+    "bird_key": "real:swallow-tailed-hummingbird",
+    "bird_name": "Swallow-tailed Hummingbird"
   },
   {
     "bird_key": "real:thick-billed-cuckoo",
@@ -666,6 +1042,10 @@
   {
     "bird_key": "real:tropical-mockingbird",
     "bird_name": "Tropical Mockingbird"
+  },
+  {
+    "bird_key": "real:tropical-parula",
+    "bird_name": "Tropical Parula"
   },
   {
     "bird_key": "real:tufted-duck-x-lesser-scaup-hybrid",
@@ -680,12 +1060,20 @@
     "bird_name": "Variable Antshrike"
   },
   {
+    "bird_key": "real:village-weaver",
+    "bird_name": "Village Weaver"
+  },
+  {
     "bird_key": "real:vinaceous-dove",
     "bird_name": "Vinaceous Dove"
   },
   {
     "bird_key": "real:violet-backed-starling",
     "bird_name": "Violet-backed Starling"
+  },
+  {
+    "bird_key": "real:wedge-tailed-shearwater",
+    "bird_name": "Wedge-tailed Shearwater"
   },
   {
     "bird_key": "real:west-african-crested-tern",
@@ -708,8 +1096,20 @@
     "bird_name": "Western Cattle-Egret"
   },
   {
+    "bird_key": "real:western-orphean-warbler",
+    "bird_name": "Western Orphean Warbler"
+  },
+  {
+    "bird_key": "real:western-reef-heron",
+    "bird_name": "Western Reef-Heron"
+  },
+  {
     "bird_key": "real:western-yellow-wagtail",
     "bird_name": "Western Yellow Wagtail"
+  },
+  {
+    "bird_key": "real:white-woodpecker",
+    "bird_name": "White Woodpecker"
   },
   {
     "bird_key": "real:white-backed-vulture",
@@ -722,6 +1122,18 @@
   {
     "bird_key": "real:white-breasted-nigrita",
     "bird_name": "White-breasted Nigrita"
+  },
+  {
+    "bird_key": "real:white-capped-albatross",
+    "bird_name": "White-capped Albatross"
+  },
+  {
+    "bird_key": "real:white-cheeked-pintail",
+    "bird_name": "White-cheeked Pintail"
+  },
+  {
+    "bird_key": "real:white-cheeked-tern",
+    "bird_name": "White-cheeked Tern"
   },
   {
     "bird_key": "real:white-chinned-petrel",
@@ -784,12 +1196,28 @@
     "bird_name": "Yellow-billed Oxpecker"
   },
   {
+    "bird_key": "real:yellow-crowned-night-heron",
+    "bird_name": "Yellow-crowned Night Heron"
+  },
+  {
+    "bird_key": "real:yellow-fronted-canary",
+    "bird_name": "Yellow-fronted Canary"
+  },
+  {
+    "bird_key": "real:yellow-rumped-warbler",
+    "bird_name": "Yellow-rumped Warbler"
+  },
+  {
     "bird_key": "real:yellow-shouldered-grassquit",
     "bird_name": "Yellow-shouldered Grassquit"
   },
   {
     "bird_key": "real:yellow-throated-longclaw",
     "bird_name": "Yellow-throated Longclaw"
+  },
+  {
+    "bird_key": "real:yucatan-poorwill",
+    "bird_name": "Yucatan Poorwill"
   },
   {
     "bird_key": "real:zenaida-dove",
