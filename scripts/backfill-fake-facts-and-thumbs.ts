@@ -213,7 +213,7 @@ async function main(): Promise<void> {
 
   const birdsPath = getArgValue('--birds') ?? DEFAULT_BIRDS_INPUT;
   const recoveredDir = getArgValue('--recovered-dir') ?? DEFAULT_RECOVERED_DIR;
-  const recoveredResultsPath = getArgValue('--recovered-results') ?? DEFAULT_RECOVERED_RESULTS;
+  const recoveredResultsPath = getArgValue('--recovered-results') ?? join(recoveredDir, 'results.ndjson');
   const reportsDir = getArgValue('--reports-dir') ?? DEFAULT_REPORTS_DIR;
   const outputDir = getArgValue('--output') ?? DEFAULT_OUTPUT_DIR;
   const concurrency = parseNumberArg('--concurrency', 6);
