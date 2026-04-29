@@ -114,7 +114,7 @@ function loadCompletedUrls(resultsPath: string): Set<string> {
     if (!trimmed) continue;
     try {
       const parsed = JSON.parse(trimmed) as Partial<AttemptResult>;
-      if (typeof parsed.url === 'string' && parsed.url.length > 0) {
+      if (typeof parsed.url === 'string' && parsed.url.length > 0 && parsed.ok === true) {
         completed.add(parsed.url);
       }
     } catch {
@@ -216,7 +216,7 @@ async function uploadToR2WithRetries(
 
 async function main(): Promise<void> {
   if (hasFlag('--help')) {
-    console.log(`\nUsage: npx tsx scripts/recover-fake-assets.ts [options]\n\nOptions:\n  --base-url <url>      CDN base URL. Defaults to CDN_BASE_URL env var.\n  --input <path>        Path to fake-birds.json. Default: scripts/data/fake-birds.json\n  --output <path>       Output directory for recovered files. Default: scripts/.tmp/recovered-fake-assets\n  --concurrency <n>     Parallel requests. Default: 8\n  --retries <n>         Retry count per URL on network/429/5xx and R2 upload errors. Default: 3\n  --timeout-ms <n>      Per-request timeout in milliseconds. Default: 12000\n  --retry-misses        Re-attempt URLs already recorded in results.ndjson\n  --limit <n>           Process only first N birds (for testing)\n  --restore-r2 <bool>   Restore recovered assets back to R2. Defaults to true when R2 creds exist.\n  --r2-bucket <name>    R2 bucket name (default from R2_BUCKET_NAME env or realfakebirds-cdn).\n  --r2-endpoint <url>   R2 endpoint (default from R2_ENDPOINT env or account-based endpoint).\n  --help                Show this help\n`);
+    console.log(`\nUsage: npx tsx scripts/recover-fake-assets.ts [options]\n\nOptions:\n  --base-url <url>      CDN base URL. Defaults to CDN_BASE_URL env var.\n  --input <path>        Path to fake-birds.json. Default: scripts/data/fake-birds.json\n  --output <path>       Output directory for recovered files. Default: scripts/.tmp/recovered-fake-assets\n  --concurrency <n>     Parallel requests. Default: 8\n  --retries <n>         Retry count per URL on network/429/5xx and R2 upload errors. Default: 3\n  --timeout-ms <n>      Per-request timeout in milliseconds. Default: 12000\n  --retry-all           Re-attempt all URLs, including those already successfully recovered\n  --limit <n>           Process only first N birds (for testing)\n  --restore-r2 <bool>   Restore recovered assets back to R2. Defaults to true when R2 creds exist.\n  --r2-bucket <name>    R2 bucket name (default from R2_BUCKET_NAME env or realfakebirds-cdn).\n  --r2-endpoint <url>   R2 endpoint (default from R2_ENDPOINT env or account-based endpoint).\n  --help                Show this help\n`);
     return;
   }
 
@@ -232,7 +232,7 @@ async function main(): Promise<void> {
   const retries = parseNumberArg('--retries', 3);
   const timeoutMs = parseNumberArg('--timeout-ms', 12000);
   const limit = parseNumberArg('--limit', Number.MAX_SAFE_INTEGER);
-  const retryMisses = hasFlag('--retry-misses');
+  const retryAll = hasFlag('--retry-all');
   const r2AccountId = process.env.R2_ACCOUNT_ID ?? '';
   const r2AccessKeyId = process.env.R2_ACCESS_KEY_ID ?? '';
   const r2SecretAccessKey = process.env.R2_SECRET_ACCESS_KEY ?? '';
@@ -260,7 +260,7 @@ async function main(): Promise<void> {
   const progressPath = join(outputDir, 'progress.json');
 
   const birdNames = loadBirdNames(inputPath).slice(0, limit);
-  const completedUrls = retryMisses ? new Set<string>() : loadCompletedUrls(resultsPath);
+  const completedUrls = retryAll ? new Set<string>() : loadCompletedUrls(resultsPath);
 
   const tasks: Array<{ birdName: string; birdKey: string; asset: AssetName; url: string; outputPath: string }> = [];
 
@@ -270,7 +270,7 @@ async function main(): Promise<void> {
       const url = `${baseUrl}/birds/fake/${birdKey}/${asset}`;
       const outputPath = join(outputDir, 'birds', 'fake', birdKey, asset);
 
-      if (!retryMisses && completedUrls.has(url)) {
+      if (!retryAll && completedUrls.has(url)) {
         continue;
       }
 
@@ -425,7 +425,7 @@ async function main(): Promise<void> {
   };
 
   if (totalTasks === 0) {
-    log('No work to do. If you want to re-try prior misses, add --retry-misses.');
+    log('No work to do. If you want to re-try all URLs including previously recovered ones, add --retry-all.');
     flushProgress();
     return;
   }
