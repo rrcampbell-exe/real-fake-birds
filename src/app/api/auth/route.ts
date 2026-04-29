@@ -435,10 +435,6 @@ function exceedsRequestBodyLimit(request: NextRequest, limitBytes: number): bool
   return Number.isFinite(parsedLength) && parsedLength > limitBytes;
 }
 
-function buildEmailRedirectUrl(request: NextRequest): string {
-  return new URL('/auth/callback?next=/settings', request.url).toString();
-}
-
 function isBirdhouseStore(value: unknown): value is BirdhouseStore {
   if (!value || typeof value !== 'object') {
     return false;

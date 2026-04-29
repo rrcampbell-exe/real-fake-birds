@@ -30,8 +30,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const DEFAULT_INPUT = join(__dirname, 'data', 'fake-birds.json');
 const DEFAULT_OUTPUT = join(__dirname, '.tmp', 'recovered-fake-assets');
-const DEFAULT_RESULTS_PATH = join(DEFAULT_OUTPUT, 'results.ndjson');
-const DEFAULT_PROGRESS_PATH = join(DEFAULT_OUTPUT, 'progress.json');
 const FACT_CACHE_CONTROL = 'public, max-age=86400';
 const IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 

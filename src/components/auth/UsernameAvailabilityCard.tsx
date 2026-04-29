@@ -12,7 +12,6 @@ import {
 } from '@/lib/auth/account-sync';
 import {
   hydrateSignedInAccountToLocalState,
-  notifyAccountStateChanged,
   prepareSignedInSessionForSignOut,
   pushCurrentLocalProgressToAccount,
   resetLocalStateForGuestSession,
@@ -41,11 +40,10 @@ export default function UsernameAvailabilityCard({
   const {
     isLoadingAccount,
     isSignedIn,
-    accountEmail,
     accountUsername,
     refreshAccountState,
   } = useAccountState();
-  const { value, normalizedUsername, issues, available, isChecking, error, setValue } = useUsernameValidation();
+  const { value, issues, available, isChecking, error, setValue } = useUsernameValidation();
   const usernameValueRef = useRef(value);
   const turnstileRef = useRef<TurnstileInstance | null>(null);
   const hasPrefilledUsernameRef = useRef(false);
@@ -67,7 +65,6 @@ export default function UsernameAvailabilityCard({
   const [hasSignedOutLocally, setHasSignedOutLocally] = useState(false);
   const savedUsername = accountUsername;
   const effectiveIsSignedIn = hasSignedOutLocally ? false : isSignedIn;
-  const effectiveAccountEmail = hasSignedOutLocally ? null : accountEmail;
   const effectiveSavedUsername = hasSignedOutLocally ? null : savedUsername;
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? '';
   const isCaptchaEnabled = turnstileSiteKey.length > 0;
