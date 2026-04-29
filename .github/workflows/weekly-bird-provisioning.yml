@@ -249,6 +249,7 @@ jobs:
         run: |
           npx tsx scripts/validate-fake-birds.ts \
             --birds-file scripts/.tmp/new-birds.json \
+            --quarantine-max ${{ env.FAKE_COUNT }} \
             --moderate-text \
             --moderate-images \
             --quarantine
