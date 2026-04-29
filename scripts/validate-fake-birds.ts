@@ -55,6 +55,23 @@ const BIRDS_FILE = (() => {
   return raw;
 })();
 
+const QUARANTINE_MAX = (() => {
+  const index = process.argv.indexOf('--quarantine-max');
+  if (index === -1) {
+    return undefined;
+  }
+
+  const raw = process.argv[index + 1];
+  const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error('The --quarantine-max flag must be followed by a positive integer.');
+  }
+
+  return parsed;
+})();
+
+const ALLOW_GLOBAL_QUARANTINE = process.argv.includes('--allow-global-quarantine');
+
 const LIMIT = (() => {
   const index = process.argv.indexOf('--limit');
   if (index === -1) {
@@ -412,8 +429,32 @@ function loadExpectedBirds(): ExpectedBird[] {
   return LIMIT ? expected.slice(0, LIMIT) : expected;
 }
 
-async function quarantineBirds(flaggedKeys: string[]): Promise<void> {
+async function quarantineBirds(flaggedKeys: string[], expectedBirdKeys: ReadonlySet<string>): Promise<void> {
   if (flaggedKeys.length === 0) return;
+
+  // Safety rail: when validating a subset (for example, newly generated birds),
+  // quarantine may only touch birds that were part of that subset.
+  const outOfScope = flaggedKeys.filter((key) => !expectedBirdKeys.has(key));
+  if (outOfScope.length > 0) {
+    throw new Error(
+      `Refusing quarantine because ${outOfScope.length} flagged bird(s) are outside validation scope. ` +
+      `First out-of-scope keys: ${outOfScope.slice(0, 10).join(', ')}`,
+    );
+  }
+
+  const maxAllowed = QUARANTINE_MAX ?? expectedBirdKeys.size;
+  if (flaggedKeys.length > maxAllowed) {
+    throw new Error(
+      `Refusing quarantine because flagged bird count ${flaggedKeys.length} exceeds limit ${maxAllowed}. ` +
+      `Pass --quarantine-max <n> to raise intentionally.`,
+    );
+  }
+
+  if (!BIRDS_FILE && !ALLOW_GLOBAL_QUARANTINE) {
+    throw new Error(
+      'Refusing global quarantine without --birds-file. Pass --allow-global-quarantine to acknowledge full-catalog deletion risk.',
+    );
+  }
 
   // Remove from fake-birds.json
   const allNames = JSON.parse(readFileSync(DATA_PATH, 'utf-8')) as string[];
@@ -569,6 +610,7 @@ async function main() {
   assertEnv();
 
   const expectedBirds = loadExpectedBirds();
+  const expectedBirdKeys = new Set(expectedBirds.map((bird) => bird.birdKey));
   const allKeys = await listAllObjectKeys('birds/fake/');
   const objectMap = buildObjectMap(allKeys);
 
@@ -690,7 +732,7 @@ async function main() {
   if (QUARANTINE && allIssues.length > 0) {
     const flaggedKeys = [...new Set(allIssues.map((issue) => issue.birdKey))];
     warn(`Quarantining ${flaggedKeys.length} flagged bird(s): ${flaggedKeys.join(', ')}`);
-    await quarantineBirds(flaggedKeys);
+    await quarantineBirds(flaggedKeys, expectedBirdKeys);
     // Exit cleanly after quarantine — remaining birds are safe
     process.exitCode = 0;
   } else {
