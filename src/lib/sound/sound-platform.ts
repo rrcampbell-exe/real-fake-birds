@@ -6,19 +6,26 @@ import type { SoundController } from '@/lib/sound/types';
 let soundController: SoundController | null = null;
 
 /**
- * Returns true when running in Capacitor live-reload mode (native shell but
- * WebView pointed at a local dev server). In this mode the app bundle contains
- * no sound files, so NativeAudio cannot load bundled assets. We fall back to
- * web audio until a production build is made and synced.
+ * Returns true when the WebView is connected to an external server rather than
+ * loading assets from the native app bundle.
+ *
+ * Bundle mode uses capacitor://localhost (iOS) or file:// (Android) as the
+ * origin, which means bundled SFX assets are available to NativeAudio.
+ *
+ * Any http: or https: origin means the WebView is pointed at an external
+ * server (dev localhost or the production HTTPS server). In that case bundled
+ * assets are NOT present in the app bundle, so we fall back to SoundManager
+ * (Web Audio) which fetches files from the remote origin instead.
  */
 function isLiveReload(): boolean {
   if (typeof window === 'undefined') {
     return false;
   }
 
-  // Capacitor live-reload points the WebView at an HTTP dev server (localhost,
-  // LAN IP, etc.). In this mode, native bundled assets are not present.
-  return window.location.protocol === 'http:';
+  // capacitor:// (iOS bundle) and file:// (Android bundle) → bundled assets
+  // http: (dev server) or https: (remote prod server) → no bundled assets
+  const protocol = window.location.protocol;
+  return protocol === 'http:' || protocol === 'https:';
 }
 
 function createSoundController(): SoundController {

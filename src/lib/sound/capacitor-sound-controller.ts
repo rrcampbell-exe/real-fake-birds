@@ -101,8 +101,8 @@ export class CapacitorSoundController implements SoundController {
             isUrl: false,
           });
           this.preloaded.add(assetId);
-        } catch {
-          // Best-effort; the sound will be skipped if it cannot be preloaded.
+        } catch (err) {
+          console.error(`[NativeAudio] preload failed for assetId="${assetId}" assetPath="${assetPath}":`, err);
         }
       })
     );
@@ -131,8 +131,8 @@ export class CapacitorSoundController implements SoundController {
         }
         await NativeAudio.setVolume({ assetId, volume: this.settings.sfxVolume });
         await NativeAudio.play({ assetId });
-      } catch {
-        // Ignore playback errors.
+      } catch (err) {
+        console.error(`[NativeAudio] play failed for assetId="${assetId}":`, err);
       }
     })();
   }
@@ -159,7 +159,8 @@ export class CapacitorSoundController implements SoundController {
         }
         await NativeAudio.loop({ assetId });
         await NativeAudio.setVolume({ assetId, volume: this.settings.sfxVolume * LOOP_VOLUME_MULTIPLIER });
-      } catch {
+      } catch (err) {
+        console.error(`[NativeAudio] startLoop failed for assetId="${assetId}":`, err);
         this.activeLoops.delete(assetId);
       }
     })();
@@ -215,7 +216,8 @@ export class CapacitorSoundController implements SoundController {
         this.activeThemeSongId = songId;
         await NativeAudio.setVolume({ assetId: songId, volume: this.settings.musicVolume * THEME_SONG_VOLUME_MULTIPLIER });
         await NativeAudio.loop({ assetId: songId });
-      } catch {
+      } catch (err) {
+        console.error(`[NativeAudio] startThemeSong failed for url="${url}":`, err);
         this.activeThemeSongId = null;
       }
     })();
@@ -316,7 +318,8 @@ export class CapacitorSoundController implements SoundController {
       // Promise.resolve() to call proxy.then(), which hits the native bridge
       // and throws "NativeAudio.then() is not implemented on ios".
       this._nativeAudio = NativeAudio;
-    } catch {
+    } catch (err) {
+      console.error('[NativeAudio] Failed to load @capacitor-community/native-audio plugin:', err);
       this._nativeAudio = null;
     }
   }
