@@ -52,7 +52,7 @@ export default function BottomNav() {
 
   return (
     <>
-      <nav className={`app-bottom-nav fixed ${isNative ? 'bottom-[calc(env(safe-area-inset-bottom)+0.2rem)]' : 'bottom-3'} left-4 right-4 z-50 flex items-center justify-center rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 ${isNative ? 'pb-[0.55rem] pt-[0.55rem]' : 'pb-[calc(env(safe-area-inset-bottom)+0.45rem)] pt-3'} shadow-[var(--shadow-card)] backdrop-blur-md md:hidden`}>
+      <nav className={`app-bottom-nav fixed left-4 right-4 z-50 flex items-center justify-center rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-[0.65rem] shadow-[var(--shadow-card)] backdrop-blur-md md:hidden ${isNative ? 'bottom-[calc(env(safe-area-inset-bottom)+0.375rem)]' : 'bottom-3 pb-[calc(env(safe-area-inset-bottom)+0.45rem)] pt-3'}`}>
         <div className="flex w-full max-w-sm items-center gap-3">
           <Link
             href="/"

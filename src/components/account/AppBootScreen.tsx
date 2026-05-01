@@ -116,6 +116,7 @@ export default function AppBootScreen({ progress, status }: AppBootScreenProps) 
 
   return (
     <div
+      data-boot-overlay="true"
       style={finchBootStyles}
       className="relative flex min-h-dvh flex-col items-center justify-center bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_45%),var(--boot-primary)] px-6 py-12 text-center"
     >
