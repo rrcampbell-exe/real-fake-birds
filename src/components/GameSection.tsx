@@ -304,6 +304,10 @@ export default function GameSection() {
   const containerRef = useRef<HTMLDivElement>(null);
   const pullStartY = useRef<number | null>(null);
   const [isPulling, setIsPulling] = useState(false);
+  // Keep a ref in sync with isPulling so handleTouchEnd always reads the latest
+  // value without needing to be listed as an effect dependency (which would cause
+  // the listeners to be torn down and re-added on every drag tick).
+  const isPullingRef = useRef(false);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -320,21 +324,25 @@ export default function GameSection() {
       // Re-check scroll position on each move to handle subtle scrolls between start and move.
       if (window.scrollY > 0) {
         pullStartY.current = null;
+        isPullingRef.current = false;
         setIsPulling(false);
         return;
       }
       const deltaY = (e.touches[0]?.clientY ?? 0) - pullStartY.current;
       if (deltaY > 0) {
-        setIsPulling(deltaY >= PULL_TO_REFRESH_THRESHOLD_PX);
+        const pulling = deltaY >= PULL_TO_REFRESH_THRESHOLD_PX;
+        isPullingRef.current = pulling;
+        setIsPulling(pulling);
         e.preventDefault();
       }
     };
 
     const handleTouchEnd = () => {
-      if (isPulling) {
+      if (isPullingRef.current) {
         tryAgain();
       }
       pullStartY.current = null;
+      isPullingRef.current = false;
       setIsPulling(false);
     };
 
@@ -347,7 +355,7 @@ export default function GameSection() {
       container.removeEventListener('touchmove', handleTouchMove);
       container.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [isPulling, tryAgain]);
+  }, [tryAgain]);
 
   return (
     <div
