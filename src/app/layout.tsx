@@ -33,11 +33,6 @@ const themeBootstrapScript = `
 
         document.documentElement.setAttribute('data-native-shell', 'true');
 
-        const viewportMeta = document.querySelector('meta[name="viewport"]');
-        if (viewportMeta && !viewportMeta.content.includes('maximum-scale')) {
-          viewportMeta.content += ', maximum-scale=1';
-        }
-
         return true;
       };
 
