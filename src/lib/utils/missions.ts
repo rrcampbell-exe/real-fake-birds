@@ -141,8 +141,8 @@ export function createMissionRewardSummary(missionId: string): MissionRewardSumm
   if (missionId === 'mission-set-bonus') {
     return {
       missionId,
-      description: 'Clean sweep bonus',
-      toastDescription: 'Clean sweep bonus',
+      description: 'High flyer bonus',
+      toastDescription: 'High flyer bonus',
       rewardSeeds: DAILY_MISSION_BONUS_SEEDS,
     };
   }
