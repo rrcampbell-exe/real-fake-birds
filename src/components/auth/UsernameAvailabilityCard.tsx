@@ -28,11 +28,13 @@ const usernameGuidance = [
 
 interface UsernameAvailabilityCardProps {
   compact?: boolean;
+  deferCaptcha?: boolean;
   onAuthSuccess?: () => void;
 }
 
 export default function UsernameAvailabilityCard({
   compact = false,
+  deferCaptcha = false,
   onAuthSuccess,
 }: UsernameAvailabilityCardProps) {
   const router = useRouter();
@@ -68,6 +70,10 @@ export default function UsernameAvailabilityCard({
   const effectiveSavedUsername = hasSignedOutLocally ? null : savedUsername;
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? '';
   const isCaptchaEnabled = turnstileSiteKey.length > 0;
+  // When deferCaptcha is true the Turnstile widget starts hidden and only
+  // appears after the user first attempts to submit (at which point we surface
+  // it as the required next step before the account can be created).
+  const [showCaptcha, setShowCaptcha] = useState(!deferCaptcha);
 
   useEffect(() => {
     usernameValueRef.current = value;
@@ -81,8 +87,11 @@ export default function UsernameAvailabilityCard({
     if (authMode !== 'create') {
       setCaptchaToken(null);
       turnstileRef.current?.reset();
+      if (deferCaptcha) {
+        setShowCaptcha(false);
+      }
     }
-  }, [authMode]);
+  }, [authMode, deferCaptcha]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -169,7 +178,14 @@ export default function UsernameAvailabilityCard({
     }
 
     if (isCaptchaEnabled && !captchaToken) {
-      setAuthError('Complete the quick human check before creating your account.');
+      if (deferCaptcha && !showCaptcha) {
+        // Surface the captcha widget — no error message needed, the widget
+        // appearing is the affordance.
+        setShowCaptcha(true);
+        setAuthError(null);
+      } else {
+        setAuthError('Complete the human check before creating your account.');
+      }
       return;
     }
 
@@ -422,7 +438,7 @@ export default function UsernameAvailabilityCard({
                 </button>
               )}
             </div>
-          ) : !effectiveIsSignedIn && isLoadingAccount && !hasSignedOutLocally ? (
+          ) : !effectiveIsSignedIn && isLoadingAccount && !hasSignedOutLocally && !compact ? (
             <p className="text-sm text-[var(--color-muted)]">Checking account status...</p>
           ) : !effectiveIsSignedIn ? (
             <>
@@ -470,18 +486,22 @@ export default function UsernameAvailabilityCard({
                     />
                   </label>
 
-                  <div className="mt-4 flex items-start gap-2 text-sm">
-                    {isChecking ? (
-                      <LoaderCircle size={16} className="mt-0.5 shrink-0 animate-spin text-[var(--color-secondary)]" />
-                    ) : issues.length > 0 || error ? (
-                      <AlertCircle size={16} className="mt-0.5 shrink-0 text-[var(--color-error)]" />
-                    ) : (
-                      <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-[var(--color-success)]" />
-                    )}
-                    <div>
-                      <p>{error ?? statusMessage}</p>
+                  {/* In compact mode hide the status row until the user has typed something
+                      or there is a validation issue — keeps the form minimal on first render. */}
+                  {(!compact || value.trim() || issues.length > 0 || error || isChecking) ? (
+                    <div className="mt-4 flex items-start gap-2 text-sm">
+                      {isChecking ? (
+                        <LoaderCircle size={16} className="mt-0.5 shrink-0 animate-spin text-[var(--color-secondary)]" />
+                      ) : issues.length > 0 || error ? (
+                        <AlertCircle size={16} className="mt-0.5 shrink-0 text-[var(--color-error)]" />
+                      ) : (
+                        <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-[var(--color-success)]" />
+                      )}
+                      <div>
+                        <p>{error ?? statusMessage}</p>
+                      </div>
                     </div>
-                  </div>
+                  ) : null}
 
                   {issues.length > 0 ? (
                     <ul className="mt-3 space-y-1 text-xs text-[var(--color-error)]">
@@ -544,7 +564,7 @@ export default function UsernameAvailabilityCard({
                       />
                     </label>
 
-                    {isCaptchaEnabled ? (
+                    {isCaptchaEnabled && showCaptcha ? (
                       <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-3">
                         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
                           Real Fake Human Check
@@ -584,7 +604,7 @@ export default function UsernameAvailabilityCard({
 
                     <button
                       type="submit"
-                      disabled={!supabaseReady || isCreatingAccount || isSigningIn || (isCaptchaEnabled && !captchaToken)}
+                      disabled={!supabaseReady || isCreatingAccount || isSigningIn || (isCaptchaEnabled && showCaptcha && !captchaToken)}
                       className="inline-flex items-center justify-center rounded-full bg-[var(--color-secondary)] px-4 py-2 text-sm font-semibold text-[var(--color-on-secondary)] transition disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isCreatingAccount ? 'Creating account...' : 'Create account'}
@@ -593,12 +613,14 @@ export default function UsernameAvailabilityCard({
                 </form>
               ) : (
                 <form className="contents" onKeyDown={handleSignInKeyDown} onSubmit={handleSignInSubmit}>
-                  <div className="mt-4">
-                    <p className="text-sm font-semibold">Sign in</p>
-                    <p className="mt-1 text-sm text-[var(--color-muted)]">
-                      Use your username to sign in.
-                    </p>
-                  </div>
+                  {!compact ? (
+                    <div className="mt-4">
+                      <p className="text-sm font-semibold">Sign in</p>
+                      <p className="mt-1 text-sm text-[var(--color-muted)]">
+                        Use your username to sign in.
+                      </p>
+                    </div>
+                  ) : null}
 
                   <div className="mt-4 grid gap-3">
                     <label className="block">
