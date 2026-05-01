@@ -13,6 +13,7 @@ import { themeUnlocks } from '@/lib/constants/theme-unlocks';
 import NativeBackHandler from '@/components/native/NativeBackHandler';
 import NativeMainWrapper from '@/components/native/NativeMainWrapper';
 import NativeSplashHandler from '@/components/native/NativeSplashHandler';
+import NativeAuthGate from '@/components/native/NativeAuthGate';
 
 const liveThemeUnlockThresholds = themeUnlocks
   .filter((themeUnlock) => !themeUnlock.comingSoon)
@@ -70,6 +71,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  maximumScale: 1,
   viewportFit: 'cover',
   themeColor: '#1B5C1B',
 };
@@ -96,6 +98,7 @@ export default async function RootLayout({
         <ThemeProvider>
           <AnalyticsProvider />
           <ConsentModal />
+          <NativeAuthGate />
           <TopNav />
           <NativeMainWrapper>
             {children}

@@ -78,6 +78,17 @@
   }
 }
 
+/* Prevent iOS WKWebView from adding a 300ms delay before processing taps
+   on interactive elements. 'manipulation' disables double-tap-to-zoom and
+   scroll-disambiguation delays, making inputs and buttons respond instantly. */
+input,
+textarea,
+select,
+button,
+a {
+  touch-action: manipulation;
+}
+
 button:not(:disabled) {
   cursor: pointer;
 }
