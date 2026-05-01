@@ -6,8 +6,8 @@ import { useEffect } from 'react';
  * Hides the native splash screen after React has hydrated.
  * This component renders nothing — it exists purely for the side effect.
  *
- * The splash screen has `launchAutoHide: false` in capacitor.config.ts, so we
- * control the hide timing ourselves. On web this is a no-op.
+ * When CAPACITOR_SERVER_URL is not set (production), `launchAutoHide` is false
+ * so we control the hide timing ourselves. On web this is a no-op.
  *
  * Before hiding the splash, we preload all bundled audio assets so SFX and
  * the theme song are ready the moment the splash fades out.
