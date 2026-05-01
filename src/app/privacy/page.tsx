@@ -18,7 +18,7 @@ export default function PrivacyPolicyPage() {
           Privacy Policy
         </h1>
         <p className="text-sm text-[var(--color-muted)]">
-          Last updated: April 23, 2026
+          Last updated: May 1, 2026
         </p>
       </div>
 
@@ -28,7 +28,7 @@ export default function PrivacyPolicyPage() {
             Overview
           </h2>
           <p>
-            Real Fake Birds is a bird guessing game operated by Catbird Games (Ryan R. Campbell).
+            Real Fake Birds is a bird guessing game operated by Catbird Games.
             This policy explains what information we collect, why we collect it, and how it is used.
             We are committed to collecting as little data as possible and never selling your information.
           </p>
