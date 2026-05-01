@@ -57,6 +57,13 @@ export class CapacitorSoundController implements SoundController {
   private activeLoops = new Set<string>();
   private activeThemeSongId: string | null = null;
   private desiredThemeSongUrl: string | null = null;
+  // Cached plugin reference. `undefined` = not yet attempted. `null` = failed.
+  // Never returned from an async function directly: Capacitor plugin proxies
+  // intercept all property accesses (including `.then`), making them appear
+  // thenable. Returning a thenable from `async` causes Promise.resolve() to
+  // call `proxy.then(resolve, reject)` through the bridge, which throws
+  // "NativeAudio.then() is not implemented on ios".
+  private _nativeAudio: NativeAudioModule['NativeAudio'] | null | undefined = undefined;
 
   constructor() {
     this.settings = this.loadSettings();
@@ -79,7 +86,8 @@ export class CapacitorSoundController implements SoundController {
     // extraUrls are web-only theme song URLs; ignore them on native.
     void extraUrls;
 
-    const NativeAudio = await this.getNativeAudio();
+    await this.ensureNativeAudio();
+    const NativeAudio = this._nativeAudio;
     if (!NativeAudio) return;
 
     await Promise.all(
@@ -108,7 +116,8 @@ export class CapacitorSoundController implements SoundController {
     if (!assetId) return;
 
     void (async () => {
-      const NativeAudio = await this.getNativeAudio();
+      await this.ensureNativeAudio();
+      const NativeAudio = this._nativeAudio;
       if (!NativeAudio) return;
       try {
         if (!this.preloaded.has(assetId)) {
@@ -135,7 +144,8 @@ export class CapacitorSoundController implements SoundController {
 
     this.activeLoops.add(assetId);
     void (async () => {
-      const NativeAudio = await this.getNativeAudio();
+      await this.ensureNativeAudio();
+      const NativeAudio = this._nativeAudio;
       if (!NativeAudio) return;
       try {
         if (!this.preloaded.has(assetId)) {
@@ -165,7 +175,8 @@ export class CapacitorSoundController implements SoundController {
     this.activeLoops.delete(assetId);
 
     void (async () => {
-      const NativeAudio = await this.getNativeAudio();
+      await this.ensureNativeAudio();
+      const NativeAudio = this._nativeAudio;
       if (!NativeAudio) return;
       try {
         await NativeAudio.stop({ assetId });
@@ -184,7 +195,8 @@ export class CapacitorSoundController implements SoundController {
     if (this.activeThemeSongId === songId) return;
 
     void (async () => {
-      const NativeAudio = await this.getNativeAudio();
+      await this.ensureNativeAudio();
+      const NativeAudio = this._nativeAudio;
       if (!NativeAudio) return;
 
       // Stop any currently playing theme song.
@@ -212,7 +224,8 @@ export class CapacitorSoundController implements SoundController {
   stopThemeSong(): void {
     this.desiredThemeSongUrl = null;
     void (async () => {
-      const NativeAudio = await this.getNativeAudio();
+      await this.ensureNativeAudio();
+      const NativeAudio = this._nativeAudio;
       if (!NativeAudio) return;
       await this.stopThemeSongAsync(NativeAudio);
     })();
@@ -223,7 +236,8 @@ export class CapacitorSoundController implements SoundController {
     this.activeLoops.clear();
 
     void (async () => {
-      const NativeAudio = await this.getNativeAudio();
+      await this.ensureNativeAudio();
+      const NativeAudio = this._nativeAudio;
       if (!NativeAudio) return;
       for (const assetId of loopIds) {
         try {
@@ -277,7 +291,8 @@ export class CapacitorSoundController implements SoundController {
     this.stopAllLoops();
 
     void (async () => {
-      const NativeAudio = await this.getNativeAudio();
+      await this.ensureNativeAudio();
+      const NativeAudio = this._nativeAudio;
       if (!NativeAudio) return;
       for (const assetId of this.preloaded) {
         try {
@@ -292,12 +307,17 @@ export class CapacitorSoundController implements SoundController {
 
   // ─── Private helpers ─────────────────────────────────────────────────────────
 
-  private async getNativeAudio(): Promise<NativeAudioModule['NativeAudio'] | null> {
+  private async ensureNativeAudio(): Promise<void> {
+    if (this._nativeAudio !== undefined) return;
     try {
       const { NativeAudio } = await import('@capacitor-community/native-audio');
-      return NativeAudio;
+      // Store in a class property rather than returning the plugin directly.
+      // Returning a Capacitor proxy from an async function causes
+      // Promise.resolve() to call proxy.then(), which hits the native bridge
+      // and throws "NativeAudio.then() is not implemented on ios".
+      this._nativeAudio = NativeAudio;
     } catch {
-      return null;
+      this._nativeAudio = null;
     }
   }
 

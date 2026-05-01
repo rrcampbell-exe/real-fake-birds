@@ -38,7 +38,15 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
-  allowedDevOrigins: ['capacitor://localhost', 'http://localhost:3000', 'http://10.0.2.2:3000']
+  allowedDevOrigins: [
+    'capacitor://localhost',
+    'http://localhost:3000',
+    'http://10.0.2.2:3000',
+    // Injected at startup by dev:lan script — allows the Capacitor WebView on a
+    // physical device to connect to the HMR WebSocket without triggering the
+    // Next.js dev error overlay.
+    ...(process.env.LAN_IP ? [`http://${process.env.LAN_IP}:3000`] : []),
+  ]
 };
 
 export default nextConfig;
