@@ -22,12 +22,12 @@ const NATIVE_ASSET_MAP: Partial<Record<SoundKey, string>> = {
  * These match the files copied to native targets during `cap sync`.
  */
 const NATIVE_ASSET_PATH: Record<string, string> = {
-  correct: 'public/sounds/fx/correct.mp3',
-  wrong: 'public/sounds/fx/wrong.mp3',
-  error: 'public/sounds/fx/error.mp3',
-  streak: 'public/sounds/fx/streak.mp3',
-  milestone: 'public/sounds/fx/milestone.mp3',
-  loadingLoop: 'public/sounds/fx/loading.mp3',
+  correct: 'sounds/fx/correct.mp3',
+  wrong: 'sounds/fx/wrong.mp3',
+  error: 'sounds/fx/error.mp3',
+  streak: 'sounds/fx/streak.mp3',
+  milestone: 'sounds/fx/milestone.mp3',
+  loadingLoop: 'sounds/fx/loading.mp3',
 };
 
 const SETTINGS_KEY = 'birdSoundSettings';
