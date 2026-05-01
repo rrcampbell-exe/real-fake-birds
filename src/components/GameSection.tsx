@@ -380,7 +380,7 @@ export default function GameSection() {
         <div className="w-full max-w-md mx-auto px-4">
           <div className="flex items-center gap-2 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-2 text-xs font-medium text-[var(--color-muted)]">
             <WifiOff size={13} className="shrink-0 text-[var(--color-error)]" />
-            <span>You're offline. Playing from your journal.</span>
+            <span>{"You're offline. Playing from your journal."}</span>
           </div>
         </div>
       )}
