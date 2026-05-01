@@ -17,7 +17,7 @@ let soundController: SoundController | null = null;
  * assets are NOT present in the app bundle, so we fall back to SoundManager
  * (Web Audio) which fetches files from the remote origin instead.
  */
-function isLiveReload(): boolean {
+function isRemoteServerOrigin(): boolean {
   if (typeof window === 'undefined') {
     return false;
   }
@@ -29,7 +29,7 @@ function isLiveReload(): boolean {
 }
 
 function createSoundController(): SoundController {
-  if (isNativePlatform() && !isLiveReload()) {
+  if (isNativePlatform() && !isRemoteServerOrigin()) {
     return new CapacitorSoundController();
   }
   return SoundManager.getInstance();
