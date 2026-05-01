@@ -222,6 +222,102 @@ export default function SettingsPage() {
       <UsernameAvailabilityCard />
 
       <section>
+        <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold mb-1">
+          Theme
+        </h2>
+        <p className="text-sm text-[var(--color-muted)] mb-5">
+          Unlock themes with milestones or seeds. Themes beyond Cardinal are coming soon!
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          {themes.map((theme) => {
+            const isActive = currentTheme?.name === theme.name;
+            const themeUnlock = getThemeUnlockByThemeName(theme.name);
+            const isComingSoon = Boolean(themeUnlock?.comingSoon);
+            const isUnlocked = showDynamicThemeState && unlockedThemeNames.has(theme.name);
+            const isLocked = !isComingSoon && !isUnlocked;
+            const themeStatusLabel = theme.name === finch.name
+              ? 'Always available'
+              : isComingSoon
+                ? 'Coming Soon'
+                : !showDynamicThemeState
+                  ? `Unlock at ${themeUnlock?.milestoneValue} birds or ${themeUnlock?.seedCost} seeds`
+                  : isUnlocked
+                    ? `Unlocked at ${themeUnlock?.milestoneValue} birds`
+                    : Math.max((themeUnlock?.seedCost ?? 0) - score.seeds, 0) === 0
+                      ? `Unlock now or with ${Math.max((themeUnlock?.milestoneValue ?? 0) - score.birdsIdentified, 0)} more birds`
+                      : `${Math.max((themeUnlock?.seedCost ?? 0) - score.seeds, 0)} more seeds or ${Math.max((themeUnlock?.milestoneValue ?? 0) - score.birdsIdentified, 0)} more birds`;
+
+            return (
+              <button
+                key={theme.name}
+                type="button"
+                onClick={() => {
+                  if (isComingSoon) return;
+                  if (isLocked) {
+                    handleLockedThemeClick(theme.name);
+                    return;
+                  }
+
+                  handleThemeChange(theme);
+                }}
+                disabled={isComingSoon}
+                className={`relative flex items-center gap-3 rounded-xl border p-4 text-left transition-all ${
+                  isActive
+                    ? 'border-[var(--color-secondary)] bg-[var(--color-surface)]'
+                    : 'border-[var(--color-surface-border)] bg-[var(--color-surface)]'
+                } ${
+                  isComingSoon
+                    ? 'cursor-not-allowed opacity-60'
+                    : isLocked
+                      ? 'cursor-pointer hover:bg-[var(--color-surface-hover)]'
+                      : 'cursor-pointer hover:bg-[var(--color-surface-hover)]'
+                }`}
+              >
+                <div
+                  className="h-8 w-8 shrink-0 rounded-full border-2 border-white/20"
+                  style={{ backgroundColor: theme.primary }}
+                >
+                  <div
+                    className="h-full w-full rounded-full"
+                    style={{
+                      background: `linear-gradient(135deg, ${theme.primary} 50%, ${theme.secondary} 50%)`,
+                    }}
+                  />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <span className="block font-[family-name:var(--font-display)] font-medium text-sm">
+                    {theme.name}
+                  </span>
+                  <span className="block text-[0.65rem] leading-tight text-[var(--color-muted)]">
+                    {themeStatusLabel}
+                  </span>
+                </div>
+
+                {isActive && (
+                  <Check size={16} className="absolute top-2 right-2 text-[var(--color-secondary)]" />
+                )}
+
+                {!isActive && isComingSoon && (
+                  <span className="absolute top-2 right-2 rounded-full bg-[var(--color-surface-border)] px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]">
+                    Soon
+                  </span>
+                )}
+
+                {!isActive && isLocked && themeUnlock && showDynamicThemeState && (
+                  <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-[var(--color-surface-border)] px-2 py-0.5 text-[0.6rem] font-semibold text-[var(--color-muted)]">
+                    <SeedIcon size={12} color="currentColor" />
+                    {themeUnlock.seedCost}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+      </section>
+
+      <section>
         <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold mb-3">
           Sound
         </h2>
@@ -321,102 +417,6 @@ export default function SettingsPage() {
       </section>
 
       <section>
-        <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold mb-1">
-          Theme
-        </h2>
-        <p className="text-sm text-[var(--color-muted)] mb-5">
-          Unlock themes with milestones or seeds. Themes beyond Cardinal are coming soon!
-        </p>
-        <div className="grid grid-cols-2 gap-3">
-          {themes.map((theme) => {
-            const isActive = currentTheme?.name === theme.name;
-            const themeUnlock = getThemeUnlockByThemeName(theme.name);
-            const isComingSoon = Boolean(themeUnlock?.comingSoon);
-            const isUnlocked = showDynamicThemeState && unlockedThemeNames.has(theme.name);
-            const isLocked = !isComingSoon && !isUnlocked;
-            const themeStatusLabel = theme.name === finch.name
-              ? 'Always available'
-              : isComingSoon
-                ? 'Coming Soon'
-                : !showDynamicThemeState
-                  ? `Unlock at ${themeUnlock?.milestoneValue} birds or ${themeUnlock?.seedCost} seeds`
-                  : isUnlocked
-                    ? `Unlocked at ${themeUnlock?.milestoneValue} birds`
-                    : Math.max((themeUnlock?.seedCost ?? 0) - score.seeds, 0) === 0
-                      ? `Unlock now or with ${Math.max((themeUnlock?.milestoneValue ?? 0) - score.birdsIdentified, 0)} more birds`
-                      : `${Math.max((themeUnlock?.seedCost ?? 0) - score.seeds, 0)} more seeds or ${Math.max((themeUnlock?.milestoneValue ?? 0) - score.birdsIdentified, 0)} more birds`;
-
-            return (
-              <button
-                key={theme.name}
-                type="button"
-                onClick={() => {
-                  if (isComingSoon) return;
-                  if (isLocked) {
-                    handleLockedThemeClick(theme.name);
-                    return;
-                  }
-
-                  handleThemeChange(theme);
-                }}
-                disabled={isComingSoon}
-                className={`relative flex items-center gap-3 rounded-xl border p-4 text-left transition-all ${
-                  isActive
-                    ? 'border-[var(--color-secondary)] bg-[var(--color-surface)]'
-                    : 'border-[var(--color-surface-border)] bg-[var(--color-surface)]'
-                } ${
-                  isComingSoon
-                    ? 'cursor-not-allowed opacity-60'
-                    : isLocked
-                      ? 'cursor-pointer hover:bg-[var(--color-surface-hover)]'
-                      : 'cursor-pointer hover:bg-[var(--color-surface-hover)]'
-                }`}
-              >
-                <div
-                  className="h-8 w-8 shrink-0 rounded-full border-2 border-white/20"
-                  style={{ backgroundColor: theme.primary }}
-                >
-                  <div
-                    className="h-full w-full rounded-full"
-                    style={{
-                      background: `linear-gradient(135deg, ${theme.primary} 50%, ${theme.secondary} 50%)`,
-                    }}
-                  />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <span className="block font-[family-name:var(--font-display)] font-medium text-sm">
-                    {theme.name}
-                  </span>
-                  <span className="block text-[0.65rem] leading-tight text-[var(--color-muted)]">
-                    {themeStatusLabel}
-                  </span>
-                </div>
-
-                {isActive && (
-                  <Check size={16} className="absolute top-2 right-2 text-[var(--color-secondary)]" />
-                )}
-
-                {!isActive && isComingSoon && (
-                  <span className="absolute top-2 right-2 rounded-full bg-[var(--color-surface-border)] px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]">
-                    Soon
-                  </span>
-                )}
-
-                {!isActive && isLocked && themeUnlock && showDynamicThemeState && (
-                  <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-[var(--color-surface-border)] px-2 py-0.5 text-[0.6rem] font-semibold text-[var(--color-muted)]">
-                    <SeedIcon size={12} color="currentColor" />
-                    {themeUnlock.seedCost}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-      </section>
-
-      <section>
         <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold mb-3">
           About
         </h2>
@@ -438,7 +438,7 @@ export default function SettingsPage() {
           </div>
           <div className="flex flex-col gap-0.5">
             <p className="text-[var(--color-muted)] text-xs">
-              Ryan R. Campbell © 2023 - 2026 | All rights reserved.
+              Catbird Games © 2023 - 2026 | All rights reserved.
             </p>
             <p className="text-[var(--color-muted)] text-xs">
               Theme music and some visual assets created in collaboration with ElevenLabs.
