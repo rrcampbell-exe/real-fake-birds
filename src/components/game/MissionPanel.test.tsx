@@ -78,7 +78,7 @@ describe('MissionPanel', () => {
     expect(screen.getByText('Keep going')).toBeInTheDocument();
     expect(screen.getByText('Completed')).toBeInTheDocument();
     expect(screen.getByText('+5 seeds')).toBeInTheDocument();
-    expect(screen.getByText('Clean sweep bonus')).toBeInTheDocument();
+    expect(screen.getByText('High flyer bonus')).toBeInTheDocument();
     expect(screen.getByText('In Progress')).toBeInTheDocument();
     expect(screen.getByText('1/2')).toBeInTheDocument();
   });

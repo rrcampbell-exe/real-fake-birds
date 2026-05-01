@@ -63,7 +63,9 @@ const BOOT_INSPECTION_STORAGE_KEY = 'rfb:inspectBootDelayMs';
 const WARM_CACHE_WINDOW_MS = 5 * 60_000;
 const DEFAULT_BOOT_INSPECTION_DELAY_MS = 2_500;
 const MAX_BOOT_INSPECTION_DELAY_MS = 10_000;
-const MIN_BOOT_SCREEN_DURATION_MS = 1_400;
+const MIN_BOOT_SCREEN_DURATION_MS = 2_400;
+const BOOT_NETWORK_TIMEOUT_MS = 7_000;
+const BOOT_WATCHDOG_TIMEOUT_MS = 12_000;
 const BOOT_EXIT_DURATION_MS = 450;
 const CONTENT_REVEAL_DELAY_MS = BOOT_EXIT_DURATION_MS;
 const CHROME_REVEAL_DELAY_MS = BOOT_EXIT_DURATION_MS;
@@ -75,6 +77,24 @@ function isBrowser(): boolean {
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms);
+  });
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    promise
+      .then((value) => {
+        window.clearTimeout(timeoutId);
+        resolve(value);
+      })
+      .catch((error) => {
+        window.clearTimeout(timeoutId);
+        reject(error);
+      });
   });
 }
 
@@ -362,6 +382,20 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
   }, [isBooting]);
 
   useEffect(() => {
+    // Absolute safety net: if anything in startup flow regresses, never trap
+    // players on the boot screen indefinitely.
+    const failOpenId = window.setTimeout(() => {
+      setBootStage('finalizing');
+      setIsLoadingAccount(false);
+      setIsBooting(false);
+    }, BOOT_WATCHDOG_TIMEOUT_MS + 3_000);
+
+    return () => {
+      window.clearTimeout(failOpenId);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!supabaseReady) {
       let active = true;
 
@@ -403,8 +437,18 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    const supabase = getSupabaseBrowserClient();
     let active = true;
+    const bootWatchdogId = window.setTimeout(() => {
+      if (!active) {
+        return;
+      }
+
+      // Absolute fail-open for native/webview debugging sessions where an
+      // unexpected startup path hangs before normal finally blocks run.
+      setBootStage('finalizing');
+      setIsLoadingAccount(false);
+      setIsBooting(false);
+    }, BOOT_WATCHDOG_TIMEOUT_MS);
 
     const runBoot = async () => {
       const bootStartedAt = Date.now();
@@ -416,7 +460,12 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
       setBootStage('checking-session');
 
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
+        const supabase = getSupabaseBrowserClient();
+        const { data: sessionData } = await withTimeout(
+          supabase.auth.getSession(),
+          BOOT_NETWORK_TIMEOUT_MS,
+          'supabase.auth.getSession() during boot'
+        );
         if (!active) {
           return;
         }
@@ -439,20 +488,30 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
 
         if (!hasWarmProgressCache()) {
           setBootStage('syncing-progress');
-          await syncSignedInAccountToLocalState({ notify: false });
+          await withTimeout(
+            syncSignedInAccountToLocalState({ notify: false }),
+            BOOT_NETWORK_TIMEOUT_MS,
+            'syncSignedInAccountToLocalState() during boot'
+          );
           if (!active) {
             return;
           }
         }
 
         setBootStage('finalizing');
-        await refreshAccountState({ silent: true });
+        await withTimeout(
+          refreshAccountState({ silent: true }),
+          BOOT_NETWORK_TIMEOUT_MS,
+          'refreshAccountState() during boot'
+        );
       } catch {
+        // Never let boot freeze due to network/auth stalls.
         clearAccountState();
       } finally {
         await waitForMinimumBootDuration(bootStartedAt, requiredBootDurationMs, () => active);
 
         if (active) {
+          window.clearTimeout(bootWatchdogId);
           setIsLoadingAccount(false);
           setIsBooting(false);
         }
@@ -463,6 +522,7 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
 
     return () => {
       active = false;
+      window.clearTimeout(bootWatchdogId);
     };
   }, [applyAccountStateCache, clearAccountState, refreshAccountState, supabaseReady]);
 

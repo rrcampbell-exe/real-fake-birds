@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { defaultBirdScore } from './player-progress';
 import {
   consumeStreakInsurance,
   defaultStreakInsuranceState,
@@ -127,5 +128,56 @@ describe('streak insurance', () => {
     expireStreakInsuranceAfterGuess();
 
     expect(readStreakInsuranceState()).toEqual(defaultStreakInsuranceState);
+  });
+
+  it('refuses to purchase when insurance is already active', () => {
+    localStorage.setItem('birdScore', JSON.stringify({
+      ...defaultBirdScore,
+      currentStreak: 8,
+      seeds: 100,
+    }));
+    localStorage.setItem('streakInsurance', JSON.stringify({
+      active: true,
+      protectedMissesRemaining: 1,
+      cost: 14,
+      purchasedAtStreak: 8,
+    }));
+    const result = purchaseStreakInsurance();
+    expect(result.ok).toBe(false);
+    expect(result.error).toBeTruthy();
+  });
+
+  it('refuses to purchase when the player does not have enough seeds', () => {
+    localStorage.setItem('birdScore', JSON.stringify({
+      ...defaultBirdScore,
+      currentStreak: 10,
+      seeds: 1,
+    }));
+    const result = purchaseStreakInsurance();
+    expect(result.ok).toBe(false);
+    expect(result.error).toBeTruthy();
+  });
+
+  it('does nothing in expireStreakInsuranceAfterGuess when insurance is not active', () => {
+    localStorage.setItem('birdScore', JSON.stringify({
+      ...defaultBirdScore,
+      currentStreak: 6,
+    }));
+    expect(() => expireStreakInsuranceAfterGuess()).not.toThrow();
+    expect(readStreakInsuranceState()).toEqual(defaultStreakInsuranceState);
+  });
+
+  it('normalizes non-standard field types in stored streak insurance state', () => {
+    localStorage.setItem('streakInsurance', JSON.stringify({
+      active: 'yes',
+      protectedMissesRemaining: 'many',
+      cost: 'expensive',
+      purchasedAtStreak: 'high',
+    }));
+    const state = readStreakInsuranceState();
+    expect(state.active).toBe(false);
+    expect(state.protectedMissesRemaining).toBe(0);
+    expect(state.cost).toBe(0);
+    expect(state.purchasedAtStreak).toBe(0);
   });
 });

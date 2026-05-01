@@ -315,4 +315,106 @@ describe('buildSignUpPromptContent', () => {
       expect(withoutCutoff.leaderboardLine).toContain(expected);
     });
   });
+
+  it('uses singular "theme" when exactly one non-Finch theme is unlocked', () => {
+    const singleThemeOnly = buildSignUpPromptContent({
+      birdsSeen: 12,
+      birdsIdentified: 0,
+      seeds: 5,
+      unlockedThemeNames: ['Finch', 'Raven'],
+      leaderboard: null,
+    });
+    expect(singleThemeOnly.achievementLine).toContain('unlocked the Raven theme');
+    expect(singleThemeOnly.achievementLine).not.toContain('themes');
+
+    const badgeAndSingleTheme = buildSignUpPromptContent({
+      birdsSeen: 15,
+      birdsIdentified: 10,
+      seeds: 5,
+      unlockedThemeNames: ['Finch', 'Raven'],
+      leaderboard: null,
+    });
+    expect(badgeAndSingleTheme.achievementLine).toContain('unlocked the Raven theme');
+    expect(badgeAndSingleTheme.achievementLine).not.toContain('themes');
+  });
+
+  it('uses singular "bird" when exactly one correct bird remains until the next reward', () => {
+    // Intermediate seed milestone at 125 — birdsIdentified=124 → 1 remaining
+    const seedSingular = buildSignUpPromptContent({
+      birdsSeen: 130,
+      birdsIdentified: 124,
+      seeds: 20,
+      unlockedThemeNames: ['Finch'],
+      leaderboard: null,
+    });
+    expect(seedSingular.nextRewardLine).toContain('1 more correct bird');
+    expect(seedSingular.nextRewardLine).not.toContain('birds');
+
+    // Badge + theme milestone at 50 — birdsIdentified=49 → 1 remaining
+    const badgeThemeSingular = buildSignUpPromptContent({
+      birdsSeen: 55,
+      birdsIdentified: 49,
+      seeds: 10,
+      unlockedThemeNames: ['Finch'],
+      leaderboard: null,
+    });
+    expect(badgeThemeSingular.nextRewardLine).toContain('1 more correct bird');
+
+    // Badge with comingSoon theme (milestone 850) — birdsIdentified=849 → 1 remaining, badge-only path
+    const badgeOnlySingular = buildSignUpPromptContent({
+      birdsSeen: 860,
+      birdsIdentified: 849,
+      seeds: 100,
+      unlockedThemeNames: ['Finch'],
+      leaderboard: null,
+    });
+    expect(badgeOnlySingular.nextRewardLine).toContain('1 more correct bird');
+    expect(badgeOnlySingular.nextRewardLine).toContain('Platinum Feather badge');
+  });
+
+  it('uses ordinal placement label when leaderboard has fewer than 10 entries', () => {
+    // Uses an unknown challenge ID to reach the default/generic buildLeaderboardLine path
+    const shortLeaderboard = buildSignUpPromptContent({
+      birdsSeen: 60,
+      birdsIdentified: 50,
+      seeds: 30,
+      unlockedThemeNames: ['Finch'],
+      leaderboard: buildLeaderboard({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        challenge: { id: 'unknown-challenge' as any, name: 'Unknown Challenge' },
+        entries: [
+          { rank: 1, username: 'top-birder', avatarPalette: null, primaryValue: 500, primaryDisplayValue: '500 seeds', tiebreakerValue: 99, tiebreakerDisplayValue: '99% accuracy', birdsSeen: 40, isCurrentUser: false },
+          { rank: 2, username: 'birder-2', avatarPalette: null, primaryValue: 300, primaryDisplayValue: '300 seeds', tiebreakerValue: 88, tiebreakerDisplayValue: '88% accuracy', birdsSeen: 30, isCurrentUser: false },
+          { rank: 3, username: 'birder-3', avatarPalette: null, primaryValue: 200, primaryDisplayValue: '200 seeds', tiebreakerValue: 77, tiebreakerDisplayValue: '77% accuracy', birdsSeen: 20, isCurrentUser: false },
+        ],
+      }),
+    });
+    expect(shortLeaderboard.leaderboardLine).toContain('3rd place');
+  });
+
+  it('omits tiebreaker text when tiebreakerDisplayValue is empty', () => {
+    const noTiebreaker = buildSignUpPromptContent({
+      birdsSeen: 60,
+      birdsIdentified: 50,
+      seeds: 30,
+      unlockedThemeNames: ['Finch'],
+      leaderboard: buildLeaderboard({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        challenge: { id: 'unknown-challenge' as any, name: 'Unknown Challenge' },
+        entries: Array.from({ length: 10 }, (_, index) => ({
+          rank: index + 1,
+          username: `birder-${index + 1}`,
+          avatarPalette: null,
+          primaryValue: 200 - index,
+          primaryDisplayValue: `${200 - index} seeds`,
+          tiebreakerValue: 0,
+          tiebreakerDisplayValue: '',
+          birdsSeen: 50 - index,
+          isCurrentUser: false,
+        })),
+      }),
+    });
+    expect(noTiebreaker.leaderboardLine).not.toContain('breaking ties');
+  });
+
 });

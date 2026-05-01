@@ -5,6 +5,7 @@ import {
   mergeNonRoundRemoteScore,
   migrateStoredPlayerProgress,
   normalizeBirdScore,
+  unlockThemeName,
   writeBirdScore,
 } from './player-progress';
 
@@ -128,5 +129,30 @@ describe('player-progress', () => {
       bestStreak: 6,
       seeds: 20,
     });
+  });
+
+  it('returns empty purchased themes when stored value is not an array', () => {
+    localStorage.setItem('unlockedThemes', JSON.stringify(42));
+    const themes = getUnlockedThemeNames({ ...defaultBirdScore, birdsIdentified: 0 });
+    expect(themes).toEqual(['Finch']);
+  });
+
+  it('returns current purchased themes unchanged when unlocking an invalid theme name', () => {
+    const result = unlockThemeName('NonExistentBird');
+    expect(result).toEqual([]);
+  });
+
+  it('preserves a valid unlocked theme during migration', () => {
+    localStorage.setItem('birdScore', JSON.stringify({ ...defaultBirdScore, birdsIdentified: 350 }));
+    localStorage.setItem('birdTheme', JSON.stringify({ name: 'Cardinal' }));
+    const migration = migrateStoredPlayerProgress();
+    expect(migration.selectedThemeName).toBe('Cardinal');
+  });
+
+  it('falls back to Finch theme when stored birdTheme is invalid JSON', () => {
+    localStorage.setItem('birdScore', JSON.stringify({ ...defaultBirdScore, birdsIdentified: 350 }));
+    localStorage.setItem('birdTheme', '{bad json');
+    const migration = migrateStoredPlayerProgress();
+    expect(migration.selectedThemeName).toBe('Finch');
   });
 });

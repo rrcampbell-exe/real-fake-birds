@@ -39,7 +39,6 @@ const IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 const DEFAULT_BIRDS_INPUT = join(__dirname, 'data', 'fake-birds.json');
 const DEFAULT_RECOVERED_DIR = join(__dirname, '.tmp', 'recovered-fake-assets');
-const DEFAULT_RECOVERED_RESULTS = join(DEFAULT_RECOVERED_DIR, 'results.ndjson');
 const DEFAULT_REPORTS_DIR = join(__dirname, '.tmp', 'seed-cdn-runs');
 const DEFAULT_OUTPUT_DIR = join(__dirname, '.tmp', 'backfill-fake-facts-and-thumbs');
 

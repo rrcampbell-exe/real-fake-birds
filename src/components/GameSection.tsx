@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { WifiOff } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useGameState } from '@/hooks/useGameState';
@@ -31,6 +32,9 @@ const TOAST_LIFETIME_IMPORTANT_MS = 4500;
 const TOAST_LIFETIME_ROUTINE_MS = 3000;
 const TOAST_LIFETIME_EXTENDED_MS = 5200;
 const TOAST_GAP_MS = 300;
+
+/** Minimum downward drag distance (px) from the page top to trigger a refresh. */
+const PULL_TO_REFRESH_THRESHOLD_PX = 72;
 
 function buildDailyStreakToastDetail(roundResult: GameRoundResult): string {
   return roundResult.dailyMissionStreak
@@ -190,6 +194,7 @@ export default function GameSection() {
     fakeImageNotice,
     seedsBalance,
     showQuestion,
+    isOfflineReplay,
     handleAnswer,
     requestHint,
     revealFakeBirdImage,
@@ -294,8 +299,91 @@ export default function GameSection() {
     };
   }, [activeToastRoundId, currentToastIndex, expiredToastRoundId, sortedToasts]);
 
+  // Pull-to-refresh: detect a downward drag from the page top and trigger tryAgain.
+  // The threshold of 72px balances sensitivity and accidental trigger prevention.
+  const containerRef = useRef<HTMLDivElement>(null);
+  const pullStartY = useRef<number | null>(null);
+  const [isPulling, setIsPulling] = useState(false);
+  // Keep a ref in sync with isPulling so handleTouchEnd always reads the latest
+  // value without needing to be listed as an effect dependency (which would cause
+  // the listeners to be torn down and re-added on every drag tick).
+  const isPullingRef = useRef(false);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (window.scrollY === 0) {
+        pullStartY.current = e.touches[0]?.clientY ?? null;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (pullStartY.current === null) return;
+      // Re-check scroll position on each move to handle subtle scrolls between start and move.
+      if (window.scrollY > 0) {
+        pullStartY.current = null;
+        isPullingRef.current = false;
+        setIsPulling(false);
+        return;
+      }
+      const deltaY = (e.touches[0]?.clientY ?? 0) - pullStartY.current;
+      if (deltaY > 0) {
+        const pulling = deltaY >= PULL_TO_REFRESH_THRESHOLD_PX;
+        isPullingRef.current = pulling;
+        setIsPulling(pulling);
+        e.preventDefault();
+      }
+    };
+
+    const handleTouchEnd = () => {
+      if (isPullingRef.current) {
+        tryAgain();
+      }
+      pullStartY.current = null;
+      isPullingRef.current = false;
+      setIsPulling(false);
+    };
+
+    container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    container.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [tryAgain]);
+
   return (
-    <div className="box-border flex min-h-[calc(100dvh-7rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] flex-1 flex-col items-center justify-center gap-6 py-6 md:min-h-0 md:py-4">
+    <div
+      ref={containerRef}
+      className="box-border flex min-h-[calc(100dvh-7rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] flex-1 flex-col items-center justify-center gap-6 py-6 md:min-h-0 md:py-4"
+    >
+      {isPulling && (
+        <div className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center pt-3">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-1.5 text-xs font-semibold text-[var(--color-muted)] shadow-[var(--shadow-card)]">
+            <motion.span
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
+              className="inline-block"
+            >
+              ↻
+            </motion.span>
+            Release to refresh
+          </div>
+        </div>
+      )}
+      {isOfflineReplay && (
+        <div className="w-full max-w-md mx-auto px-4">
+          <div className="flex items-center gap-2 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-2 text-xs font-medium text-[var(--color-muted)]">
+            <WifiOff size={13} className="shrink-0 text-[var(--color-error)]" />
+            <span>{"You're offline. Playing from your journal."}</span>
+          </div>
+        </div>
+      )}
       {/* Title + slogan — visible only on mobile (desktop shows it in TopNav) */}
       <div className="text-center px-4 md:hidden">
         <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-[0.05em]">

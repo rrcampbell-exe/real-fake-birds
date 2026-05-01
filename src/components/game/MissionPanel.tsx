@@ -139,7 +139,7 @@ export default function MissionPanel({
           <div className="mt-4 rounded-xl border border-dashed border-[var(--color-secondary)] bg-[var(--color-surface-hover)] p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold">Clean sweep bonus</p>
+                <p className="text-sm font-semibold">High flyer bonus</p>
                 <p className="text-[0.7rem] text-[var(--color-muted)]">
                   {bonusClaimed
                     ? `You earned ${formatNumber(missionSetBonusSeeds)} bonus seeds for finishing all three missions.`

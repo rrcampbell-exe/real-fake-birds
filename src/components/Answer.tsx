@@ -23,6 +23,7 @@ import { buildMilestoneSharePayload, buildRoundSharePayload } from '@/lib/utils/
 import type { HintState, ImageAttribution } from '@/types';
 import { FAKE_REVEAL_COST } from '@/lib/constants/hints';
 import { useFirstAppearance } from '@/hooks/useFirstAppearance';
+import { hapticError, hapticHeavy, hapticLight, hapticSuccess } from '@/lib/haptics';
 
 const FAKE_FIELD_NOTES = [
   'This bird was made up. We still love it, though!',
@@ -437,8 +438,10 @@ export default function Answer({
     const timer = setTimeout(() => {
       if (isCorrect) {
         play('correct');
+        void hapticSuccess();
       } else {
         play('wrong');
+        void hapticError();
       }
     }, 100);
     return () => clearTimeout(timer);
@@ -448,8 +451,10 @@ export default function Answer({
   useEffect(() => {
     if (isMilestone || firstGameOfDayBonusSeedsEarned > 0) {
       play('milestone');
+      void hapticHeavy();
     } else if (isStreak) {
       play(isMajorStreak ? 'milestone' : 'streak');
+      if (isMajorStreak) void hapticHeavy();
     }
   }, [firstGameOfDayBonusSeedsEarned, isMajorStreak, isStreak, isMilestone, play]);
 
@@ -513,7 +518,7 @@ export default function Answer({
           className="min-h-11 rounded-xl px-4 py-2.5 text-sm shadow-[var(--shadow-button)]"
         />
         <button
-          onClick={() => { play('whoosh'); onAction(); }}
+          onClick={() => { play('whoosh'); void hapticLight(); onAction(); }}
           className={`inline-flex min-h-11 items-center gap-2 rounded-xl bg-[var(--color-secondary)] px-4 py-2.5 font-[family-name:var(--font-display)] text-sm font-semibold text-[var(--color-on-secondary)] shadow-[var(--shadow-button)] transition-[opacity,filter] duration-150 hover:brightness-110 active:scale-[0.97] ${isNextBirdVisible ? 'opacity-100' : 'opacity-0'} ${isWiggling ? 'wiggle-once' : ''}`}
         >
           {actionLabel}

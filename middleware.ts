@@ -51,7 +51,13 @@ export async function middleware(request: NextRequest) {
 
   const response = await updateSession(request, requestHeaders);
 
-  response.headers.set('Content-Security-Policy', buildCsp(nonce));
+  // Skip CSP in development: `upgrade-insecure-requests` breaks LAN dev on physical
+  // devices (LAN IPs aren't "potentially trustworthy", so the WebView upgrades all
+  // http://LAN_IP:3000/_next/... requests to HTTPS, which fails). Localhost is
+  // exempt from the spec, which is why the simulator works fine.
+  if (process.env.NODE_ENV !== 'development') {
+    response.headers.set('Content-Security-Policy', buildCsp(nonce));
+  }
 
   // Only set the cookie once; skip if already present.
   if (!request.cookies.has(REGION_COOKIE)) {

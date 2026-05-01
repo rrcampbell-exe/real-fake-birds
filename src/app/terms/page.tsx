@@ -17,7 +17,7 @@ export default function TermsOfServicePage() {
           Terms of Service
         </h1>
         <p className="text-sm text-[var(--color-muted)]">
-          Last updated: April 23, 2026
+          Last updated: May 1, 2026
         </p>
       </div>
 
@@ -92,7 +92,7 @@ export default function TermsOfServicePage() {
           </h2>
           <p>
             The Real Fake Birds name, branding, source code, and original assets are owned by
-            Ryan R. Campbell / Catbird Games and are protected by applicable intellectual property
+            Catbird Games and are protected by applicable intellectual property
             laws. You may not reproduce or redistribute any part of the game without prior written
             permission.
           </p>
@@ -157,8 +157,8 @@ export default function TermsOfServicePage() {
             Limitation of Liability
           </h2>
           <p>
-            To the fullest extent permitted by law, Catbird Games and Ryan R. Campbell shall not
-            be liable for any indirect, incidental, special, consequential, or punitive damages
+            To the fullest extent permitted by law, neither Catbird Games nor its owners, officers,
+            nor representatives shall be liable for any indirect, incidental, special, consequential, or punitive damages
             arising from your use of or inability to use Real Fake Birds, even if advised of
             the possibility of such damages. Our total liability to you for any claim arising
             out of these Terms or your use of the game shall not exceed the amount you paid us

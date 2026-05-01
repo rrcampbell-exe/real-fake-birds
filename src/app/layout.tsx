@@ -12,6 +12,7 @@ import ConsentModal from '@/components/analytics/ConsentModal';
 import { themeUnlocks } from '@/lib/constants/theme-unlocks';
 import NativeBackHandler from '@/components/native/NativeBackHandler';
 import NativeMainWrapper from '@/components/native/NativeMainWrapper';
+import NativeSplashHandler from '@/components/native/NativeSplashHandler';
 
 const liveThemeUnlockThresholds = themeUnlocks
   .filter((themeUnlock) => !themeUnlock.comingSoon)
@@ -91,6 +92,7 @@ export default async function RootLayout({
       </head>
       <body className="flex min-h-dvh flex-col font-[family-name:var(--font-body)]">
         <NativeBackHandler />
+        <NativeSplashHandler />
         <ThemeProvider>
           <AnalyticsProvider />
           <ConsentModal />

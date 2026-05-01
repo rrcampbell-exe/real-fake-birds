@@ -4,7 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next build && next dev",
+    "dev:lan": "export LAN_IP=${LAN_IP:-$(ipconfig getifaddr en0)}; if [ -z \"$LAN_IP\" ]; then echo 'Could not detect LAN IP. Set LAN_IP manually.'; exit 1; fi; echo \"LAN dev server starting on http://$LAN_IP:3000\"; next build && next dev --hostname 0.0.0.0 --port 3000",
     "ios": "CAPACITOR_SERVER_URL=http://localhost:3000 npx cap sync ios && npx cap open ios",
+    "ios:sim": "CAPACITOR_SERVER_URL=http://localhost:3000 npx cap sync ios && npx cap open ios",
+    "ios:device:lan": "export LAN_IP=${LAN_IP:-$(ipconfig getifaddr en0)}; if [ -z \"$LAN_IP\" ]; then echo 'Could not detect LAN IP. Set LAN_IP manually, e.g. LAN_IP=192.168.1.x npm run ios:device:lan'; exit 1; fi; echo \"Using LAN IP: $LAN_IP (add http://$LAN_IP:3000 to allowedDevOrigins in next.config.ts if HMR fails)\"; CAPACITOR_SERVER_URL=http://$LAN_IP:3000 npx cap sync ios && npx cap open ios",
+    "ios:device:prod": "CAPACITOR_SERVER_URL=https://www.realfakebirds.app npx cap sync ios && npx cap open ios",
+    "ios:device:bundle": "echo 'Bundle mode is unavailable for this app because it uses Next.js server routes and does not produce out/index.html. Use ios:device:lan or ios:device:prod instead.' && exit 1",
     "android": "CAPACITOR_SERVER_URL=http://10.0.2.2:3000 npx cap sync android && npx cap open android",
     "build": "next build",
     "start": "next start",
@@ -22,6 +27,7 @@
     "seed:fake:from-samples": "npx tsx scripts/seed-cdn.ts --fake --from-samples",
     "generate:fake": "npx tsx scripts/generate-fake-birds.ts",
     "generate:fake:seed": "npx tsx scripts/generate-fake-birds.ts --seed",
+    "generate:splash": "npx tsx scripts/generate-splash.ts",
     "prune:fake": "npx tsx scripts/prune-fake-birds.ts",
     "prune:fake:apply": "npx tsx scripts/prune-fake-birds.ts --apply",
     "validate:fake": "npx tsx scripts/validate-fake-birds.ts",
@@ -33,9 +39,12 @@
     "migrate:prod": "SUPABASE_PROJECT_REF=bbmuqhogdpadbirwllrw supabase db push"
   },
   "dependencies": {
+    "@capacitor-community/native-audio": "^8.0.0",
     "@capacitor/app": "^8.1.0",
     "@capacitor/browser": "^8.0.3",
     "@capacitor/core": "^8.3.1",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/splash-screen": "^8.0.1",
     "@marsidev/react-turnstile": "^1.5.0",
     "@supabase/ssr": "^0.10.0",
     "@supabase/supabase-js": "^2.101.1",
