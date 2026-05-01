@@ -3,6 +3,7 @@
 import { WifiOff } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { isNativePlatform } from '@/lib/native/platform';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useGameState } from '@/hooks/useGameState';
 import { useScreenViewed } from '@/hooks/useScreenViewed';
@@ -312,6 +313,9 @@ export default function GameSection() {
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    // Pull-to-refresh is disabled on native — it would let players skip birds
+    // by pulling down, and the gesture conflicts with native scroll behaviour.
+    if (isNativePlatform()) return;
 
     const handleTouchStart = (e: TouchEvent) => {
       if (window.scrollY === 0) {
@@ -495,7 +499,7 @@ export default function GameSection() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {showSignUpModal && signUpPrompt.activeThreshold !== null ? (
+        {showSignUpModal && signUpPrompt.activeThreshold !== null && !isNativePlatform() ? (
           <SignUpPromptModal
             birdsSeen={signUpPrompt.birdsSeen}
             birdsIdentified={signUpPrompt.birdsIdentified}
