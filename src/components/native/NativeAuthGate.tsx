@@ -31,21 +31,25 @@ export default function NativeAuthGate() {
   const hasMounted = useHasHydrated();
   const { isBooting, isSignedIn } = useAccountState();
   const router = useRouter();
-  const [isOffline, setIsOffline] = useState(false);
-  const [offlineBypass, setOfflineBypass] = useState(false);
+  const [isOffline, setIsOffline] = useState(() => (
+    typeof navigator === 'undefined' ? false : !navigator.onLine
+  ));
+  const [offlineBypass, setOfflineBypass] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
+    try {
+      return sessionStorage.getItem(OFFLINE_GUEST_BYPASS_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
     if (!hasMounted) return;
 
-    // Restore any existing session-scoped offline bypass.
-    try {
-      setOfflineBypass(sessionStorage.getItem(OFFLINE_GUEST_BYPASS_KEY) === 'true');
-    } catch {
-      // sessionStorage not available (private browsing, etc.) — ignore.
-    }
-
     const update = () => setIsOffline(!navigator.onLine);
-    update();
     window.addEventListener('online', update);
     window.addEventListener('offline', update);
     return () => {

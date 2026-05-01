@@ -246,6 +246,36 @@ describe('UsernameAvailabilityCard', () => {
     });
   });
 
+  it('reveals deferred captcha after the first submit attempt without a token', async () => {
+    mockedHasSupabaseEnv.mockReturnValue(true);
+    vi.stubEnv('NEXT_PUBLIC_TURNSTILE_SITE_KEY', 'site-key');
+    mockedUseUsernameValidation.mockReturnValue({
+      value: 'BirdFan_17',
+      normalizedUsername: 'birdfan_17',
+      issues: [],
+      available: true,
+      isChecking: false,
+      error: null,
+      setValue: vi.fn(),
+    });
+
+    render(<UsernameAvailabilityCard deferCaptcha />);
+
+    expect(screen.queryByRole('button', { name: 'Complete human check' })).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'secret-password' } });
+    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'secret-password' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Create account' }).at(-1)!);
+
+    expect(mockedRegisterAccount).not.toHaveBeenCalled();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Complete human check' })).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Complete the human check before creating your account.')).not.toBeInTheDocument();
+  });
+
   it('keeps the compact create-account flow stripped down', () => {
     mockedHasSupabaseEnv.mockReturnValue(true);
     mockedUseUsernameValidation.mockReturnValue({

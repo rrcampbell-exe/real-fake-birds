@@ -243,14 +243,17 @@ export default function GameSection() {
     };
   }, [activeToastRoundId, currentToastIndex, expiredToastRoundId, sortedToasts]);
 
+  const activeSignUpThreshold = !isNativePlatform() ? signUpPrompt.activeThreshold : null;
+  const shouldShowSignUpPrompt = signUpPrompt.shouldPrompt && activeSignUpThreshold !== null;
+
   const handleAdvanceRound = useCallback(() => {
-    if (signUpPrompt.shouldPrompt && signUpPrompt.activeThreshold !== null) {
+    if (shouldShowSignUpPrompt) {
       setShowSignUpModal(true);
       return;
     }
 
     tryAgain();
-  }, [signUpPrompt.activeThreshold, signUpPrompt.shouldPrompt, tryAgain]);
+  }, [shouldShowSignUpPrompt, tryAgain]);
 
   const handleDismissSignUpModal = useCallback(() => {
     signUpPrompt.dismiss();
@@ -499,12 +502,12 @@ export default function GameSection() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {showSignUpModal && signUpPrompt.activeThreshold !== null && !isNativePlatform() ? (
+        {showSignUpModal && activeSignUpThreshold !== null && shouldShowSignUpPrompt ? (
           <SignUpPromptModal
             birdsSeen={signUpPrompt.birdsSeen}
             birdsIdentified={signUpPrompt.birdsIdentified}
             seeds={signUpPrompt.seeds}
-            threshold={signUpPrompt.activeThreshold}
+            threshold={activeSignUpThreshold}
             onDismiss={handleDismissSignUpModal}
             onAuthenticated={handleAuthenticated}
           />
