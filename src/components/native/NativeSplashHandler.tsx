@@ -15,33 +15,66 @@ import { useEffect } from 'react';
  * the theme song are ready the moment the splash fades out.
  */
 
+const BOOT_OVERLAY_SELECTOR = '[data-boot-overlay="true"]';
+
+function isBootOverlayReady(): boolean {
+  return document.documentElement.hasAttribute('data-app-booting')
+    && document.querySelector(BOOT_OVERLAY_SELECTOR) !== null;
+}
+
 /**
- * Resolves once `data-app-booting` is set on `<html>` (meaning AccountStateProvider
- * has mounted and the boot overlay is in the DOM), or after `timeoutMs` at most.
+ * Resolves once the React boot overlay has mounted and the browser has had a
+ * chance to paint it, or after `timeoutMs` at most.
  */
 function waitForBootOverlay(timeoutMs = 1500): Promise<void> {
-  if (document.documentElement.hasAttribute('data-app-booting')) {
-    return Promise.resolve();
-  }
-
   return new Promise<void>((resolve) => {
-    const observer = new MutationObserver(() => {
-      if (document.documentElement.hasAttribute('data-app-booting')) {
-        observer.disconnect();
-        window.clearTimeout(safetyId);
-        resolve();
+    let settled = false;
+    let observer: MutationObserver | null = null;
+    let safetyId = 0;
+
+    const finish = () => {
+      if (settled) {
+        return;
       }
+
+      settled = true;
+      observer?.disconnect();
+      window.clearTimeout(safetyId);
+      resolve();
+    };
+
+    const resolveAfterPaint = () => {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          finish();
+        });
+      });
+    };
+
+    const tryResolve = () => {
+      if (!isBootOverlayReady()) {
+        return false;
+      }
+
+      resolveAfterPaint();
+      return true;
+    };
+
+    observer = new MutationObserver(() => {
+      tryResolve();
     });
     observer.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ['data-app-booting'],
+      childList: true,
+      subtree: true,
     });
 
-    // Safety valve: never block the splash hide indefinitely.
-    const safetyId = window.setTimeout(() => {
-      observer.disconnect();
-      resolve();
-    }, timeoutMs);
+    if (!tryResolve()) {
+      // Safety valve: never block the splash hide indefinitely.
+      safetyId = window.setTimeout(() => {
+        finish();
+      }, timeoutMs);
+    }
   });
 }
 
@@ -52,10 +85,8 @@ export default function NativeSplashHandler() {
         const { isNativePlatform } = await import('@/lib/native/platform');
         if (!isNativePlatform()) return;
 
-        // Enforce maximum-scale=1 to prevent WKWebView from zooming into
-        // inputs on focus. The Next.js viewport export covers production
-        // builds, but live-reload mode may not apply it until a full
-        // native rebuild — patching the live <meta> tag is always reliable.
+        // Keep this runtime patch as a fallback in case the early bootstrap
+        // script missed the native bridge on first paint.
         const viewportMeta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
         if (viewportMeta && !viewportMeta.content.includes('maximum-scale')) {
           viewportMeta.content += ', maximum-scale=1';

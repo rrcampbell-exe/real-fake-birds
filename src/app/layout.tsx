@@ -23,6 +23,34 @@ const themeBootstrapScript = `
   (() => {
     try {
       document.documentElement.setAttribute('data-app-booting', 'true');
+      const applyNativeShellBootstrap = () => {
+        const capacitor = window.Capacitor;
+        const isNativeShell = Boolean(capacitor?.isNativePlatform?.());
+
+        if (!isNativeShell) {
+          return false;
+        }
+
+        document.documentElement.setAttribute('data-native-shell', 'true');
+
+        const viewportMeta = document.querySelector('meta[name="viewport"]');
+        if (viewportMeta && !viewportMeta.content.includes('maximum-scale')) {
+          viewportMeta.content += ', maximum-scale=1';
+        }
+
+        return true;
+      };
+
+      if (!applyNativeShellBootstrap()) {
+        let nativeShellBootstrapAttempts = 0;
+        const nativeShellBootstrapTimer = window.setInterval(() => {
+          nativeShellBootstrapAttempts += 1;
+          if (applyNativeShellBootstrap() || nativeShellBootstrapAttempts >= 40) {
+            window.clearInterval(nativeShellBootstrapTimer);
+          }
+        }, 50);
+      }
+
       const stored = window.localStorage.getItem('birdTheme');
       const score = JSON.parse(window.localStorage.getItem('birdScore') || '{}');
       const birdsIdentified = typeof score?.birdsIdentified === 'number' ? score.birdsIdentified : 0;
@@ -71,7 +99,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
   viewportFit: 'cover',
   themeColor: '#1B5C1B',
 };
