@@ -37,6 +37,7 @@ import type { BirdJournalEntry, BirdScore, DailyChallengeHistoryEntry, DailyMiss
 import type { BirdhouseStore } from '@/types';
 
 export const ACCOUNT_SYNC_META_STORAGE_KEY = 'accountSyncMeta';
+export const JOURNAL_SUMMARY_STORAGE_KEY = 'journalSummary';
 
 export interface AccountSyncMeta {
   lastServerSyncAt: string | null;
@@ -52,6 +53,13 @@ export interface PulledAccountProgress {
   milestones: number[];
   journalEntries: BirdJournalEntry[];
   birdhouse: BirdhouseStore;
+  journalSummary: {
+    uniqueBirdCount: number;
+    realBirdCount: number;
+    fakeBirdCount: number;
+    totalSeen: number;
+    totalCorrect: number;
+  };
   lastLocalSyncAt: string | null;
   todayMissionClaims: {
     date: string;
@@ -165,8 +173,8 @@ export function applyPulledAccountProgress(progress: PulledAccountProgress): voi
     : remoteBirdhouse.updatedAt;
   writeBirdhouse(
     {
-      real: mergedReal.filter((key) => key in mergedJournal),
-      fake: mergedFake.filter((key) => key in mergedJournal),
+      real: mergedReal,
+      fake: mergedFake,
       updatedAt: mergedUpdatedAt,
     },
     false
@@ -207,6 +215,8 @@ export function applyPulledAccountProgress(progress: PulledAccountProgress): voi
   notifyStoredValueChanged(UNLOCKED_THEMES_STORAGE_KEY);
   notifyStoredValueChanged(DAILY_CHALLENGE_HISTORY_STORAGE_KEY);
   notifyStoredValueChanged(DAILY_MISSION_HISTORY_STORAGE_KEY);
+  window.localStorage.setItem(JOURNAL_SUMMARY_STORAGE_KEY, JSON.stringify(progress.journalSummary));
+  notifyStoredValueChanged(JOURNAL_SUMMARY_STORAGE_KEY);
 
   writeAccountSyncMeta({
     lastServerSyncAt: progress.lastLocalSyncAt,

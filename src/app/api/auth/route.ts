@@ -2025,6 +2025,13 @@ export async function POST(request: NextRequest) {
             fake: Array.isArray(birdhouseRow?.fake_birds) ? birdhouseRow.fake_birds.filter((entry): entry is string => typeof entry === 'string').slice(0, 10) : [],
             updatedAt: typeof birdhouseRow?.updated_at === 'string' ? birdhouseRow.updated_at : new Date(0).toISOString(),
           },
+          journalSummary: {
+            uniqueBirdCount: (journalRows ?? []).length,
+            realBirdCount: (journalRows ?? []).filter((r) => r.is_real).length,
+            fakeBirdCount: (journalRows ?? []).filter((r) => !r.is_real).length,
+            totalSeen: (journalRows ?? []).reduce((sum, r) => sum + r.seen_count, 0),
+            totalCorrect: (journalRows ?? []).reduce((sum, r) => sum + r.correct_count, 0),
+          },
           journalEntries: (journalRows ?? []).map((entry) => ({
             birdKey: entry.bird_key,
             birdName: entry.bird_name,

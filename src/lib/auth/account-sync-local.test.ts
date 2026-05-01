@@ -333,11 +333,12 @@ describe('account-sync-local', () => {
     );
   });
 
-  it('removes orphaned birdhouse keys that have no corresponding journal entry', () => {
-    const localStore = { real: ['real:orphan-bird', 'real:known-bird'], fake: [], updatedAt: '2026-04-06T00:00:00.000Z' };
+  it('keeps birdhouse birds even when they are absent from the merged journal cache', () => {
+    const localStore = { real: ['real:old-bird', 'real:known-bird'], fake: [], updatedAt: '2026-04-06T00:00:00.000Z' };
     const remoteStore = { real: [], fake: [], updatedAt: '2026-04-05T00:00:00.000Z' };
     readBirdhouseMock.mockReturnValue(localStore);
     normalizeBirdhouseStoreMock.mockReturnValue(remoteStore);
+    // Only one of the birdhouse birds is in the local journal cache (simulating 2MB pruning)
     mergeBirdJournalStoresMock.mockReturnValue({ 'real:known-bird': { birdKey: 'real:known-bird' } });
 
     applyPulledAccountProgress({
@@ -352,9 +353,9 @@ describe('account-sync-local', () => {
       todayMissionClaims: null,
     } as never);
 
-    // 'real:orphan-bird' is not in merged journal, so it is cleaned up
+    // Both birdhouse birds are kept; the journal cache is not authoritative for birdhouse membership
     expect(writeBirdhouseMock).toHaveBeenCalledWith(
-      { real: ['real:known-bird'], fake: [], updatedAt: '2026-04-06T00:00:00.000Z' },
+      { real: ['real:old-bird', 'real:known-bird'], fake: [], updatedAt: '2026-04-06T00:00:00.000Z' },
       false
     );
   });
@@ -375,5 +376,25 @@ describe('account-sync-local', () => {
     // writeBirdhouse is called with notify=false; the explicit batched call at the end handles it
     expect(writeBirdhouseMock).toHaveBeenCalledWith(expect.any(Object), false);
     expect(notifyStoredValueChangedMock).toHaveBeenCalledWith('birdhouse');
+  });
+
+  it('persists journalSummary to localStorage and notifies listeners', () => {
+    const summary = { uniqueBirdCount: 42, realBirdCount: 30, fakeBirdCount: 12, totalSeen: 200, totalCorrect: 160 };
+
+    applyPulledAccountProgress({
+      score: { seeds: 0 },
+      unlockedThemes: [],
+      dailyChallengeHistory: [],
+      dailyMissionHistory: [],
+      milestones: [],
+      birdhouse: { real: [], fake: [], updatedAt: '2026-04-07T00:00:00.000Z' },
+      journalEntries: [],
+      journalSummary: summary,
+      lastLocalSyncAt: null,
+      todayMissionClaims: null,
+    } as never);
+
+    expect(JSON.parse(localStorage.getItem('journalSummary') ?? '{}')).toEqual(summary);
+    expect(notifyStoredValueChangedMock).toHaveBeenCalledWith('journalSummary');
   });
 });
