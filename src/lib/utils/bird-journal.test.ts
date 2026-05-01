@@ -398,4 +398,176 @@ describe('bird-journal utilities', () => {
     localStorage.setItem('birdJournalDirtyKeys', JSON.stringify('not-array'));
     expect(readDirtyBirdJournalKeys()).toEqual([]);
   });
+
+  it('normalizes attribution with valid string fields', () => {
+    const store = normalizeBirdJournalStore({
+      'real:jay': {
+        birdKey: 'real:jay',
+        birdName: 'Jay',
+        isReal: true,
+        metadata: {
+          attribution: {
+            artist: 'Jane Doe',
+            license: 'CC BY 4.0',
+            licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
+          },
+        },
+      },
+    });
+    expect(store['real:jay']?.metadata.attribution).toEqual({
+      artist: 'Jane Doe',
+      license: 'CC BY 4.0',
+      licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
+    });
+  });
+
+  it('normalizes attribution with non-string fields to undefined', () => {
+    const store = normalizeBirdJournalStore({
+      'real:jay': {
+        birdKey: 'real:jay',
+        birdName: 'Jay',
+        isReal: true,
+        metadata: {
+          attribution: {
+            artist: 42,
+            license: null,
+            licenseUrl: true,
+          },
+        },
+      },
+    });
+    expect(store['real:jay']?.metadata.attribution).toEqual({
+      artist: undefined,
+      license: undefined,
+      licenseUrl: undefined,
+    });
+  });
+
+  it('normalizes non-string lastSeenAt to the epoch ISO string', () => {
+    const store = normalizeBirdJournalStore({
+      'real:jay': {
+        birdKey: 'real:jay',
+        birdName: 'Jay',
+        isReal: true,
+        lastSeenAt: 12345,
+      },
+    });
+    expect(store['real:jay']?.lastSeenAt).toBe(new Date(0).toISOString());
+  });
+
+  it('uses local lastSeenAt when local entry is more recent than remote', () => {
+    const merged = mergeBirdJournalStores(
+      {
+        'real:robin': {
+          birdKey: 'real:robin',
+          birdName: 'Robin',
+          isReal: true,
+          seenCount: 3,
+          correctCount: 3,
+          incorrectCount: 0,
+          lastSeenAt: '2026-06-01T00:00:00.000Z',
+          metadata: { regionLabel: 'Local Region' },
+        },
+      },
+      {
+        'real:robin': {
+          birdKey: 'real:robin',
+          birdName: 'Robin',
+          isReal: true,
+          seenCount: 1,
+          correctCount: 1,
+          incorrectCount: 0,
+          lastSeenAt: '2026-01-01T00:00:00.000Z',
+          metadata: { regionLabel: 'Remote Region' },
+        },
+      }
+    );
+    expect(merged['real:robin']?.lastSeenAt).toBe('2026-06-01T00:00:00.000Z');
+    expect(merged['real:robin']?.metadata.regionLabel).toBe('Local Region');
+  });
+
+  it('merges imageRevealed from remote entry when remote has it set', () => {
+    const merged = mergeBirdJournalStores(
+      {
+        'real:wren': {
+          birdKey: 'real:wren',
+          birdName: 'Wren',
+          isReal: true,
+          seenCount: 1,
+          correctCount: 1,
+          incorrectCount: 0,
+          lastSeenAt: '2026-01-01T00:00:00.000Z',
+          metadata: {},
+        },
+      },
+      {
+        'real:wren': {
+          birdKey: 'real:wren',
+          birdName: 'Wren',
+          isReal: true,
+          seenCount: 2,
+          correctCount: 2,
+          incorrectCount: 0,
+          lastSeenAt: '2026-06-01T00:00:00.000Z',
+          metadata: { imageRevealed: true },
+        },
+      }
+    );
+    expect(merged['real:wren']?.metadata.imageRevealed).toBe(true);
+  });
+
+  it('skips entries without verbose fields during storage-limit pruning', () => {
+    const largeText = 'a'.repeat(400_000);
+    const mixedJournal = Object.fromEntries(
+      Array.from({ length: 6 }, (_, index) => {
+        const birdKey = `real:bird-${index}`;
+        return [birdKey, {
+          birdKey,
+          birdName: `Bird ${index}`,
+          isReal: true,
+          seenCount: 1,
+          correctCount: 1,
+          incorrectCount: 0,
+          lastSeenAt: `2026-01-0${index + 1}T00:00:00.000Z`,
+          metadata: index < 2
+            ? { imageUrl: `https://example.com/${birdKey}.webp` }
+            : { imageUrl: `https://example.com/${birdKey}.webp`, summary: largeText, description: largeText },
+        }];
+      })
+    );
+
+    writeBirdJournal(mixedJournal, false);
+    const stored = readBirdJournal();
+    const serializedLength = new TextEncoder().encode(JSON.stringify(stored)).length;
+    expect(serializedLength).toBeLessThanOrEqual(BIRD_JOURNAL_MAX_SERIALIZED_BYTES);
+  });
+
+  it('silently absorbs a removeItem failure after a setItem failure in writeBirdJournal', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('QuotaExceededError');
+    });
+    const removeItemSpy = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      throw new DOMException('RemoveError');
+    });
+
+    const journal = {
+      'real:crow': {
+        birdKey: 'real:crow',
+        birdName: 'Crow',
+        isReal: true as const,
+        seenCount: 1,
+        correctCount: 1,
+        incorrectCount: 0,
+        lastSeenAt: '2026-01-01T00:00:00.000Z',
+        metadata: {},
+      },
+    };
+
+    expect(() => writeBirdJournal(journal, false)).not.toThrow();
+
+    setItemSpy.mockRestore();
+    removeItemSpy.mockRestore();
+    warnSpy.mockRestore();
+  });
 });

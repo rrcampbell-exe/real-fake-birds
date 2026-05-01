@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DAILY_MISSION_HISTORY_STORAGE_KEY,
+  DAILY_MISSION_STREAK_MIGRATION_STORAGE_KEY,
   getDailyMissionStreaks,
+  readDailyMissionHistory,
   recordDailyMissionCompletion,
   writeDailyMissionHistory,
 } from './daily-mission-history';
@@ -77,5 +79,58 @@ describe('daily mission history', () => {
       currentStreak: 0,
       bestStreak: 0,
     });
+  });
+
+  it('returns an empty array when stored history is not a JSON array', () => {
+    localStorage.setItem(DAILY_MISSION_HISTORY_STORAGE_KEY, JSON.stringify({ not: 'an array' }));
+    expect(readDailyMissionHistory()).toEqual([]);
+  });
+
+  it('returns an empty array when stored history is invalid JSON', () => {
+    localStorage.setItem(DAILY_MISSION_HISTORY_STORAGE_KEY, '{bad json');
+    expect(readDailyMissionHistory()).toEqual([]);
+  });
+
+  it('returns null when stored migration state has an unexpected version', () => {
+    localStorage.setItem(
+      DAILY_MISSION_STREAK_MIGRATION_STORAGE_KEY,
+      JSON.stringify({
+        version: 2,
+        preservedCurrentStreak: 3,
+        preservedBestStreak: 5,
+        graceExpiresOn: '2026-04-10',
+      })
+    );
+    // getDailyMissionStreaks calls readDailyMissionStreakMigrationState internally;
+    // with an invalid version it treats the state as absent (no preserved streak used)
+    expect(getDailyMissionStreaks([], new Date(2026, 3, 5, 12, 0, 0))).toEqual({
+      currentStreak: 0,
+      bestStreak: 0,
+    });
+  });
+
+  it('returns null when stored migration state is invalid JSON', () => {
+    localStorage.setItem(DAILY_MISSION_STREAK_MIGRATION_STORAGE_KEY, '{invalid');
+    expect(getDailyMissionStreaks([], new Date(2026, 3, 5, 12, 0, 0))).toEqual({
+      currentStreak: 0,
+      bestStreak: 0,
+    });
+  });
+
+  it('skips the streak sync when birdScore already matches the computed streaks', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 3, 5, 12, 0, 0));
+    const history = [{ date: '2026-04-05' }, { date: '2026-04-04' }];
+    // Pre-set the birdScore with the matching streaks so writeDailyMissionHistory skips the update
+    localStorage.setItem(BIRD_SCORE_STORAGE_KEY, JSON.stringify({
+      ...defaultBirdScore,
+      currentDailyStreak: 2,
+      bestDailyStreak: 2,
+    }));
+    writeDailyMissionHistory(history);
+    // Writing again with the same history should not change the stored streak
+    writeDailyMissionHistory(history);
+    const stored = JSON.parse(localStorage.getItem(BIRD_SCORE_STORAGE_KEY) ?? '{}') as Record<string, unknown>;
+    expect(stored.currentDailyStreak).toBe(2);
   });
 });

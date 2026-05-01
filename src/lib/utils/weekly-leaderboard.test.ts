@@ -163,4 +163,21 @@ describe('weekly-leaderboard', () => {
       expect(readLastSeenWeeklyRecapWeek()).toBe('2026-03-30');
     });
   });
+
+  describe('readLastSeenWeeklyRecapWeek', () => {
+    it('returns null when localStorage is empty', () => {
+      expect(readLastSeenWeeklyRecapWeek()).toBeNull();
+    });
+
+    it('returns the raw string value when stored JSON is not a string', () => {
+      const raw = JSON.stringify({ bad: true });
+      localStorage.setItem(WEEKLY_RECAP_LAST_SEEN_WEEK_STORAGE_KEY, raw);
+      expect(readLastSeenWeeklyRecapWeek()).toBe(raw);
+    });
+
+    it('returns the raw string value when stored value is invalid JSON', () => {
+      localStorage.setItem(WEEKLY_RECAP_LAST_SEEN_WEEK_STORAGE_KEY, '{not-valid');
+      expect(readLastSeenWeeklyRecapWeek()).toBe('{not-valid');
+    });
+  });
 });

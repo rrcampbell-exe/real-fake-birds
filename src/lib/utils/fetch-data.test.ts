@@ -330,6 +330,134 @@ describe('fetchData', () => {
     expect(setBirdData).not.toHaveBeenCalled();
   });
 
+  it('calls optional callbacks when reading from cache', async () => {
+    vi.useFakeTimers();
+    localStorage.setItem(
+      'birdData:classic',
+      JSON.stringify({
+        birdName: 'Blue Finch',
+        isReal: true,
+        imageThumbUrl: 'https://example.com/thumb.jpg',
+        fallbackImageUrl: 'https://example.com/fallback.jpg',
+        contentSource: 'cdn',
+        attribution: { artist: 'Jane', license: 'CC BY 4.0', licenseUrl: 'https://cc.org' },
+        cachedAt: Date.now(),
+      })
+    );
+
+    const setImageThumbUrl = vi.fn();
+    const setFallbackImageUrl = vi.fn();
+    const setContentSource = vi.fn();
+    const setAttribution = vi.fn();
+
+    const fetchPromise = fetchData(
+      vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(),
+      'classic', undefined, setImageThumbUrl, setFallbackImageUrl, setContentSource, setAttribution,
+    );
+    await vi.runAllTimersAsync();
+    await fetchPromise;
+
+    expect(setImageThumbUrl).toHaveBeenCalledWith('https://example.com/thumb.jpg');
+    expect(setFallbackImageUrl).toHaveBeenCalledWith('https://example.com/fallback.jpg');
+    expect(setContentSource).toHaveBeenCalledWith('cdn');
+    expect(setAttribution).toHaveBeenCalledWith(expect.objectContaining({ artist: 'Jane' }));
+  });
+
+  it('calls optional callbacks when fetching fresh data from the network', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn().mockResolvedValue({
+      json: vi.fn().mockResolvedValue({
+        birdName: 'Tawny Owl',
+        isReal: true,
+        imageThumbUrl: 'https://example.com/tawny-thumb.jpg',
+        fallbackImageUrl: 'https://example.com/tawny-fallback.jpg',
+        contentSource: 'wikipedia',
+        attribution: { artist: 'Bob', license: 'CC BY-SA', licenseUrl: 'https://cc.org/sa' },
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const setImageThumbUrl = vi.fn();
+    const setFallbackImageUrl = vi.fn();
+    const setContentSource = vi.fn();
+    const setAttribution = vi.fn();
+
+    const fetchPromise = fetchData(
+      vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(),
+      'classic', undefined, setImageThumbUrl, setFallbackImageUrl, setContentSource, setAttribution,
+    );
+    await vi.runAllTimersAsync();
+    await fetchPromise;
+
+    expect(setImageThumbUrl).toHaveBeenCalledWith('https://example.com/tawny-thumb.jpg');
+    expect(setFallbackImageUrl).toHaveBeenCalledWith('https://example.com/tawny-fallback.jpg');
+    expect(setContentSource).toHaveBeenCalledWith('wikipedia');
+    expect(setAttribution).toHaveBeenCalledWith(expect.objectContaining({ artist: 'Bob' }));
+  });
+
+  it('silently returns when fetch throws an AbortError', async () => {
+    const abortError = new DOMException('The operation was aborted.', 'AbortError');
+    const fetchMock = vi.fn().mockRejectedValue(abortError);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const setIsError = vi.fn();
+    const setIsLoading = vi.fn();
+
+    await fetchData(
+      vi.fn(), setIsLoading, vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), setIsError,
+    );
+
+    expect(setIsError).not.toHaveBeenCalled();
+    expect(setIsLoading).not.toHaveBeenCalled();
+  });
+
+  it('discards cached data with a non-numeric cachedAt and re-fetches', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn().mockResolvedValue({
+      json: vi.fn().mockResolvedValue({ birdName: 'Fresh Warbler', isReal: false }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    localStorage.setItem(
+      'birdData:classic',
+      JSON.stringify({ birdName: 'Old Warbler', isReal: false, cachedAt: 'not-a-number' })
+    );
+
+    const setBirdData = vi.fn();
+    const fetchPromise = fetchData(
+      vi.fn(), vi.fn(), setBirdData, vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(),
+    );
+    await vi.runAllTimersAsync();
+    await fetchPromise;
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(setBirdData).toHaveBeenCalledWith('Fresh Warbler');
+  });
+
+  it('does not complete reveal when signal is already aborted before fetch starts', async () => {
+    vi.useFakeTimers();
+    localStorage.setItem(
+      'birdData:classic',
+      JSON.stringify({ birdName: 'Blue Finch', isReal: true, cachedAt: Date.now() })
+    );
+
+    const controller = new AbortController();
+    controller.abort();
+
+    const setBirdData = vi.fn();
+    const setIsLoading = vi.fn();
+
+    const fetchPromise = fetchData(
+      vi.fn(), setIsLoading, setBirdData, vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(),
+      'classic', controller.signal,
+    );
+    await vi.runAllTimersAsync();
+    await fetchPromise;
+
+    expect(setBirdData).not.toHaveBeenCalled();
+    expect(setIsLoading).not.toHaveBeenCalledWith(false);
+  });
+
   it('does not reject when an aborted cached reveal delay is cleaned up', async () => {
     vi.useFakeTimers();
     localStorage.setItem(

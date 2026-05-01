@@ -38,6 +38,9 @@ export default defineConfig({
         'src/lib/supabase/middleware.ts',
         'src/lib/supabase/server.ts',
         'src/lib/sound/types.ts',
+        // Capacitor NativeAudio bridge — requires a real iOS/Android runtime;
+        // the SoundController interface contract is enforced by TypeScript.
+        'src/lib/sound/capacitor-sound-controller.ts',
         'src/app/api/**',
       ],
     },

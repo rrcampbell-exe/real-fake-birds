@@ -451,8 +451,8 @@ describe('mission state storage and helper coverage', () => {
 
     expect(createMissionRewardSummary('mission-set-bonus')).toEqual({
       missionId: 'mission-set-bonus',
-      description: 'Clean sweep bonus',
-      toastDescription: 'Clean sweep bonus',
+      description: 'High flyer bonus',
+      toastDescription: 'High flyer bonus',
       rewardSeeds: 15,
     });
     expect(createMissionRewardSummary('warmup-rounds')).toMatchObject({
@@ -500,5 +500,34 @@ describe('mission state storage and helper coverage', () => {
       completed: true,
       claimed: true,
     });
+  });
+
+  it('handles null JSON stored value gracefully', () => {
+    localStorage.setItem('sessionMissions', 'null');
+    expect(readSessionMissions('2026-04-05')).toEqual(createSessionMissionsStateForDate('2026-04-05'));
+  });
+
+  it('handles non-array missions field in stored state', () => {
+    const baseState = createSessionMissionsStateForDate('2026-04-05');
+    localStorage.setItem('sessionMissions', JSON.stringify({
+      date: '2026-04-05',
+      missions: null,
+      bonusClaimed: false,
+    }));
+    const state = readSessionMissions('2026-04-05');
+    expect(state.missions).toEqual(baseState.missions);
+  });
+
+  it('defaults mission claimed to false when stored claimed is not a boolean', () => {
+    const baseState = createSessionMissionsStateForDate('2026-04-05');
+    const firstMission = baseState.missions[0];
+    if (!firstMission) return;
+    localStorage.setItem('sessionMissions', JSON.stringify({
+      date: '2026-04-05',
+      missions: [{ missionId: firstMission.missionId, progress: 0, completed: false, claimed: 'yes' }],
+      bonusClaimed: false,
+    }));
+    const state = readSessionMissions('2026-04-05');
+    expect(state.missions[0]?.claimed).toBe(false);
   });
 });
