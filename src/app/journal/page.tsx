@@ -30,6 +30,7 @@ import { applyJournalClassificationViewToSessionMissions, buildMissionRewardGran
 import { canLoadImage } from '@/lib/utils/image-availability';
 import { defaultBirdScore, normalizeBirdScore } from '@/lib/utils/player-progress';
 import { spendSeeds } from '@/lib/utils/seed-spend';
+import { formatNumber } from '@/lib/utils/number-format';
 
 type JournalToast = { id: number; title: string; detail: string };
 
@@ -440,15 +441,15 @@ export default function JournalPage() {
       <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-card)]">
           <p className="text-[0.65rem] uppercase tracking-[0.14em] text-[var(--color-muted)]">Unique Birds</p>
-          <p className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold text-[var(--color-text)]">{uniqueBirdCount}</p>
+          <p className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold text-[var(--color-text)]">{formatNumber(uniqueBirdCount)}</p>
         </div>
         <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-card)]">
           <p className="text-[0.65rem] uppercase tracking-[0.14em] text-[var(--color-muted)]">Real Birds</p>
-          <p className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold text-[var(--color-text)]">{realBirdCount}</p>
+          <p className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold text-[var(--color-text)]">{formatNumber(realBirdCount)}</p>
         </div>
         <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-card)]">
           <p className="text-[0.65rem] uppercase tracking-[0.14em] text-[var(--color-muted)]">Fake Birds</p>
-          <p className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold text-[var(--color-text)]">{fakeBirdCount}</p>
+          <p className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold text-[var(--color-text)]">{formatNumber(fakeBirdCount)}</p>
         </div>
         <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-card)]">
           <p className="text-[0.65rem] uppercase tracking-[0.14em] text-[var(--color-muted)]">Overall Accuracy</p>
