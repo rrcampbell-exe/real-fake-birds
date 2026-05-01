@@ -158,7 +158,7 @@ export default function TermsOfServicePage() {
           </h2>
           <p>
             To the fullest extent permitted by law, neither Catbird Games nor its owners, officers,
-            nor representatives shall not be liable for any indirect, incidental, special, consequential, or punitive damages
+            nor representatives shall be liable for any indirect, incidental, special, consequential, or punitive damages
             arising from your use of or inability to use Real Fake Birds, even if advised of
             the possibility of such damages. Our total liability to you for any claim arising
             out of these Terms or your use of the game shall not exceed the amount you paid us
