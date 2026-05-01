@@ -65,16 +65,6 @@ export default function BirdhousePage() {
               This is your curated collection. Keep the birds that surprised you, delighted you, or deserve a permanent perch.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-3 self-start md:self-auto">
-            <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3">
-              <p className="text-[0.68rem] uppercase tracking-[0.14em] text-[var(--color-muted)]">Real Birds</p>
-              <p className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold text-[var(--color-text)]">{birdhouse.real.length}/{realCap}</p>
-            </div>
-            <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3">
-              <p className="text-[0.68rem] uppercase tracking-[0.14em] text-[var(--color-muted)]">Fake Birds</p>
-              <p className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold text-[var(--color-text)]">{birdhouse.fake.length}/{fakeCap}</p>
-            </div>
-          </div>
         </div>
 
         {isPageBackgroundRefreshing ? (
