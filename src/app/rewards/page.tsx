@@ -3,7 +3,6 @@
 import { useEffect } from 'react';
 import { Bird } from 'lucide-react';
 import ShareButton from '@/components/ShareButton';
-import DailyRewardsPanel from '@/components/rewards/DailyRewardsPanel';
 import TrophyCase from '@/components/rewards/TrophyCase';
 import PersonalBests from '@/components/rewards/PersonalBests';
 import { usePageProgressSync } from '@/hooks/usePageProgressSync';
@@ -48,8 +47,6 @@ export default function RewardsPage() {
           </div>
         ) : null}
       </div>
-
-      <DailyRewardsPanel />
 
       <section>
         <div className="mb-3 flex items-center justify-between gap-3">

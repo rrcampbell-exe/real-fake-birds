@@ -66,67 +66,6 @@ describe('RewardsPage', () => {
     expect(screen.queryByText('Classic Run Bonus')).not.toBeInTheDocument();
   });
 
-  it('summarizes paid mission rewards from the rewards tab', () => {
-    mockedUsePageProgressSync.mockReturnValue({
-      isPageSyncLoading: false,
-      isPageBackgroundRefreshing: false,
-      isSignedIn: true,
-    });
-    mockedUseSessionMissions.mockReturnValue({
-      state: {
-        date: '2026-04-03',
-        missions: [
-          { missionId: 'warmup-rounds', progress: 3, completed: true, claimed: false },
-        ],
-        bonusClaimed: true,
-      },
-      missions: [
-        { id: 'warmup-rounds', missionId: 'warmup-rounds', description: 'Warmup', toastDescription: 'You warmed up.', target: 3, rewardSeeds: 8, progress: 3, completed: true, claimed: true, type: 'play_rounds' },
-      ],
-      allCompleted: false,
-      allClaimed: true,
-      bonusClaimed: true,
-      missionSetBonusSeeds: 15,
-    });
-
-    render(<RewardsPage />);
-
-    expect(screen.getByText(/you've completed 1 of 1 mission today, including the high flyer bonus/i)).toBeInTheDocument();
-  });
-
-  it('mentions the high flyer bonus when it has already been auto-awarded', () => {
-    mockedUsePageProgressSync.mockReturnValue({
-      isPageSyncLoading: false,
-      isPageBackgroundRefreshing: false,
-      isSignedIn: true,
-    });
-
-    mockedUseSessionMissions.mockReturnValue({
-      state: {
-        date: '2026-04-03',
-        missions: [
-          { missionId: 'warmup-rounds', progress: 3, completed: true, claimed: false },
-          { missionId: 'real-deal', progress: 2, completed: true, claimed: false },
-          { missionId: 'deep-focus', progress: 4, completed: true, claimed: false },
-        ],
-        bonusClaimed: false,
-      },
-      missions: [
-        { id: 'warmup-rounds', missionId: 'warmup-rounds', description: 'Warmup', toastDescription: 'You warmed up.', target: 3, rewardSeeds: 8, progress: 3, completed: true, claimed: false, type: 'play_rounds' },
-        { id: 'real-deal', missionId: 'real-deal', description: 'Real Deal', toastDescription: 'You identified real birds.', target: 2, rewardSeeds: 10, progress: 2, completed: true, claimed: false, type: 'identify_real_birds' },
-        { id: 'deep-focus', missionId: 'deep-focus', description: 'Deep Focus', toastDescription: 'You answered without hints.', target: 4, rewardSeeds: 20, progress: 4, completed: true, claimed: false, type: 'correct_without_hints' },
-      ],
-      allCompleted: true,
-      allClaimed: true,
-      bonusClaimed: true,
-      missionSetBonusSeeds: 15,
-    });
-
-    render(<RewardsPage />);
-
-    expect(screen.getByText(/including the high flyer bonus/i)).toBeInTheDocument();
-  });
-
   it('still shows the rewards page while background refresh is running', () => {
     mockedUsePageProgressSync.mockReturnValue({
       isPageSyncLoading: false,
