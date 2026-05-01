@@ -128,7 +128,7 @@ export default function AppBootScreen({ progress, status }: AppBootScreenProps) 
               animate={{ opacity: showFakeBirdEffective ? 0 : 1 }}
               transition={{ duration: swapFadeMs / 1000, ease: 'easeInOut' }}
             >
-              <Bird size={64} className="text-[var(--boot-secondary)]" aria-hidden={false} />
+              <Bird size={64} className="text-[var(--boot-secondary)]" aria-hidden={true} />
             </motion.div>
 
             <motion.div
