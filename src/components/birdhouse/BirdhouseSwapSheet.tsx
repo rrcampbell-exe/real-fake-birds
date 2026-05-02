@@ -109,11 +109,8 @@ export default function BirdhouseSwapSheet({ incomingBird, isOpen, onClose }: Bi
               <div className="grid gap-3 sm:grid-cols-2">
                 {collection.map((birdKey) => {
                   const entry = journalByKey[birdKey];
-                  if (!entry) {
-                    return null;
-                  }
-
-                  const displayBirdName = formatBirdName(entry.birdName);
+                  const rawName = entry?.birdName ?? birdKey.split(':')[1]?.replace(/-/g, ' ') ?? birdKey;
+                  const displayBirdName = formatBirdName(rawName);
 
                   return (
                     <button
