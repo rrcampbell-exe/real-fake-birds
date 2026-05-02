@@ -73,11 +73,6 @@ export default function BirdhousePage() {
     writeBirdhouseLastVisitedAt(new Date().toISOString());
   }, []);
 
-  // Close the detail view if the active tab changes
-  useEffect(() => {
-    setFlippedKeys(new Set());
-  }, [tab]);
-
   const entries = useMemo(() => {
     const keys = tab === 'real' ? birdhouse.real : birdhouse.fake;
     return keys
@@ -123,7 +118,13 @@ export default function BirdhousePage() {
             <button
               key={nextTab}
               type="button"
-              onClick={() => setTab(nextTab)}
+              onClick={() => {
+                if (nextTab === tab) {
+                  return;
+                }
+                setFlippedKeys(new Set());
+                setTab(nextTab);
+              }}
               className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
                 active
                   ? 'bg-[var(--color-secondary)] text-[var(--color-on-secondary)]'

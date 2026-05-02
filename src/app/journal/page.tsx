@@ -101,7 +101,7 @@ export default function JournalPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [serverSearchResults, setServerSearchResults] = useState<typeof journal | null>(null);
-  const [isServerSearching, setIsServerSearching] = useState(false);
+  const [completedServerSearchQuery, setCompletedServerSearchQuery] = useState('');
   const [birdhouseSwapTarget, setBirdhouseSwapTarget] = useState<{ birdKey: string; birdName: string; isReal: boolean } | null>(null);
   const {
     journal,
@@ -113,6 +113,12 @@ export default function JournalPage() {
   const { isInBirdhouse } = useBirdhouse();
   const storedScore = useStoredJson<typeof defaultBirdScore | null>('birdScore', defaultBirdScore);
   const score = normalizeBirdScore(storedScore);
+  const trimmedDebouncedSearchQuery = debouncedSearchQuery.trim();
+  const isServerSearchActive = isSignedIn && trimmedDebouncedSearchQuery.length > 0;
+  const isServerSearching = isServerSearchActive && completedServerSearchQuery !== trimmedDebouncedSearchQuery;
+  const activeServerSearchResults = isServerSearchActive && completedServerSearchQuery === trimmedDebouncedSearchQuery
+    ? serverSearchResults
+    : null;
 
   const showJournalToast = (title: string, detail: string) => {
     setJournalToastBatch({
@@ -230,9 +236,9 @@ export default function JournalPage() {
 
   const filteredJournal = useMemo(() => {
     // When a server search is active, use those results directly (they cover full history)
-    const sourceJournal = serverSearchResults ?? journal;
+    const sourceJournal = activeServerSearchResults ?? journal;
 
-    const nextJournal = serverSearchResults
+    const nextJournal = activeServerSearchResults
       ? sourceJournal // server search already filtered by query and doesn't need local filter
       : sourceJournal.filter((entry) => {
           if (filter === 'real') {
@@ -250,8 +256,8 @@ export default function JournalPage() {
           return true;
         });
 
-    const normalizedSearch = debouncedSearchQuery.trim().toLowerCase();
-    const searchFilteredJournal = !serverSearchResults && normalizedSearch
+    const normalizedSearch = trimmedDebouncedSearchQuery.toLowerCase();
+    const searchFilteredJournal = !activeServerSearchResults && normalizedSearch
       ? nextJournal.filter((entry) => {
         const haystack = [
           entry.birdName,
@@ -285,7 +291,7 @@ export default function JournalPage() {
 
       return right.lastSeenAt.localeCompare(left.lastSeenAt);
     });
-  }, [debouncedSearchQuery, filter, isInBirdhouse, journal, serverSearchResults, sort]);
+  }, [activeServerSearchResults, filter, isInBirdhouse, journal, sort, trimmedDebouncedSearchQuery]);
 
   useEffect(() => {
     const timerId = window.setTimeout(() => {
@@ -300,39 +306,32 @@ export default function JournalPage() {
   // When the user is signed-in and types a query, search server-side to cover
   // full history (the local cache is capped at ~2 MB and may be pruned).
   useEffect(() => {
-    const query = debouncedSearchQuery.trim();
-    if (!isSignedIn || !query) {
-      setServerSearchResults(null);
-      setIsServerSearching(false);
+    if (!isServerSearchActive) {
       return;
     }
 
     let cancelled = false;
-    setIsServerSearching(true);
 
-    fetch(`/api/journal?action=search&q=${encodeURIComponent(query)}`)
+    fetch(`/api/journal?action=search&q=${encodeURIComponent(trimmedDebouncedSearchQuery)}`)
       .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
       .then((data: { entries: typeof journal }) => {
         if (!cancelled) {
           setServerSearchResults(data.entries ?? []);
+          setCompletedServerSearchQuery(trimmedDebouncedSearchQuery);
         }
       })
       .catch(() => {
         if (!cancelled) {
           // Fall back to local search silently
           setServerSearchResults(null);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsServerSearching(false);
+          setCompletedServerSearchQuery(trimmedDebouncedSearchQuery);
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [debouncedSearchQuery, isSignedIn]);
+  }, [isServerSearchActive, journal, trimmedDebouncedSearchQuery]);
 
   const journalToastBatchId = journalToastBatch?.id ?? null;
   const journalToasts = useMemo(() => journalToastBatch?.toasts ?? [], [journalToastBatch]);
