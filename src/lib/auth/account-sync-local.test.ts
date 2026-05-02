@@ -300,9 +300,9 @@ describe('account-sync-local', () => {
       todayMissionClaims: null,
     } as never);
 
-    // Both birds are unioned; local updatedAt is newer so it is used
+    // The newer local birdhouse snapshot wins as-is, preserving removals.
     expect(writeBirdhouseMock).toHaveBeenCalledWith(
-      { real: ['real:local-bird', 'real:remote-bird'], fake: [], updatedAt: '2026-04-08T00:00:00.000Z' },
+      { real: ['real:local-bird'], fake: [], updatedAt: '2026-04-08T00:00:00.000Z' },
       false
     );
   });
@@ -326,9 +326,9 @@ describe('account-sync-local', () => {
       todayMissionClaims: null,
     } as never);
 
-    // Both birds are unioned; remote updatedAt is newer so it is used
+    // The newer remote birdhouse snapshot wins as-is.
     expect(writeBirdhouseMock).toHaveBeenCalledWith(
-      { real: ['real:remote-bird'], fake: ['fake:local-fake'], updatedAt: '2026-04-08T00:00:00.000+00:00' },
+      { real: ['real:remote-bird'], fake: [], updatedAt: '2026-04-08T00:00:00.000+00:00' },
       false
     );
   });

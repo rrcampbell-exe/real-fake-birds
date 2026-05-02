@@ -166,17 +166,20 @@ export function applyPulledAccountProgress(progress: PulledAccountProgress): voi
     const parsed = Date.parse(timestamp);
     return Number.isNaN(parsed) ? 0 : parsed;
   };
-  const mergedReal = Array.from(new Set([...localBirdhouse.real, ...remoteBirdhouse.real])).slice(0, BIRDHOUSE_REAL_CAP);
-  const mergedFake = Array.from(new Set([...localBirdhouse.fake, ...remoteBirdhouse.fake])).slice(0, BIRDHOUSE_FAKE_CAP);
-  const mergedUpdatedAt = toEpochMs(localBirdhouse.updatedAt) >= toEpochMs(remoteBirdhouse.updatedAt)
-    ? localBirdhouse.updatedAt
-    : remoteBirdhouse.updatedAt;
+  const localIsNewer = toEpochMs(localBirdhouse.updatedAt) >= toEpochMs(remoteBirdhouse.updatedAt);
+  const acceptedBirdhouse = localIsNewer
+    ? {
+        real: localBirdhouse.real.slice(0, BIRDHOUSE_REAL_CAP),
+        fake: localBirdhouse.fake.slice(0, BIRDHOUSE_FAKE_CAP),
+        updatedAt: localBirdhouse.updatedAt,
+      }
+    : {
+        real: remoteBirdhouse.real.slice(0, BIRDHOUSE_REAL_CAP),
+        fake: remoteBirdhouse.fake.slice(0, BIRDHOUSE_FAKE_CAP),
+        updatedAt: remoteBirdhouse.updatedAt,
+      };
   writeBirdhouse(
-    {
-      real: mergedReal,
-      fake: mergedFake,
-      updatedAt: mergedUpdatedAt,
-    },
+    acceptedBirdhouse,
     false
   );
 

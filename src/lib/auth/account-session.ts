@@ -124,8 +124,9 @@ async function pushDirtyBirdJournalEntriesToAccount(): Promise<void> {
 export async function pushBirdhouseToAccount(): Promise<void> {
   if (birdhouseSyncPromise) {
     await birdhouseSyncPromise;
-    return;
+    return pushBirdhouseToAccount();
   }
+
 
   birdhouseSyncPromise = (async () => {
     const response = await syncBirdhouse(readBirdhouse());
@@ -217,6 +218,7 @@ export async function hydrateSignedInAccountToLocalState(options?: { notify?: bo
   const response = await pullAccountProgress(getTodayMissionDate());
   applyPulledAccountProgress({
     ...response.progress,
+    journalSummary: response.journalSummary,
     lastLocalSyncAt: response.lastLocalSyncAt,
     todayMissionClaims: response.todayMissionClaims,
   });
@@ -253,6 +255,7 @@ export async function syncSignedInAccountToLocalState(options?: { notify?: boole
     const response = await pullAccountProgress(getTodayMissionDate());
     applyPulledAccountProgress({
       ...response.progress,
+      journalSummary: response.journalSummary,
       lastLocalSyncAt: response.lastLocalSyncAt,
       todayMissionClaims: response.todayMissionClaims,
     });

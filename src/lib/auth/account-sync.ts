@@ -92,6 +92,13 @@ export interface SyncBirdhouseResponse {
 export interface PullAccountProgressResponse {
   action: 'pull-account-progress';
   progress: LocalProgressPayload;
+  journalSummary: {
+    uniqueBirdCount: number;
+    realBirdCount: number;
+    fakeBirdCount: number;
+    totalSeen: number;
+    totalCorrect: number;
+  };
   lastLocalSyncAt: string | null;
   todayMissionClaims: {
     date: string;
