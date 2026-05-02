@@ -143,5 +143,35 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  if (action === 'keys') {
+    const rawKeys = searchParams.get('keys') ?? '';
+    const birdKeys = rawKeys
+      .split(',')
+      .map((k) => k.trim())
+      .filter(Boolean)
+      .slice(0, 20); // cap to prevent abuse
+
+    if (birdKeys.length === 0) {
+      return NextResponse.json({ entries: [] });
+    }
+
+    try {
+      const admin = createSupabaseAdminClient();
+      const { data, error } = await admin
+        .from('bird_journal')
+        .select('bird_key, bird_name, is_real, seen_count, correct_count, incorrect_count, last_seen_at, metadata')
+        .eq('user_id', userId)
+        .in('bird_key', birdKeys);
+
+      if (error) {
+        return NextResponse.json({ error: 'keys_fetch_failed' }, { status: 500 });
+      }
+
+      return NextResponse.json({ entries: (data ?? []).map(mapRow) });
+    } catch {
+      return NextResponse.json({ error: 'keys_fetch_failed' }, { status: 500 });
+    }
+  }
+
   return NextResponse.json({ error: 'unknown_action' }, { status: 400 });
 }
