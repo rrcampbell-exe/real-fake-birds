@@ -100,6 +100,8 @@ export default function JournalPage() {
   const [linkedBirdKey, setLinkedBirdKey] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [serverSearchResults, setServerSearchResults] = useState<typeof journal | null>(null);
+  const [isServerSearching, setIsServerSearching] = useState(false);
   const [birdhouseSwapTarget, setBirdhouseSwapTarget] = useState<{ birdKey: string; birdName: string; isReal: boolean } | null>(null);
   const {
     journal,
@@ -227,24 +229,29 @@ export default function JournalPage() {
   };
 
   const filteredJournal = useMemo(() => {
-    const nextJournal = journal.filter((entry) => {
-      if (filter === 'real') {
-        return entry.isReal;
-      }
+    // When a server search is active, use those results directly (they cover full history)
+    const sourceJournal = serverSearchResults ?? journal;
 
-      if (filter === 'fake') {
-        return !entry.isReal;
-      }
+    const nextJournal = serverSearchResults
+      ? sourceJournal // server search already filtered by query and doesn't need local filter
+      : sourceJournal.filter((entry) => {
+          if (filter === 'real') {
+            return entry.isReal;
+          }
 
-      if (filter === 'birdhouse') {
-        return isInBirdhouse(entry.birdKey);
-      }
+          if (filter === 'fake') {
+            return !entry.isReal;
+          }
 
-      return true;
-    });
+          if (filter === 'birdhouse') {
+            return isInBirdhouse(entry.birdKey);
+          }
+
+          return true;
+        });
 
     const normalizedSearch = debouncedSearchQuery.trim().toLowerCase();
-    const searchFilteredJournal = normalizedSearch
+    const searchFilteredJournal = !serverSearchResults && normalizedSearch
       ? nextJournal.filter((entry) => {
         const haystack = [
           entry.birdName,
@@ -278,7 +285,7 @@ export default function JournalPage() {
 
       return right.lastSeenAt.localeCompare(left.lastSeenAt);
     });
-  }, [debouncedSearchQuery, filter, isInBirdhouse, journal, sort]);
+  }, [debouncedSearchQuery, filter, isInBirdhouse, journal, serverSearchResults, sort]);
 
   useEffect(() => {
     const timerId = window.setTimeout(() => {
@@ -289,6 +296,43 @@ export default function JournalPage() {
       window.clearTimeout(timerId);
     };
   }, [searchQuery]);
+
+  // When the user is signed-in and types a query, search server-side to cover
+  // full history (the local cache is capped at ~2 MB and may be pruned).
+  useEffect(() => {
+    const query = debouncedSearchQuery.trim();
+    if (!isSignedIn || !query) {
+      setServerSearchResults(null);
+      setIsServerSearching(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsServerSearching(true);
+
+    fetch(`/api/journal?action=search&q=${encodeURIComponent(query)}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
+      .then((data: { entries: typeof journal }) => {
+        if (!cancelled) {
+          setServerSearchResults(data.entries ?? []);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          // Fall back to local search silently
+          setServerSearchResults(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsServerSearching(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedSearchQuery, isSignedIn]);
 
   const journalToastBatchId = journalToastBatch?.id ?? null;
   const journalToasts = useMemo(() => journalToastBatch?.toasts ?? [], [journalToastBatch]);
@@ -465,6 +509,13 @@ export default function JournalPage() {
         onSearchChange={setSearchQuery}
         onSortChange={setSort}
       />
+
+      {isServerSearching ? (
+        <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted)]">
+          <Bird size={14} className="text-[var(--color-secondary)]" />
+          Searching your full history...
+        </div>
+      ) : null}
 
       {filteredJournal.length === 0 ? (
         <section className="rounded-3xl border border-[var(--color-surface-border)] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_55%),var(--color-surface)] p-8 text-center shadow-[var(--shadow-card)]">
