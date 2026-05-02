@@ -37,6 +37,7 @@ import type { BirdJournalEntry, BirdScore, DailyChallengeHistoryEntry, DailyMiss
 import type { BirdhouseStore } from '@/types';
 
 export const ACCOUNT_SYNC_META_STORAGE_KEY = 'accountSyncMeta';
+export const JOURNAL_SUMMARY_STORAGE_KEY = 'journalSummary';
 
 export interface AccountSyncMeta {
   lastServerSyncAt: string | null;
@@ -52,6 +53,13 @@ export interface PulledAccountProgress {
   milestones: number[];
   journalEntries: BirdJournalEntry[];
   birdhouse: BirdhouseStore;
+  journalSummary: {
+    uniqueBirdCount: number;
+    realBirdCount: number;
+    fakeBirdCount: number;
+    totalSeen: number;
+    totalCorrect: number;
+  };
   lastLocalSyncAt: string | null;
   todayMissionClaims: {
     date: string;
@@ -158,17 +166,20 @@ export function applyPulledAccountProgress(progress: PulledAccountProgress): voi
     const parsed = Date.parse(timestamp);
     return Number.isNaN(parsed) ? 0 : parsed;
   };
-  const mergedReal = Array.from(new Set([...localBirdhouse.real, ...remoteBirdhouse.real])).slice(0, BIRDHOUSE_REAL_CAP);
-  const mergedFake = Array.from(new Set([...localBirdhouse.fake, ...remoteBirdhouse.fake])).slice(0, BIRDHOUSE_FAKE_CAP);
-  const mergedUpdatedAt = toEpochMs(localBirdhouse.updatedAt) >= toEpochMs(remoteBirdhouse.updatedAt)
-    ? localBirdhouse.updatedAt
-    : remoteBirdhouse.updatedAt;
+  const localIsNewer = toEpochMs(localBirdhouse.updatedAt) >= toEpochMs(remoteBirdhouse.updatedAt);
+  const acceptedBirdhouse = localIsNewer
+    ? {
+        real: localBirdhouse.real.slice(0, BIRDHOUSE_REAL_CAP),
+        fake: localBirdhouse.fake.slice(0, BIRDHOUSE_FAKE_CAP),
+        updatedAt: localBirdhouse.updatedAt,
+      }
+    : {
+        real: remoteBirdhouse.real.slice(0, BIRDHOUSE_REAL_CAP),
+        fake: remoteBirdhouse.fake.slice(0, BIRDHOUSE_FAKE_CAP),
+        updatedAt: remoteBirdhouse.updatedAt,
+      };
   writeBirdhouse(
-    {
-      real: mergedReal.filter((key) => key in mergedJournal),
-      fake: mergedFake.filter((key) => key in mergedJournal),
-      updatedAt: mergedUpdatedAt,
-    },
+    acceptedBirdhouse,
     false
   );
 
@@ -207,6 +218,8 @@ export function applyPulledAccountProgress(progress: PulledAccountProgress): voi
   notifyStoredValueChanged(UNLOCKED_THEMES_STORAGE_KEY);
   notifyStoredValueChanged(DAILY_CHALLENGE_HISTORY_STORAGE_KEY);
   notifyStoredValueChanged(DAILY_MISSION_HISTORY_STORAGE_KEY);
+  window.localStorage.setItem(JOURNAL_SUMMARY_STORAGE_KEY, JSON.stringify(progress.journalSummary));
+  notifyStoredValueChanged(JOURNAL_SUMMARY_STORAGE_KEY);
 
   writeAccountSyncMeta({
     lastServerSyncAt: progress.lastLocalSyncAt,

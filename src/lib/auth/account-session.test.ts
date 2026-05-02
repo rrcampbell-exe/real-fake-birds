@@ -383,6 +383,7 @@ describe('account-session', () => {
     window.addEventListener(ACCOUNT_STATE_CHANGED_EVENT, listener);
     pullAccountProgressMock.mockResolvedValue({
       progress: { score: { seeds: 22 } },
+      journalSummary: undefined,
       lastLocalSyncAt: '2026-04-07T10:00:00.000Z',
       todayMissionClaims: null,
     });
@@ -397,6 +398,7 @@ describe('account-session', () => {
     expect(pullAccountProgressMock).toHaveBeenCalledWith('2026-04-07');
     expect(applyPulledAccountProgressMock).toHaveBeenCalledWith({
       score: { seeds: 22 },
+      journalSummary: undefined,
       lastLocalSyncAt: '2026-04-07T10:00:00.000Z',
       todayMissionClaims: null,
     });
@@ -448,6 +450,7 @@ describe('account-session', () => {
     syncBirdJournalMock.mockResolvedValue({ journalCount: 1 });
     pullAccountProgressMock.mockResolvedValue({
       progress: { score: { seeds: 30 } },
+      journalSummary: undefined,
       lastLocalSyncAt: '2026-04-07T11:00:00.000Z',
       todayMissionClaims: null,
     });

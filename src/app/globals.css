@@ -89,6 +89,15 @@ html[data-native-shell="true"] a {
   touch-action: manipulation;
 }
 
+/* Prevent WKWebView auto-zoom on input focus: inputs smaller than 16px trigger
+   an automatic zoom. Setting a 16px floor suppresses that behavior without
+   restricting user-initiated pinch zoom. */
+html[data-native-shell="true"] input,
+html[data-native-shell="true"] textarea,
+html[data-native-shell="true"] select {
+  font-size: max(1rem, 16px);
+}
+
 button:not(:disabled) {
   cursor: pointer;
 }

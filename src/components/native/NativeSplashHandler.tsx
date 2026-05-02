@@ -85,13 +85,6 @@ export default function NativeSplashHandler() {
         const { isNativePlatform } = await import('@/lib/native/platform');
         if (!isNativePlatform()) return;
 
-        // Keep this runtime patch as a fallback in case the early bootstrap
-        // script missed the native bridge on first paint.
-        const viewportMeta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
-        if (viewportMeta && !viewportMeta.content.includes('maximum-scale')) {
-          viewportMeta.content += ', maximum-scale=1';
-        }
-
         const { SplashScreen } = await import('@capacitor/splash-screen');
 
         // Wait until the boot screen overlay is painted before hiding the

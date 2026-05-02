@@ -561,12 +561,9 @@ async function syncBirdhouseStore(options: {
     return Number.isNaN(parsed) ? 0 : parsed;
   };
 
-  const mergedReal = Array.from(new Set([...incomingBirdhouse.real, ...existingStore.real])).slice(0, 10);
-  const mergedFake = Array.from(new Set([...incomingBirdhouse.fake, ...existingStore.fake])).slice(0, 10);
-  const newerUpdatedAt = toEpochMillis(incomingBirdhouse.updatedAt) >= toEpochMillis(existingStore.updatedAt)
-    ? incomingBirdhouse.updatedAt
-    : existingStore.updatedAt;
-  const acceptedBirdhouse: BirdhouseStore = { real: mergedReal, fake: mergedFake, updatedAt: newerUpdatedAt };
+    const acceptedBirdhouse = toEpochMillis(incomingBirdhouse.updatedAt) >= toEpochMillis(existingStore.updatedAt)
+      ? incomingBirdhouse
+      : existingStore;
 
   const { error: birdhouseUpsertError } = await admin
     .from('birdhouse')
@@ -2035,6 +2032,13 @@ export async function POST(request: NextRequest) {
             lastSeenAt: entry.last_seen_at,
             metadata: normalizeBirdJournalMetadata(entry.metadata as BirdJournalMetadata),
           })),
+        },
+        journalSummary: {
+          uniqueBirdCount: (journalRows ?? []).length,
+          realBirdCount: (journalRows ?? []).filter((r) => r.is_real).length,
+          fakeBirdCount: (journalRows ?? []).filter((r) => !r.is_real).length,
+          totalSeen: (journalRows ?? []).reduce((sum, r) => sum + r.seen_count, 0),
+          totalCorrect: (journalRows ?? []).reduce((sum, r) => sum + r.correct_count, 0),
         },
         lastLocalSyncAt: progress?.last_local_sync_at ?? null,
         todayMissionClaims: {
