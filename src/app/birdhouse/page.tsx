@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { BookOpen, Birdhouse, Compass, Sparkles, X } from 'lucide-react';
 import { useBirdhouse } from '@/hooks/useBirdhouse';
 import { useBirdJournal } from '@/hooks/useBirdJournal';
@@ -12,6 +12,7 @@ import { useScreenViewed } from '@/hooks/useScreenViewed';
 import { writeBirdhouseLastVisitedAt } from '@/lib/utils/birdhouse';
 import { formatBirdName } from '@/lib/utils/format-bird-name';
 import BirdhouseToggleButton from '@/components/birdhouse/BirdhouseToggleButton';
+import type { BirdJournalEntry } from '@/types';
 
 type BirdhouseTab = 'real' | 'fake';
 
@@ -68,17 +69,52 @@ export default function BirdhousePage() {
   const { journalByKey } = useBirdJournal();
   const [tab, setTab] = useState<BirdhouseTab>('real');
   const [flippedKeys, setFlippedKeys] = useState<Set<string>>(new Set());
+  const [fetchedEntries, setFetchedEntries] = useState<Record<string, BirdJournalEntry>>({});
+  const fetchedKeySet = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     writeBirdhouseLastVisitedAt(new Date().toISOString());
   }, []);
 
-  const entries = useMemo(() => {
-    const keys = tab === 'real' ? birdhouse.real : birdhouse.fake;
-    return keys
-      .map((birdKey) => journalByKey[birdKey])
-      .filter((entry) => Boolean(entry));
-  }, [birdhouse.fake, birdhouse.real, journalByKey, tab]);
+  const allKeys = useMemo(
+    () => (tab === 'real' ? birdhouse.real : birdhouse.fake),
+    [birdhouse.real, birdhouse.fake, tab]
+  );
+
+  const combinedByKey = useMemo<Record<string, BirdJournalEntry>>(
+    () => ({ ...fetchedEntries, ...journalByKey }),
+    [journalByKey, fetchedEntries]
+  );
+
+  const missingKeys = useMemo(
+    () => allKeys.filter((k) => !combinedByKey[k]),
+    [allKeys, combinedByKey]
+  );
+
+  useEffect(() => {
+    const newKeys = missingKeys.filter((k) => !fetchedKeySet.current.has(k));
+    if (newKeys.length === 0) return;
+
+    for (const k of newKeys) fetchedKeySet.current.add(k);
+
+    const keysParam = encodeURIComponent(newKeys.join(','));
+    fetch(`/api/journal?action=keys&keys=${keysParam}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { entries?: BirdJournalEntry[] } | null) => {
+        if (!data?.entries) return;
+        setFetchedEntries((prev) => {
+          const next = { ...prev };
+          for (const entry of data.entries!) next[entry.birdKey] = entry;
+          return next;
+        });
+      })
+      .catch(() => undefined);
+  }, [missingKeys]);
+
+  const entries = useMemo<{ birdKey: string; entry: BirdJournalEntry | null }[]>(
+    () => allKeys.map((birdKey) => ({ birdKey, entry: combinedByKey[birdKey] ?? null })),
+    [allKeys, combinedByKey]
+  );
 
   const activeCap = tab === 'real' ? realCap : fakeCap;
 
@@ -140,7 +176,7 @@ export default function BirdhousePage() {
         })}
       </section>
 
-      {entries.length === 0 ? (
+      {allKeys.length === 0 ? (
         <section className="rounded-[2rem] border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-8 text-center shadow-[var(--shadow-card)]">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--color-surface-hover)] text-[var(--color-secondary)]">
             <Sparkles size={28} />
@@ -162,7 +198,16 @@ export default function BirdhousePage() {
       ) : null}
 
       <section className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {entries.map((entry) => {
+        {entries.map(({ birdKey, entry }) => {
+          if (!entry) {
+            return (
+              <div
+                key={birdKey}
+                className="flex aspect-[3/4] animate-pulse flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-[var(--color-surface-border)] bg-[color-mix(in_srgb,var(--color-surface)_90%,white_10%)]"
+              />
+            );
+          }
+
           const displayBirdName = formatBirdName(entry.birdName);
           const imageUnlocked = entry.isReal || Boolean(entry.metadata.imageRevealed);
           const visibleImageUrl = imageUnlocked
@@ -342,7 +387,7 @@ export default function BirdhousePage() {
           );
         })}
 
-        <EmptySlots filled={entries.length} total={activeCap} />
+        <EmptySlots filled={allKeys.length} total={activeCap} />
       </section>
     </div>
   );

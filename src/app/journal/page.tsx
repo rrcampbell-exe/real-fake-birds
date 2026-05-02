@@ -17,6 +17,7 @@ import { usePageProgressSync } from '@/hooks/usePageProgressSync';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useScreenViewed } from '@/hooks/useScreenViewed';
 import { useStoredJson } from '@/hooks/useStoredValue';
+import type { BirdJournalEntry } from '@/types';
 import { JOURNAL_FAKE_REVEAL_COST } from '@/lib/constants/hints';
 import { queueProgressEvent } from '@/lib/progress/progress-event-outbox';
 import { getTodayMissionDate } from '@/lib/utils/daily-mission-date';
@@ -102,6 +103,10 @@ export default function JournalPage() {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [serverSearchResults, setServerSearchResults] = useState<typeof journal | null>(null);
   const [completedServerSearchQuery, setCompletedServerSearchQuery] = useState('');
+  const [serverBrowseEntries, setServerBrowseEntries] = useState<BirdJournalEntry[]>([]);
+  const [browseCursor, setBrowseCursor] = useState<string | null | undefined>(undefined);
+  const [isBrowseLoading, setIsBrowseLoading] = useState(false);
+  const [displayPageState, setDisplayPageState] = useState<{ limit: number; fingerprint: string }>({ limit: 30, fingerprint: '' });
   const [birdhouseSwapTarget, setBirdhouseSwapTarget] = useState<{ birdKey: string; birdName: string; isReal: boolean } | null>(null);
   const {
     journal,
@@ -234,9 +239,20 @@ export default function JournalPage() {
     }
   };
 
+  const effectiveJournal = useMemo<BirdJournalEntry[]>(() => {
+    if (!isSignedIn || serverBrowseEntries.length === 0) {
+      return journal;
+    }
+    // Merge local + server; server entries are authoritative for entries they contain
+    const byKey = new Map<string, BirdJournalEntry>();
+    for (const entry of journal) byKey.set(entry.birdKey, entry);
+    for (const entry of serverBrowseEntries) byKey.set(entry.birdKey, entry);
+    return Array.from(byKey.values());
+  }, [isSignedIn, journal, serverBrowseEntries]);
+
   const filteredJournal = useMemo(() => {
     // When a server search is active, use those results directly (they cover full history)
-    const sourceJournal = activeServerSearchResults ?? journal;
+    const sourceJournal = activeServerSearchResults ?? effectiveJournal;
 
     const nextJournal = activeServerSearchResults
       ? sourceJournal // server search already filtered by query and doesn't need local filter
@@ -291,7 +307,15 @@ export default function JournalPage() {
 
       return right.lastSeenAt.localeCompare(left.lastSeenAt);
     });
-  }, [activeServerSearchResults, filter, isInBirdhouse, journal, sort, trimmedDebouncedSearchQuery]);
+  }, [activeServerSearchResults, effectiveJournal, filter, isInBirdhouse, sort, trimmedDebouncedSearchQuery]);
+
+  const filterFingerprint = `${filter}:${sort}:${debouncedSearchQuery}`;
+  const displayLimit = displayPageState.fingerprint === filterFingerprint ? displayPageState.limit : 30;
+
+  const visibleJournal = useMemo(
+    () => filteredJournal.slice(0, displayLimit),
+    [filteredJournal, displayLimit]
+  );
 
   useEffect(() => {
     const timerId = window.setTimeout(() => {
@@ -332,6 +356,38 @@ export default function JournalPage() {
       cancelled = true;
     };
   }, [isServerSearchActive, journal, trimmedDebouncedSearchQuery]);
+
+  const handleLoadMore = () => {
+    if (isBrowseLoading) return;
+
+    // If there are more local/already-fetched entries to reveal, just expand the limit.
+    if (displayLimit < filteredJournal.length) {
+      setDisplayPageState({ limit: displayLimit + 30, fingerprint: filterFingerprint });
+      return;
+    }
+
+    // Local entries exhausted — fetch the next page from the server.
+    if (!isSignedIn || browseCursor === null) return;
+
+    const cursor = browseCursor; // undefined = first fetch, string = subsequent
+    setIsBrowseLoading(true);
+    const url = cursor
+      ? `/api/journal?action=browse&cursor=${encodeURIComponent(cursor)}`
+      : '/api/journal?action=browse';
+
+    fetch(url)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { entries?: BirdJournalEntry[]; nextCursor?: string | null } | null) => {
+        setServerBrowseEntries((prev) => [...prev, ...(data?.entries ?? [])]);
+        setBrowseCursor(data?.nextCursor ?? null);
+        setDisplayPageState((prev) => ({ limit: prev.limit + 30, fingerprint: filterFingerprint }));
+        setIsBrowseLoading(false);
+      })
+      .catch(() => {
+        setBrowseCursor(null);
+        setIsBrowseLoading(false);
+      });
+  };
 
   const journalToastBatchId = journalToastBatch?.id ?? null;
   const journalToasts = useMemo(() => journalToastBatch?.toasts ?? [], [journalToastBatch]);
@@ -438,7 +494,7 @@ export default function JournalPage() {
     </div>
   ) : null;
 
-  if (journal.length === 0) {
+  if (effectiveJournal.length === 0) {
     return (
       <div className="mx-auto flex w-full max-w-lg flex-col gap-6 px-4 py-8">
         <div>
@@ -539,7 +595,7 @@ export default function JournalPage() {
       ) : null}
 
       <section className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {filteredJournal.map((entry) => (
+        {visibleJournal.map((entry) => (
           <BirdCard
             key={entry.birdKey}
             entry={entry}
@@ -551,6 +607,29 @@ export default function JournalPage() {
           />
         ))}
       </section>
+
+      {!isServerSearchActive && (displayLimit < filteredJournal.length || (isSignedIn && browseCursor !== null) || isBrowseLoading) ? (
+        <div className="flex justify-center py-2">
+          <button
+            type="button"
+            onClick={handleLoadMore}
+            disabled={isBrowseLoading}
+            className="inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-5 py-2.5 text-sm font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-surface-hover)] disabled:opacity-50"
+          >
+            {isBrowseLoading ? (
+              <>
+                <Bird size={15} className="animate-pulse text-[var(--color-secondary)]" />
+                Loading more birds...
+              </>
+            ) : (
+              <>
+                <BookOpen size={15} className="text-[var(--color-secondary)]" />
+                Load more birds
+              </>
+            )}
+          </button>
+        </div>
+      ) : null}
 
       <BirdhouseSwapSheet
         incomingBird={birdhouseSwapTarget}

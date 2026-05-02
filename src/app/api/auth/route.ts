@@ -1949,7 +1949,7 @@ export async function POST(request: NextRequest) {
       const missionDate = body.missionDate;
       const todayMissionIds = getDailyMissionIdsForDate(missionDate);
       const todayMissionClaimIds = todayMissionIds.map((missionId) => `${missionDate}:${missionId}`);
-      const [{ data: progress }, { data: themes }, { data: dailyHistory }, { data: dailyMissionHistory }, { data: milestoneRows }, { data: todayMissionEvents }, { data: journalRows }, { data: birdhouseRow }] = await Promise.all([
+      const [{ data: progress }, { data: themes }, { data: dailyHistory }, { data: dailyMissionHistory }, { data: milestoneRows }, { data: todayMissionEvents }, { data: journalRows }, { data: birdhouseRow }, { count: journalTotalCount }, { count: journalRealCount }] = await Promise.all([
         admin
           .from('player_progress')
           .select('birds_seen, birds_identified, current_streak, best_streak, current_daily_streak, best_daily_streak, seeds, last_local_sync_at')
@@ -1990,6 +1990,15 @@ export async function POST(request: NextRequest) {
           .select('real_birds, fake_birds, updated_at')
           .eq('user_id', context.userId)
           .maybeSingle(),
+        admin
+          .from('bird_journal')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', context.userId),
+        admin
+          .from('bird_journal')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', context.userId)
+          .eq('is_real', true),
       ]);
 
       const todayEventIds = new Set((todayMissionEvents ?? []).map((event) => event.event_id as string));
@@ -2034,9 +2043,9 @@ export async function POST(request: NextRequest) {
           })),
         },
         journalSummary: {
-          uniqueBirdCount: (journalRows ?? []).length,
-          realBirdCount: (journalRows ?? []).filter((r) => r.is_real).length,
-          fakeBirdCount: (journalRows ?? []).filter((r) => !r.is_real).length,
+          uniqueBirdCount: journalTotalCount ?? (journalRows ?? []).length,
+          realBirdCount: journalRealCount ?? (journalRows ?? []).filter((r) => r.is_real).length,
+          fakeBirdCount: (journalTotalCount ?? (journalRows ?? []).length) - (journalRealCount ?? (journalRows ?? []).filter((r) => r.is_real).length),
           totalSeen: (journalRows ?? []).reduce((sum, r) => sum + r.seen_count, 0),
           totalCorrect: (journalRows ?? []).reduce((sum, r) => sum + r.correct_count, 0),
         },
