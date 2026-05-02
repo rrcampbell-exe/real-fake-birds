@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { BookOpen, Birdhouse, Compass, Sparkles, X } from 'lucide-react';
 import { useBirdhouse } from '@/hooks/useBirdhouse';
 import { useBirdJournal } from '@/hooks/useBirdJournal';
@@ -70,7 +70,7 @@ export default function BirdhousePage() {
   const [tab, setTab] = useState<BirdhouseTab>('real');
   const [flippedKeys, setFlippedKeys] = useState<Set<string>>(new Set());
   const [fetchedEntries, setFetchedEntries] = useState<Record<string, BirdJournalEntry>>({});
-  const [fetchedKeySet, setFetchedKeySet] = useState<Set<string>>(new Set());
+  const fetchedKeySet = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     writeBirdhouseLastVisitedAt(new Date().toISOString());
@@ -87,20 +87,17 @@ export default function BirdhousePage() {
   );
 
   const missingKeys = useMemo(
-    () => allKeys.filter((k) => !combinedByKey[k] && !fetchedKeySet.has(k)),
-    [allKeys, combinedByKey, fetchedKeySet]
+    () => allKeys.filter((k) => !combinedByKey[k]),
+    [allKeys, combinedByKey]
   );
 
   useEffect(() => {
-    if (missingKeys.length === 0) return;
+    const newKeys = missingKeys.filter((k) => !fetchedKeySet.current.has(k));
+    if (newKeys.length === 0) return;
 
-    setFetchedKeySet((prev) => {
-      const next = new Set(prev);
-      for (const k of missingKeys) next.add(k);
-      return next;
-    });
+    for (const k of newKeys) fetchedKeySet.current.add(k);
 
-    const keysParam = encodeURIComponent(missingKeys.join(','));
+    const keysParam = encodeURIComponent(newKeys.join(','));
     fetch(`/api/journal?action=keys&keys=${keysParam}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { entries?: BirdJournalEntry[] } | null) => {

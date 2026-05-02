@@ -106,7 +106,7 @@ export default function JournalPage() {
   const [serverBrowseEntries, setServerBrowseEntries] = useState<BirdJournalEntry[]>([]);
   const [browseCursor, setBrowseCursor] = useState<string | null | undefined>(undefined);
   const [isBrowseLoading, setIsBrowseLoading] = useState(false);
-  const [displayLimit, setDisplayLimit] = useState(30);
+  const [displayPageState, setDisplayPageState] = useState<{ limit: number; fingerprint: string }>({ limit: 30, fingerprint: '' });
   const [birdhouseSwapTarget, setBirdhouseSwapTarget] = useState<{ birdKey: string; birdName: string; isReal: boolean } | null>(null);
   const {
     journal,
@@ -309,6 +309,9 @@ export default function JournalPage() {
     });
   }, [activeServerSearchResults, effectiveJournal, filter, isInBirdhouse, sort, trimmedDebouncedSearchQuery]);
 
+  const filterFingerprint = `${filter}:${sort}:${debouncedSearchQuery}`;
+  const displayLimit = displayPageState.fingerprint === filterFingerprint ? displayPageState.limit : 30;
+
   const visibleJournal = useMemo(
     () => filteredJournal.slice(0, displayLimit),
     [filteredJournal, displayLimit]
@@ -323,11 +326,6 @@ export default function JournalPage() {
       window.clearTimeout(timerId);
     };
   }, [searchQuery]);
-
-  // Reset display limit whenever the visible list changes shape
-  useEffect(() => {
-    setDisplayLimit(30);
-  }, [filter, sort, debouncedSearchQuery]);
 
   // When the user is signed-in and types a query, search server-side to cover
   // full history (the local cache is capped at ~2 MB and may be pruned).
@@ -364,7 +362,7 @@ export default function JournalPage() {
 
     // If there are more local/already-fetched entries to reveal, just expand the limit.
     if (displayLimit < filteredJournal.length) {
-      setDisplayLimit((prev) => prev + 30);
+      setDisplayPageState({ limit: displayLimit + 30, fingerprint: filterFingerprint });
       return;
     }
 
@@ -382,7 +380,7 @@ export default function JournalPage() {
       .then((data: { entries?: BirdJournalEntry[]; nextCursor?: string | null } | null) => {
         setServerBrowseEntries((prev) => [...prev, ...(data?.entries ?? [])]);
         setBrowseCursor(data?.nextCursor ?? null);
-        setDisplayLimit((prev) => prev + 30);
+        setDisplayPageState((prev) => ({ limit: prev.limit + 30, fingerprint: filterFingerprint }));
         setIsBrowseLoading(false);
       })
       .catch(() => {
