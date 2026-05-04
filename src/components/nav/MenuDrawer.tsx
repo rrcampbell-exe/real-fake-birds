@@ -9,6 +9,9 @@ import { useSound } from '@/hooks/useSound';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { secondaryNavLinks } from './nav-links';
 
+const playAndProgressHrefs = new Set(['/profile', '/daily', '/leaderboard']);
+const collectionHrefs = new Set(['/journal', '/birdhouse', '/settings']);
+
 interface RouteNotification {
   show: boolean;
   label?: string;
@@ -49,6 +52,65 @@ export default function MenuDrawer({ isOpen, onClose, notifications }: MenuDrawe
     initial: { x: '100%' },
     animate: { x: 0 },
     exit: { x: '100%' },
+  };
+
+  const playAndProgressLinks = secondaryNavLinks.filter((link) => playAndProgressHrefs.has(link.href));
+  const collectionLinks = secondaryNavLinks.filter((link) => collectionHrefs.has(link.href));
+
+  const renderNavLink = ({ href, label, icon: Icon }: (typeof secondaryNavLinks)[number]) => {
+    const active = pathname === href;
+    const notification = notifications?.[href];
+
+    return (
+      <Link
+        key={href}
+        href={href}
+        onClick={() => {
+          play('navTap');
+          onClose();
+        }}
+        className={`flex items-center gap-3 rounded-2xl border px-4 py-4 transition ${
+          active
+            ? 'border-[var(--color-secondary)] bg-[var(--color-secondary)] text-[var(--color-on-secondary)]'
+            : 'border-[var(--color-surface-border)] bg-[var(--color-surface)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]'
+        }`}
+      >
+        <div className="relative">
+          <Icon size={20} />
+          {notification?.show ? (
+            <span className={`absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full ${active ? 'bg-[var(--color-on-secondary)]' : 'bg-[var(--color-secondary)]'}`} />
+          ) : null}
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold leading-none">{label}</span>
+            {notification?.show && notification.label ? (
+              <span className={`rounded-full px-2 py-0.5 text-[0.6rem] font-semibold ${active ? 'bg-[var(--color-on-secondary)]/18 text-[var(--color-on-secondary)]' : 'bg-[var(--color-surface-hover)] text-[var(--color-secondary)]'}`}>
+                New Notification
+              </span>
+            ) : null}
+          </div>
+          <span className={`mt-1 text-xs ${active ? 'text-[var(--color-on-secondary)]/80' : 'text-[var(--color-muted)]'}`}>
+            {href === '/daily'
+              ? 'Today\'s mission set and streak status'
+              : href === '/leaderboard'
+                ? 'This week\'s live standings'
+                : href === '/journal'
+                  ? 'Your collection of birds'
+                  : href === '/birdhouse'
+                    ? 'Your hand-picked bird gallery'
+                    : href === '/profile'
+                      ? 'Your progress, trophies, and stats'
+                      : 'Themes, audio, and gameplay options'}
+          </span>
+          {notification?.show && notification.label ? (
+            <span className={`mt-2 text-[0.72rem] leading-5 ${active ? 'text-[var(--color-on-secondary)]' : 'text-[var(--color-text)]'}`}>
+              {notification.label}
+            </span>
+          ) : null}
+        </div>
+      </Link>
+    );
   };
 
   return (
@@ -98,62 +160,20 @@ export default function MenuDrawer({ isOpen, onClose, notifications }: MenuDrawe
           </button>
         </div>
 
-        <nav className="mt-8 flex flex-col gap-3">
-          {secondaryNavLinks.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href;
-            const notification = notifications?.[href];
+        <nav className="mt-8 flex flex-col gap-5">
+          <section className="flex flex-col gap-3">
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
+              Play &amp; Progress
+            </p>
+            {playAndProgressLinks.map(renderNavLink)}
+          </section>
 
-            return (
-              <Link
-                key={href}
-                href={href}
-                onClick={() => {
-                  play('navTap');
-                  onClose();
-                }}
-                className={`flex items-center gap-3 rounded-2xl border px-4 py-4 transition ${
-                  active
-                    ? 'border-[var(--color-secondary)] bg-[var(--color-secondary)] text-[var(--color-on-secondary)]'
-                    : 'border-[var(--color-surface-border)] bg-[var(--color-surface)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]'
-                }`}
-              >
-                <div className="relative">
-                  <Icon size={20} />
-                  {notification?.show ? (
-                    <span className={`absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full ${active ? 'bg-[var(--color-on-secondary)]' : 'bg-[var(--color-secondary)]'}`} />
-                  ) : null}
-                </div>
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-semibold leading-none">{label}</span>
-                    {notification?.show && notification.label ? (
-                      <span className={`rounded-full px-2 py-0.5 text-[0.6rem] font-semibold ${active ? 'bg-[var(--color-on-secondary)]/18 text-[var(--color-on-secondary)]' : 'bg-[var(--color-surface-hover)] text-[var(--color-secondary)]'}`}>
-                        New Notification
-                      </span>
-                    ) : null}
-                  </div>
-                  <span className={`mt-1 text-xs ${active ? 'text-[var(--color-on-secondary)]/80' : 'text-[var(--color-muted)]'}`}>
-                    {href === '/daily'
-                      ? 'Today\'s mission set and streak status'
-                      : href === '/leaderboard'
-                        ? 'This week\'s live standings'
-                      : href === '/journal'
-                        ? 'Your collection of birds'
-                        : href === '/birdhouse'
-                          ? 'Your hand-picked bird gallery'
-                      : href === '/profile'
-                        ? 'Your progress, trophies, and stats'
-                        : 'Themes, audio, and gameplay options'}
-                  </span>
-                  {notification?.show && notification.label ? (
-                    <span className={`mt-2 text-[0.72rem] leading-5 ${active ? 'text-[var(--color-on-secondary)]' : 'text-[var(--color-text)]'}`}>
-                      {notification.label}
-                    </span>
-                  ) : null}
-                </div>
-              </Link>
-            );
-          })}
+          <section className="flex flex-col gap-3">
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
+              Collections
+            </p>
+            {collectionLinks.map(renderNavLink)}
+          </section>
         </nav>
         <div className="mt-auto pt-8 flex items-center gap-4">
           <Link
