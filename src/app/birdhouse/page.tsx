@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { BookOpen, Birdhouse, Compass, Sparkles, X } from 'lucide-react';
 import { useBirdhouse } from '@/hooks/useBirdhouse';
 import { useBirdJournal } from '@/hooks/useBirdJournal';
@@ -67,7 +68,10 @@ export default function BirdhousePage() {
   const { isPageBackgroundRefreshing } = usePageProgressSync();
   const { birdhouse, fakeCap, realCap } = useBirdhouse();
   const { journalByKey } = useBirdJournal();
-  const [tab, setTab] = useState<BirdhouseTab>('real');
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState<BirdhouseTab>(() => searchParams.get('tab') === 'fake' ? 'fake' : 'real');
   const [flippedKeys, setFlippedKeys] = useState<Set<string>>(new Set());
   const [fetchedEntries, setFetchedEntries] = useState<Record<string, BirdJournalEntry>>({});
   const fetchedKeySet = useRef<Set<string>>(new Set());
@@ -75,6 +79,19 @@ export default function BirdhousePage() {
   useEffect(() => {
     writeBirdhouseLastVisitedAt(new Date().toISOString());
   }, []);
+
+  const setTabAndSyncUrl = (nextTab: BirdhouseTab) => {
+    if (nextTab === tab) {
+      return;
+    }
+
+    setFlippedKeys(new Set());
+    setTab(nextTab);
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.set('tab', nextTab);
+    router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
+  };
 
   const allKeys = useMemo(
     () => (tab === 'real' ? birdhouse.real : birdhouse.fake),
@@ -154,13 +171,7 @@ export default function BirdhousePage() {
             <button
               key={nextTab}
               type="button"
-              onClick={() => {
-                if (nextTab === tab) {
-                  return;
-                }
-                setFlippedKeys(new Set());
-                setTab(nextTab);
-              }}
+              onClick={() => setTabAndSyncUrl(nextTab)}
               className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
                 active
                   ? 'bg-[var(--color-secondary)] text-[var(--color-on-secondary)]'

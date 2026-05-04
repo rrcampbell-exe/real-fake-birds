@@ -38,8 +38,8 @@ export default function BirdhousePreviewCard() {
 
       <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-4">
         <div className="grid grid-cols-2 gap-3">
-          <BirdhouseLatestCard label="Latest Real" entry={latestReal} />
-          <BirdhouseLatestCard label="Latest Fake" entry={latestFake} />
+          <BirdhouseLatestCard label="Latest Real" entry={latestReal} href="/birdhouse?tab=real" />
+          <BirdhouseLatestCard label="Latest Fake" entry={latestFake} href="/birdhouse?tab=fake" />
         </div>
 
         <div className="mt-3 min-h-6">
@@ -69,20 +69,30 @@ export default function BirdhousePreviewCard() {
 function BirdhouseLatestCard({
   label,
   entry,
+  href,
 }: {
   label: string;
   entry: { birdName: string; metadata: { imageThumbUrl?: string | null; imageUrl?: string | null } } | null;
+  href: string;
 }) {
   const imageUrl = entry?.metadata.imageThumbUrl ?? entry?.metadata.imageUrl ?? null;
 
   return (
-    <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-2.5">
+    <Link
+      href={href}
+      className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-2.5 transition-colors hover:bg-[var(--color-surface-hover)]"
+    >
       <p className="text-[0.65rem] uppercase tracking-[0.12em] text-[var(--color-muted)] font-medium">{label}</p>
       <div className="mt-2 flex flex-col gap-2">
-        <div className="relative h-24 w-full overflow-hidden rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] sm:h-28">
+        <div className="relative h-24 w-full overflow-hidden rounded-xl sm:h-28 flex items-center justify-center">
           {imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={imageUrl} alt={entry?.birdName ?? label} className="h-full w-full object-cover" loading="lazy" />
+            <img
+              src={imageUrl}
+              alt={entry?.birdName ?? label}
+              className="h-full w-auto max-w-full rounded-xl object-contain"
+              loading="lazy"
+            />
           ) : (
             <span className="flex h-full w-full items-center justify-center text-[var(--color-muted)]">
               <Bird size={22} aria-hidden="true" />
@@ -93,6 +103,6 @@ function BirdhouseLatestCard({
           {entry?.birdName ? formatBirdName(entry.birdName) : 'None yet'}
         </p>
       </div>
-    </div>
+    </Link>
   );
 }

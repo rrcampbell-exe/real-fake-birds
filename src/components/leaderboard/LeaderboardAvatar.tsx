@@ -6,10 +6,11 @@ import { findThemeByName } from '@/lib/utils/theme-handler';
 interface LeaderboardAvatarProps {
   username: string;
   avatarPalette: string | null;
+  avatarBirdImageUrl?: string | null;
   size?: 'sm' | 'lg';
 }
 
-export default function LeaderboardAvatar({ username, avatarPalette, size = 'sm' }: LeaderboardAvatarProps) {
+export default function LeaderboardAvatar({ username, avatarPalette, avatarBirdImageUrl, size = 'sm' }: LeaderboardAvatarProps) {
   const theme = findThemeByName(avatarPalette) ?? findThemeByName('Finch');
   const initial = username.slice(0, 1).toUpperCase();
 
@@ -19,13 +20,16 @@ export default function LeaderboardAvatar({ username, avatarPalette, size = 'sm'
   return (
     <span
       className={`inline-flex ${sizeClasses} items-center justify-center overflow-hidden rounded-full border border-black/10 shadow-sm`}
-      style={{
+      style={avatarBirdImageUrl ? undefined : {
         backgroundColor: theme?.primary,
         color: theme?.secondary,
       }}
       aria-hidden="true"
     >
-      {theme ? (
+      {avatarBirdImageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={avatarBirdImageUrl} alt="" className="h-full w-full object-cover" />
+      ) : theme ? (
         <Bird size={birdSize} strokeWidth={2.25} />
       ) : (
         <span className={size === 'lg' ? 'text-base font-bold' : 'text-xs font-bold'}>{initial}</span>

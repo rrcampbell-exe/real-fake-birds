@@ -7,7 +7,11 @@ import { useAccountState } from '@/components/account/AccountStateProvider';
 import { useScreenViewed } from '@/hooks/useScreenViewed';
 import { useHasHydrated } from '@/hooks/useHasHydrated';
 import { usePageProgressSync } from '@/hooks/usePageProgressSync';
+import { useBirdhouse } from '@/hooks/useBirdhouse';
+import { useBirdJournal } from '@/hooks/useBirdJournal';
+import { saveAvatarFakeBird } from '@/lib/auth/account-sync';
 import ProfileHeader from '@/components/profile/ProfileHeader';
+import AvatarPickerSheet from '@/components/profile/AvatarPickerSheet';
 import ProgressSummary from '@/components/profile/ProgressSummary';
 import RewardsSection from '@/components/profile/RewardsSection';
 import BirdhousePreviewCard from '@/components/profile/BirdhousePreviewCard';
@@ -52,11 +56,48 @@ function useOwnProfile(username: string | null) {
 export default function ProfilePage() {
   useScreenViewed('profile');
   const isHydrated = useHasHydrated();
-  const { isSignedIn, accountUsername, remoteSummary } = useAccountState();
+  const { isSignedIn, accountUsername, accountAvatarPalette, accountJoinedMonthYear, accountAvatarFakeBirdKey, refreshAccountState, remoteSummary } = useAccountState();
   const { isPageBackgroundRefreshing } = usePageProgressSync();
-  const { profile, isLoading: isProfileLoading } = useOwnProfile(
+  const { birdhouse } = useBirdhouse();
+  const { journalByKey } = useBirdJournal();
+  const { profile } = useOwnProfile(
     isSignedIn && accountUsername ? accountUsername : null,
   );
+  const [pickerOpen, setPickerOpen] = useState(false);
+  // Tracks the key we just saved so the avatar updates instantly without
+  // waiting for refreshAccountState() to round-trip and update the context.
+  const [pendingAvatarBirdKey, setPendingAvatarBirdKey] = useState<string | null | undefined>(undefined);
+
+
+  const fakeBirdsForPicker = birdhouse.fake
+    .map((birdKey) => {
+      const entry = journalByKey[birdKey];
+      return {
+        birdKey,
+        birdName: entry?.birdName ?? birdKey,
+        imageUrl: entry?.metadata.imageThumbUrl ?? entry?.metadata.imageUrl ?? null,
+      };
+    });
+
+  // Pending key is active while it differs from the server-confirmed value; becomes a no-op once the context catches up.
+  const effectiveAvatarBirdKey =
+    pendingAvatarBirdKey !== undefined && pendingAvatarBirdKey !== accountAvatarFakeBirdKey
+      ? pendingAvatarBirdKey
+      : (accountAvatarFakeBirdKey ?? null);
+  const avatarFakeBirdImageUrl = effectiveAvatarBirdKey
+    ? (journalByKey[effectiveAvatarBirdKey]?.metadata.imageThumbUrl ?? journalByKey[effectiveAvatarBirdKey]?.metadata.imageUrl ?? profile?.avatarFakeBirdImageUrl ?? null)
+    : (profile?.avatarFakeBirdImageUrl ?? null);
+
+  const handleAvatarSelect = async (birdKey: string | null) => {
+    setPickerOpen(false);
+    setPendingAvatarBirdKey(birdKey);
+    try {
+      await saveAvatarFakeBird(birdKey);
+      await refreshAccountState();
+    } catch {
+      // silently degrade — pending key will still show the selection
+    }
+  };
 
   if (!isHydrated) {
     return (
@@ -88,23 +129,23 @@ export default function ProfilePage() {
 
   return (
     <div className="w-full max-w-lg mx-auto px-4 py-8 flex flex-col gap-8">
-      {isProfileLoading || !profile ? (
-        <div className="flex flex-col gap-4">
-          <div className="h-10 w-10 rounded-full bg-[var(--color-surface)] animate-pulse" />
-          <div className="h-6 w-48 rounded bg-[var(--color-surface)] animate-pulse" />
-          <div className="h-4 w-32 rounded bg-[var(--color-surface)] animate-pulse" />
-        </div>
-      ) : (
-        <>
-          <ProfileHeader
-            username={profile.username}
-            avatarPalette={profile.avatarPalette}
-            joinedMonthYear={profile.joinedMonthYear}
-            privacyMode={profile.privacyMode}
-            isOwner
-          />
-        </>
-      )}
+      <ProfileHeader
+        username={accountUsername}
+        avatarPalette={accountAvatarPalette ?? ''}
+        avatarFakeBirdImageUrl={avatarFakeBirdImageUrl}
+        joinedMonthYear={accountJoinedMonthYear ?? ''}
+        privacyMode={profile?.privacyMode}
+        isOwner
+        onEditAvatar={() => setPickerOpen(true)}
+      />
+
+      <AvatarPickerSheet
+        isOpen={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={handleAvatarSelect}
+        fakeBirds={fakeBirdsForPicker}
+        currentBirdKey={accountAvatarFakeBirdKey ?? null}
+      />
 
       {isPageBackgroundRefreshing ? (
         <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted)] w-fit">

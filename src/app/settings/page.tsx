@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Check, Music4, Volume2, VolumeX } from 'lucide-react';
+import { Check, Music4, Volume2, VolumeX, Camera } from 'lucide-react';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import UsernameAvailabilityCard from '@/components/auth/UsernameAvailabilityCard';
+import LeaderboardAvatar from '@/components/leaderboard/LeaderboardAvatar';
 import { flushQueuedProgressEventsForSignedInUser } from '@/lib/auth/account-session';
 import { purchaseTheme, saveAvatarPalette } from '@/lib/auth/account-sync';
 import { themes } from '@/lib/themes';
@@ -45,6 +46,8 @@ export default function SettingsPage() {
   const isHydrated = useHasHydrated();
   const {
     isSignedIn,
+    accountAvatarPalette,
+    accountAvatarFakeBirdKey,
     remoteSummary,
     remoteUnlockedThemes,
     refreshAccountState,
@@ -220,6 +223,36 @@ export default function SettingsPage() {
         </p>
       </div>
       <UsernameAvailabilityCard />
+
+      {isSignedIn && (
+        <section>
+          <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold mb-3">
+            Avatar
+          </h2>
+          <div className="flex items-center gap-4 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4">
+            <LeaderboardAvatar
+              username={""}
+              avatarPalette={accountAvatarPalette ?? null}
+              size="sm"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-[var(--color-text)]">
+                {accountAvatarFakeBirdKey ? 'Custom bird avatar' : 'Palette avatar'}
+              </p>
+              <p className="text-xs text-[var(--color-muted)]">
+                {accountAvatarFakeBirdKey ? 'Using a fake bird from your birdhouse' : 'Using your selected theme colors'}
+              </p>
+            </div>
+            <Link
+              href="/profile"
+              className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-3 py-1.5 text-xs font-medium text-[var(--color-text)] transition hover:bg-[var(--color-surface-border)]"
+            >
+              <Camera size={12} aria-hidden="true" />
+              Change
+            </Link>
+          </div>
+        </section>
+      )}
 
       <section>
         <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold mb-1">

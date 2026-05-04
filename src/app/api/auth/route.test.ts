@@ -50,6 +50,105 @@ describe('auth route', () => {
     await expect(response.json()).resolves.toEqual({ error: 'invalid_request' });
   });
 
+  it('saves avatar fake bird for authenticated users', async () => {
+    mockedHasSupabaseEnv.mockReturnValue(true);
+    mockAuthenticatedUser();
+
+    const eq = vi.fn().mockResolvedValue({ error: null });
+    const update = vi.fn().mockReturnValue({ eq });
+
+    mockedCreateSupabaseAdminClient.mockReturnValue({
+      from: vi.fn((table: string) => {
+        if (table === 'profiles') {
+          return { update };
+        }
+
+        return {
+          select: vi.fn(),
+        };
+      }),
+    } as never);
+
+    const response = await POST(
+      new Request('http://localhost/api/auth', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'save-avatar-fake-bird', fakeBirdKey: 'spicy-mustard-pelican' }),
+        headers: { 'Content-Type': 'application/json' },
+      }) as never
+    );
+
+    expect(response.status).toBe(200);
+    expect(update).toHaveBeenCalledWith({ avatar_fake_bird_key: 'spicy-mustard-pelican' });
+    expect(eq).toHaveBeenCalledWith('user_id', 'user-1');
+    await expect(response.json()).resolves.toEqual({
+      action: 'save-avatar-fake-bird',
+      avatarFakeBirdKey: 'spicy-mustard-pelican',
+    });
+  });
+
+  it('falls back to user metadata when save-avatar-fake-bird column is unavailable', async () => {
+    mockedHasSupabaseEnv.mockReturnValue(true);
+    mockedCreateSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: {
+            user: {
+              id: 'user-1',
+              email: 'bird@example.com',
+              user_metadata: { requested_username: 'BirdFan_17' },
+            },
+          },
+          error: null,
+        }),
+      },
+    } as never);
+
+    const updateUserById = vi.fn().mockResolvedValue({ error: null });
+
+    mockedCreateSupabaseAdminClient.mockReturnValue({
+      auth: {
+        admin: {
+          updateUserById,
+        },
+      },
+      from: vi.fn((table: string) => {
+        if (table === 'profiles') {
+          return {
+            update: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({
+                error: { code: '42703', message: 'column profiles.avatar_fake_bird_key does not exist' },
+              }),
+            }),
+          };
+        }
+
+        return {
+          select: vi.fn(),
+        };
+      }),
+    } as never);
+
+    const response = await POST(
+      new Request('http://localhost/api/auth', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'save-avatar-fake-bird', fakeBirdKey: 'spicy-mustard-pelican' }),
+        headers: { 'Content-Type': 'application/json' },
+      }) as never
+    );
+
+    expect(response.status).toBe(200);
+    expect(updateUserById).toHaveBeenCalledWith('user-1', {
+      user_metadata: {
+        requested_username: 'BirdFan_17',
+        avatar_fake_bird_key: 'spicy-mustard-pelican',
+      },
+    });
+    await expect(response.json()).resolves.toEqual({
+      action: 'save-avatar-fake-bird',
+      avatarFakeBirdKey: 'spicy-mustard-pelican',
+    });
+  });
+
   it('returns validation issues and marks invalid usernames unavailable', async () => {
     const response = await POST(
       new Request('http://localhost/api/auth', {
@@ -398,6 +497,168 @@ describe('auth route', () => {
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({ error: 'email_confirmation_required' });
+  });
+
+  it('keeps account state available when avatar_fake_bird_key is not selectable yet', async () => {
+    mockedHasSupabaseEnv.mockReturnValue(true);
+    mockedCreateSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: {
+            user: {
+              id: 'user-1',
+              email: 'bird@example.com',
+              user_metadata: { avatar_fake_bird_key: 'spicy-mustard-pelican' },
+            },
+          },
+          error: null,
+        }),
+      },
+    } as never);
+
+    const profileSelect = vi.fn((columns: string) => {
+      if (columns === 'username, username_canonical, avatar_palette') {
+        return {
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: {
+                username: 'BirdFan_17',
+                username_canonical: 'birdfan_17',
+                avatar_palette: 'finch',
+              },
+              error: null,
+            }),
+          }),
+        };
+      }
+
+      if (columns === 'username, username_canonical, avatar_palette, is_house_account, created_at, avatar_fake_bird_key') {
+        return {
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: null,
+              error: {
+                code: '42703',
+                message: 'column profiles.avatar_fake_bird_key does not exist',
+              },
+            }),
+          }),
+        };
+      }
+
+      if (columns === 'username, username_canonical, avatar_palette, is_house_account, created_at') {
+        return {
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: {
+                username: 'BirdFan_17',
+                username_canonical: 'birdfan_17',
+                avatar_palette: 'finch',
+                is_house_account: false,
+                created_at: '2026-04-03T12:00:00.000Z',
+              },
+              error: null,
+            }),
+          }),
+        };
+      }
+
+      return {
+        eq: vi.fn().mockReturnValue({
+          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+        }),
+      };
+    });
+
+    const leaderboardSelect = vi.fn((columns: string) => {
+      if (columns.includes('previous_week_finalized_at')) {
+        return {
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }),
+        };
+      }
+
+      return {
+        not: vi.fn().mockReturnValue({
+          lt: vi.fn().mockResolvedValue({ data: [], error: null }),
+        }),
+      };
+    });
+
+    mockedCreateSupabaseAdminClient.mockReturnValue({
+      from: vi.fn((table: string) => {
+        if (table === 'profiles') {
+          return {
+            select: profileSelect,
+          };
+        }
+
+        if (table === 'player_progress') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: {
+                    last_local_sync_at: null,
+                    birds_identified: 12,
+                    seeds: 34,
+                    best_streak: 5,
+                    best_daily_streak: 3,
+                    best_weekly_placement: null,
+                    first_place_count: 0,
+                    second_place_count: 0,
+                    third_place_count: 0,
+                  },
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+
+        if (table === 'unlocked_themes') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
+          };
+        }
+
+        if (table === 'leaderboard_stats') {
+          return {
+            select: leaderboardSelect,
+            upsert: vi.fn().mockResolvedValue({ error: null }),
+          };
+        }
+
+        return {
+          select: vi.fn(),
+        };
+      }),
+    } as never);
+
+    const response = await POST(
+      new Request('http://localhost/api/auth', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'get-account-state' }),
+        headers: { 'Content-Type': 'application/json' },
+      }) as never
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      action: 'get-account-state',
+      email: 'bird@example.com',
+      profile: {
+        username: 'BirdFan_17',
+        usernameCanonical: 'birdfan_17',
+        avatarPalette: 'finch',
+        isHouseAccount: false,
+        joinedMonthYear: 'April 2026',
+        avatarFakeBirdKey: 'spicy-mustard-pelican',
+      },
+    });
   });
 
   it('rejects oversized progress event batches before auth work begins', async () => {
