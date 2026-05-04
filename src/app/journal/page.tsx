@@ -127,10 +127,10 @@ export default function JournalPage() {
     : null;
 
   const showJournalToast = (title: string, detail: string) => {
-    setJournalToastBatch({
-      id: Date.now(),
+    setJournalToastBatch((previous) => ({
+      id: (previous?.id ?? 0) + 1,
       toasts: [{ id: 0, title, detail }],
-    });
+    }));
   };
 
   const handleRevealFakeImage = async (birdKey: string) => {
@@ -199,7 +199,10 @@ export default function JournalPage() {
               : `+${missionUpdate.missionSetBonusSeedsEarned} bonus seeds.`,
           });
         }
-        setJournalToastBatch({ id: Date.now(), toasts: newToasts });
+        setJournalToastBatch((previous) => ({
+          id: (previous?.id ?? 0) + 1,
+          toasts: newToasts,
+        }));
       }
 
       if (!isSignedIn) {
@@ -244,7 +247,7 @@ export default function JournalPage() {
     }
   };
 
-  const effectiveJournal = useMemo<BirdJournalEntry[]>(() => {
+  const effectiveJournal: BirdJournalEntry[] = (() => {
     if (!isSignedIn || serverBrowseEntries.length === 0) {
       return journal;
     }
@@ -253,7 +256,7 @@ export default function JournalPage() {
     for (const entry of journal) byKey.set(entry.birdKey, entry);
     for (const entry of serverBrowseEntries) byKey.set(entry.birdKey, entry);
     return Array.from(byKey.values());
-  }, [isSignedIn, journal, serverBrowseEntries]);
+  })();
 
   const filteredJournal = useMemo(() => {
     // When a server search is active, use those results directly (they cover full history)
