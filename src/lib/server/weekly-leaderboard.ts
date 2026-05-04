@@ -35,6 +35,7 @@ export interface WeeklyLeaderboardStatsRow {
   previousWeekQualified: boolean;
   previousWeekRank: number | null;
   previousWeekRewardSeeds: number;
+  previousWeekFinalizedAt: string | null;
 }
 
 export interface RankedWeeklyLeaderboard {
@@ -193,7 +194,7 @@ export function getWeeklyRewardSeeds(rank: number | null): number {
 }
 
 export function buildPreviousWeeklyRecap(row: WeeklyLeaderboardStatsRow | null): WeeklyRecap | null {
-  if (!row?.previousWeekStart) {
+  if (!row?.previousWeekStart || !row.previousWeekFinalizedAt) {
     return null;
   }
 
@@ -203,6 +204,7 @@ export function buildPreviousWeeklyRecap(row: WeeklyLeaderboardStatsRow | null):
     qualified: row.previousWeekQualified,
     rank: row.previousWeekRank,
     rewardSeeds: row.previousWeekRewardSeeds,
+    finalizedAt: row.previousWeekFinalizedAt,
   };
 }
 
