@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { CircleUser, Lock } from 'lucide-react';
+import Link from 'next/link';
+import { Lock, Birdhouse } from 'lucide-react';
 import { useScreenViewed } from '@/hooks/useScreenViewed';
+import LeaderboardAvatar from '@/components/leaderboard/LeaderboardAvatar';
 import type { ProfileReadResponse } from '@/types/profile';
 
 function useProfileData(username: string) {
@@ -93,7 +95,7 @@ export default function UserProfilePage() {
     return (
       <div className="w-full max-w-lg mx-auto px-4 py-8 flex flex-col gap-4">
         <div className="flex items-center gap-3">
-          <CircleUser size={40} className="text-[var(--color-muted)]" />
+          <LeaderboardAvatar username={profile.username} avatarPalette={null} size="lg" />
           <div>
             <h1 className="font-[family-name:var(--font-display)] text-xl font-bold">
               {profile.username}
@@ -118,11 +120,16 @@ export default function UserProfilePage() {
     );
   }
 
-  // Full profile (public or approved follower) — components assembled in Todo 9/10
+  // Full profile (public or approved follower)
   return (
     <div className="w-full max-w-lg mx-auto px-4 py-8 flex flex-col gap-8">
       <div className="flex items-center gap-3">
-        <CircleUser size={40} className="text-[var(--color-muted)]" />
+        <LeaderboardAvatar
+          username={profile.username}
+          avatarPalette={profile.avatarPalette ?? null}
+          avatarBirdImageUrl={profile.avatarFakeBirdImageUrl ?? null}
+          size="lg"
+        />
         <div>
           <h1 className="font-[family-name:var(--font-display)] text-xl font-bold">
             {profile.username}
@@ -150,6 +157,17 @@ export default function UserProfilePage() {
           <p className="text-xs text-[var(--color-muted)]">Seeds</p>
         </div>
       </div>
+      <Link
+        href={`/profile/${username}/birdhouse`}
+        className="flex items-center gap-3 rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3 transition hover:bg-[var(--color-surface-hover)]"
+      >
+        <Birdhouse size={20} className="shrink-0 text-[var(--color-secondary)]" aria-hidden="true" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold">Birdhouse</p>
+          <p className="text-xs text-[var(--color-muted)]">Birds worth keeping</p>
+        </div>
+        <span className="text-xs text-[var(--color-muted)]">&rsaquo;</span>
+      </Link>
     </div>
   );
 }
