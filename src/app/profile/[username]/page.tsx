@@ -15,8 +15,6 @@ function useProfileData(username: string) {
     if (!username) return;
 
     let cancelled = false;
-    setIsLoading(true);
-    setError(null);
 
     fetch(`/api/profile?username=${encodeURIComponent(username.toLowerCase())}`)
       .then(async (res) => {

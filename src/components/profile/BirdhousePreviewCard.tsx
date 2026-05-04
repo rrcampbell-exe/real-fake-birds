@@ -71,7 +71,7 @@ function BirdhouseLatestCard({
   entry,
 }: {
   label: string;
-  entry: { birdName: string; metadata: { imageThumbUrl: string | null; imageUrl: string | null } } | null;
+  entry: { birdName: string; metadata: { imageThumbUrl?: string | null; imageUrl?: string | null } } | null;
 }) {
   const imageUrl = entry?.metadata.imageThumbUrl ?? entry?.metadata.imageUrl ?? null;
 

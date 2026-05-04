@@ -28,7 +28,6 @@ function useOwnProfile(username: string | null) {
     if (ownProfileCache.has(key)) return; // already cached — skip fetch
 
     let cancelled = false;
-    setIsLoading(true);
 
     fetch(`/api/profile?username=${encodeURIComponent(key)}`)
       .then(async (res) => res.json())
