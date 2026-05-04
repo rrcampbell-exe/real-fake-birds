@@ -32,6 +32,7 @@ function createRow(overrides: Partial<WeeklyLeaderboardStatsRow>): WeeklyLeaderb
     previousWeekQualified: overrides.previousWeekQualified ?? false,
     previousWeekRank: overrides.previousWeekRank ?? null,
     previousWeekRewardSeeds: overrides.previousWeekRewardSeeds ?? 0,
+    previousWeekFinalizedAt: overrides.previousWeekFinalizedAt ?? null,
   };
 }
 
@@ -80,6 +81,7 @@ describe('weekly leaderboard ranking', () => {
       previousWeekQualified: true,
       previousWeekRank: 2,
       previousWeekRewardSeeds: 350,
+      previousWeekFinalizedAt: '2026-04-06T05:15:00.000Z',
     });
 
     expect(calculateWeeklyAccuracy(createRow({ weeklyBirdsSeen: 0, weeklyBirdsIdentified: 10 }))).toBe(0);
@@ -125,6 +127,7 @@ describe('weekly leaderboard ranking', () => {
       qualified: true,
       rank: 2,
       rewardSeeds: 350,
+      finalizedAt: '2026-04-06T05:15:00.000Z',
     });
 
     const placementSummary = buildPlacementSummary({

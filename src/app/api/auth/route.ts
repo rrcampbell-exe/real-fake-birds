@@ -8,12 +8,15 @@ import { applyProgressEvents as reduceProgressEvents, createProgressSnapshot, ty
 import {
   buildPlacementSummary,
   buildWeeklyOverview,
-  getWeeklyRewardSeeds,
-  normalizeWeeklySeenBirdKeys,
-  qualifiesForWeeklyChallenge,
   rankWeeklyLeaderboardRows,
   type WeeklyLeaderboardStatsRow,
 } from '@/lib/server/weekly-leaderboard';
+import {
+  createWeeklyResetState,
+  finalizeExpiredWeeklyLeaderboards,
+  mapLeaderboardStatsRow,
+  tryInsertProgressEvent,
+} from '@/lib/server/weekly-leaderboard-finalization';
 import { normalizeBirdScore } from '@/lib/utils/player-progress';
 import { validateUsername } from '@/lib/auth/username';
 import { deriveBirdKey } from '@/lib/utils/bird-journal';
@@ -805,44 +808,6 @@ function normalizeMilestoneValues(values: number[]): number[] {
   ).sort((left, right) => left - right);
 }
 
-function mapLeaderboardStatsRow(row: Record<string, unknown>): WeeklyLeaderboardStatsRow {
-  return {
-    userId: String(row.user_id ?? ''),
-    usernameCanonical: typeof row.username_canonical === 'string' ? row.username_canonical : null,
-    currentWeekStart: typeof row.current_week_start === 'string' ? row.current_week_start : null,
-    weeklyBirdsSeen: typeof row.weekly_birds_seen === 'number' ? row.weekly_birds_seen : 0,
-    weeklyBirdsIdentified: typeof row.weekly_birds_identified === 'number' ? row.weekly_birds_identified : 0,
-    weeklySeedsEarned: typeof row.weekly_seeds_earned === 'number' ? row.weekly_seeds_earned : 0,
-    weeklyBestStreak: typeof row.weekly_best_streak === 'number' ? row.weekly_best_streak : 0,
-    weeklyNewBirdsDiscovered: typeof row.weekly_new_birds_discovered === 'number' ? row.weekly_new_birds_discovered : 0,
-    weeklyFakeBirdsIdentified: typeof row.weekly_fake_birds_identified === 'number' ? row.weekly_fake_birds_identified : 0,
-    weeklyRealBirdsIdentified: typeof row.weekly_real_birds_identified === 'number' ? row.weekly_real_birds_identified : 0,
-    weeklyUniqueBirdsSeen: typeof row.weekly_unique_birds_seen === 'number' ? row.weekly_unique_birds_seen : 0,
-    weeklySeenBirdKeys: normalizeWeeklySeenBirdKeys(row.weekly_seen_bird_keys),
-    previousWeekStart: typeof row.previous_week_start === 'string' ? row.previous_week_start : null,
-    previousWeekParticipated: Boolean(row.previous_week_participated),
-    previousWeekQualified: Boolean(row.previous_week_qualified),
-    previousWeekRank: typeof row.previous_week_rank === 'number' ? row.previous_week_rank : null,
-    previousWeekRewardSeeds: typeof row.previous_week_reward_seeds === 'number' ? row.previous_week_reward_seeds : 0,
-  };
-}
-
-function createWeeklyResetState(currentWeekStart: string) {
-  return {
-    current_week_start: currentWeekStart,
-    weekly_birds_seen: 0,
-    weekly_birds_identified: 0,
-    weekly_seeds_earned: 0,
-    weekly_best_streak: 0,
-    weekly_new_birds_discovered: 0,
-    weekly_fake_birds_identified: 0,
-    weekly_real_birds_identified: 0,
-    weekly_unique_birds_seen: 0,
-    weekly_seen_bird_keys: [],
-    weekly_last_played_at: null,
-  };
-}
-
 function createWeeklyStatsUpdate(options: {
   currentWeekStart: string;
   existingRow: WeeklyLeaderboardStatsRow | null;
@@ -912,151 +877,6 @@ function createWeeklyStatsUpdate(options: {
   };
 }
 
-async function tryInsertProgressEvent(
-  admin: ReturnType<typeof createSupabaseAdminClient>,
-  userId: string,
-  eventId: string,
-  eventType: string,
-  occurredAt: string
-): Promise<boolean> {
-  const { error } = await admin
-    .from('progress_event_log')
-    .insert({
-      user_id: userId,
-      event_id: eventId,
-      event_type: eventType,
-      occurred_at: occurredAt,
-    });
-
-  return !error;
-}
-
-async function finalizeExpiredWeeklyLeaderboards(admin: ReturnType<typeof createSupabaseAdminClient>): Promise<string> {
-  const currentWeekStart = getCurrentWeekStart();
-  const { data: staleRows } = await admin
-    .from('leaderboard_stats')
-    .select([
-      'user_id',
-      'username_canonical',
-      'current_week_start',
-      'weekly_birds_seen',
-      'weekly_birds_identified',
-      'weekly_seeds_earned',
-      'weekly_best_streak',
-      'weekly_new_birds_discovered',
-      'weekly_fake_birds_identified',
-      'weekly_real_birds_identified',
-      'weekly_unique_birds_seen',
-      'weekly_seen_bird_keys',
-    ].join(', '))
-    .not('current_week_start', 'is', null)
-    .lt('current_week_start', currentWeekStart);
-
-  const expiredRows = (staleRows ?? []).map((row) => mapLeaderboardStatsRow(row as unknown as Record<string, unknown>));
-
-  if (expiredRows.length === 0) {
-    return currentWeekStart;
-  }
-
-  const progressUserIds = expiredRows.map((row) => row.userId);
-  const { data: progressRows } = await admin
-    .from('player_progress')
-    .select('user_id, seeds, best_weekly_placement, first_place_count, second_place_count, third_place_count')
-    .in('user_id', progressUserIds);
-
-  const progressMap = new Map(
-    (progressRows ?? []).map((row) => [
-      row.user_id as string,
-      {
-        seeds: typeof row.seeds === 'number' ? row.seeds : 0,
-        bestWeeklyPlacement: typeof row.best_weekly_placement === 'number' ? row.best_weekly_placement : null,
-        firstPlaceCount: typeof row.first_place_count === 'number' ? row.first_place_count : 0,
-        secondPlaceCount: typeof row.second_place_count === 'number' ? row.second_place_count : 0,
-        thirdPlaceCount: typeof row.third_place_count === 'number' ? row.third_place_count : 0,
-      },
-    ])
-  );
-
-  const rowsByWeek = new Map<string, WeeklyLeaderboardStatsRow[]>();
-  for (const row of expiredRows) {
-    const weekStart = row.currentWeekStart;
-    if (!weekStart) {
-      continue;
-    }
-
-    const currentRows = rowsByWeek.get(weekStart) ?? [];
-    currentRows.push(row);
-    rowsByWeek.set(weekStart, currentRows);
-  }
-
-  for (const [weekStart, rows] of rowsByWeek.entries()) {
-    const challenge = getWeeklyChallengeForWeek(weekStart);
-    const ranked = rankWeeklyLeaderboardRows(rows, challenge);
-    const rankByUserId = new Map(ranked.rankedRows.map((item) => [item.userId, item.entry.rank]));
-    const finalizedAt = new Date().toISOString();
-
-    await Promise.all(rows.map(async (row) => {
-      const participated = row.weeklyBirdsSeen > 0;
-      const qualified = participated && qualifiesForWeeklyChallenge(row, challenge);
-      const rank = qualified ? (rankByUserId.get(row.userId) ?? null) : null;
-      const rewardSeeds = qualified ? getWeeklyRewardSeeds(rank) : 0;
-      const rewardEventId = `weekly-leaderboard:${weekStart}:${row.userId}`;
-      const progress = progressMap.get(row.userId) ?? {
-        seeds: 0,
-        bestWeeklyPlacement: null,
-        firstPlaceCount: 0,
-        secondPlaceCount: 0,
-        thirdPlaceCount: 0,
-      };
-
-      const shouldCreditReward = rewardSeeds > 0
-        ? await tryInsertProgressEvent(admin, row.userId, rewardEventId, 'weekly-leaderboard-finalized', finalizedAt)
-        : false;
-
-      if (shouldCreditReward) {
-        const nextBestPlacement = rank
-          ? (progress.bestWeeklyPlacement === null ? rank : Math.min(progress.bestWeeklyPlacement, rank))
-          : progress.bestWeeklyPlacement;
-
-        await admin
-          .from('player_progress')
-          .update({
-            seeds: progress.seeds + rewardSeeds,
-            best_weekly_placement: nextBestPlacement,
-            first_place_count: progress.firstPlaceCount + (rank === 1 ? 1 : 0),
-            second_place_count: progress.secondPlaceCount + (rank === 2 ? 1 : 0),
-            third_place_count: progress.thirdPlaceCount + (rank === 3 ? 1 : 0),
-          })
-          .eq('user_id', row.userId);
-      }
-
-      const { count: finalizedCount } = await admin
-        .from('leaderboard_stats')
-        .update({
-          ...createWeeklyResetState(currentWeekStart),
-          previous_week_start: weekStart,
-          previous_week_participated: participated,
-          previous_week_qualified: qualified,
-          previous_week_rank: rank,
-          previous_week_reward_seeds: rewardSeeds,
-          previous_week_finalized_at: finalizedAt,
-        }, { count: 'exact' })
-        .eq('user_id', row.userId)
-        .lt('current_week_start', currentWeekStart);
-
-      if (finalizedCount === 0) {
-        console.warn('[weekly-leaderboard] finalization update matched 0 rows', {
-          userId: row.userId,
-          weekStart,
-          currentWeekStart,
-        });
-      }
-    }));
-  }
-
-  return currentWeekStart;
-}
-
 async function readLeaderboardStatsRow(
   admin: ReturnType<typeof createSupabaseAdminClient>,
   userId: string
@@ -1081,6 +901,7 @@ async function readLeaderboardStatsRow(
       'previous_week_qualified',
       'previous_week_rank',
       'previous_week_reward_seeds',
+      'previous_week_finalized_at',
     ].join(', '))
     .eq('user_id', userId)
     .maybeSingle();
@@ -1098,7 +919,7 @@ async function incrementWeeklySeedsEarned(
     return;
   }
 
-  const currentWeekStart = await finalizeExpiredWeeklyLeaderboards(admin);
+  const { currentWeekStart } = await finalizeExpiredWeeklyLeaderboards(admin);
   const currentRow = await readLeaderboardStatsRow(admin, userId);
   const currentWeekSeeds = currentRow?.currentWeekStart === currentWeekStart ? currentRow.weeklySeedsEarned : 0;
 
@@ -1302,8 +1123,8 @@ export async function POST(request: NextRequest) {
 
     try {
       const admin = createSupabaseAdminClient();
+      const { currentWeekStart } = await finalizeExpiredWeeklyLeaderboards(admin);
       await ensureAccountProfileFromUserMetadata({ admin, user: context.user });
-      const currentWeekStart = await finalizeExpiredWeeklyLeaderboards(admin);
       const [{ data: profile }, { data: progress }, { data: unlockedThemes }, leaderboardRow] = await Promise.all([
         admin
           .from('profiles')
@@ -1373,7 +1194,7 @@ export async function POST(request: NextRequest) {
     try {
       const admin = createSupabaseAdminClient();
       const context = await getAuthenticatedRequestContext();
-      const currentWeekStart = await finalizeExpiredWeeklyLeaderboards(admin);
+      const { currentWeekStart } = await finalizeExpiredWeeklyLeaderboards(admin);
       const challenge = getWeeklyChallengeForWeek(currentWeekStart);
       const { data: rows } = await admin
         .from('leaderboard_stats')
@@ -1645,7 +1466,7 @@ export async function POST(request: NextRequest) {
 
     try {
       const admin = createSupabaseAdminClient();
-      const currentWeekStart = await finalizeExpiredWeeklyLeaderboards(admin);
+      const { currentWeekStart } = await finalizeExpiredWeeklyLeaderboards(admin);
       const eventIds = body.events.map((event) => event.eventId);
       const [{ data: progress }, { data: unlockedThemes }, { data: dailyHistory }, { data: milestoneRows }, { data: seenEvents }, leaderboardRow] = await Promise.all([
         admin
@@ -2265,7 +2086,7 @@ export async function POST(request: NextRequest) {
 
     try {
       const admin = createSupabaseAdminClient();
-      const currentWeekStart = await finalizeExpiredWeeklyLeaderboards(admin);
+      const { currentWeekStart } = await finalizeExpiredWeeklyLeaderboards(admin);
       const avatarPalette = body.avatarPalette?.trim() || 'finch';
       const { data: profile, error } = await admin
         .from('profiles')
@@ -2328,7 +2149,7 @@ export async function POST(request: NextRequest) {
 
     try {
       const admin = createSupabaseAdminClient();
-      const currentWeekStart = await finalizeExpiredWeeklyLeaderboards(admin);
+      const { currentWeekStart } = await finalizeExpiredWeeklyLeaderboards(admin);
       const normalizedScore = normalizeBirdScore(body.progress.score);
       const themeNames = normalizeThemeNames(body.progress.unlockedThemes);
       const dailyHistory = normalizeDailyHistory(body.progress.dailyChallengeHistory);

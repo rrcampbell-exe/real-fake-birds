@@ -15,6 +15,7 @@ import { readAccountSyncMeta } from '@/lib/auth/account-sync-local';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { hasSupabaseEnv } from '@/lib/supabase/env';
 import { setUnlockedThemeNames } from '@/lib/utils/player-progress';
+import { getCurrentWeekStart } from '@/lib/utils/weekly-leaderboard';
 import type { WeeklyOverview } from '@/types';
 
 type RemoteProgressSummary = {
@@ -236,7 +237,14 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
     setIsHouseAccount(cache.isHouseAccount ?? false);
     setRemoteSummary(cache.remoteSummary);
     setRemoteUnlockedThemes(cache.remoteUnlockedThemes);
-    setWeeklyOverview(cache.weeklyOverview);
+
+    // Don't restore a cached weeklyOverview from a previous week — it would
+    // suppress the recap modal on the first post-turnover visit until a fresh
+    // server fetch completes. Leave weeklyOverview null so the modal waits for
+    // fresh data rather than showing based on last-week's cached null recap.
+    const cachedWeekStart = cache.weeklyOverview?.currentWeekStart;
+    const isCurrentWeek = cachedWeekStart === getCurrentWeekStart();
+    setWeeklyOverview(isCurrentWeek ? cache.weeklyOverview : null);
 
     if (cache.remoteUnlockedThemes.length > 0) {
       setUnlockedThemeNames(cache.remoteUnlockedThemes);

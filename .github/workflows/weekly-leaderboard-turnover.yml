@@ -1,0 +1,23 @@
+name: Weekly Leaderboard Turnover
+
+on:
+  schedule:
+    # 05:15 UTC Monday = 00:15 America/Chicago (slightly after bird provisioning at 00:07)
+    - cron: '15 5 * * 1'
+  workflow_dispatch:
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger weekly leaderboard finalization
+        run: |
+          response=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/weekly-leaderboard-turnover")
+          echo "HTTP status: $response"
+          cat /tmp/response.json
+          if [ "$response" != "200" ]; then
+            echo "Finalization failed with status $response"
+            exit 1
+          fi

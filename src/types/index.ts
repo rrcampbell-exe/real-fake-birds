@@ -162,6 +162,7 @@ export interface WeeklyRecap {
   qualified: boolean;
   rank: number | null;
   rewardSeeds: number;
+  finalizedAt: string;
 }
 
 export interface WeeklyLeaderboardEntry {
