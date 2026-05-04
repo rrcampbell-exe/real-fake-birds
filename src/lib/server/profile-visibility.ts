@@ -1,4 +1,10 @@
-import type { FollowRow, ProfileVisibility, ProfileVisibilityReason } from '@/types/profile';
+import type {
+  FollowRow,
+  ProfileVisibility,
+  ProfileVisibilityReason,
+  UserRelationshipStatus,
+  ProfileCapabilities,
+} from '@/types/profile';
 
 interface TargetProfile {
   userId: string;
@@ -80,4 +86,79 @@ export function resolveProfileVisibility(
 
   // Private profile, guest viewer
   return { reason: 'private_unapproved', canViewFull: false, canFollow: false };
+}
+
+/**
+ * Derives the viewer's relationship status and capabilities for a target profile.
+ * Wraps resolveProfileVisibility and adds explicit relationship state and action capabilities.
+ *
+ * Pure function — deterministic output from pre-fetched data.
+ *
+ * @param viewerId - Authenticated viewer's user ID, or null for guests.
+ * @param targetProfile - The profile being viewed.
+ * @param followsRows - All follow/block rows involving either party.
+ * @returns { visibility, relationship, capabilities }
+ */
+export function resolveProfileRelationshipAndCapabilities(
+  viewerId: string | null,
+  targetProfile: TargetProfile,
+  followsRows: FollowRow[],
+): {
+  visibility: ProfileVisibility;
+  relationship: UserRelationshipStatus;
+  capabilities: ProfileCapabilities;
+} {
+  const visibility = resolveProfileVisibility(viewerId, targetProfile, followsRows);
+
+  // Derive relationship status from visibility and follow state
+  let relationship: UserRelationshipStatus;
+  if (visibility.reason === 'owner') {
+    relationship = 'owner';
+  } else if (visibility.reason === 'blocked') {
+    relationship = 'blocked';
+  } else if (visibility.reason === 'approved_follower') {
+    relationship = 'following';
+  } else if (visibility.reason === 'private_unapproved') {
+    // Check if there's a pending follow request
+    const hasPendingFollow =
+      viewerId &&
+      followsRows.some(
+        (row) =>
+          row.relationshipType === 'follow' &&
+          row.status === 'pending' &&
+          row.userId === viewerId &&
+          row.relatedUserId === targetProfile.userId,
+      );
+    relationship = hasPendingFollow ? 'requested' : 'none';
+  } else {
+    // public_profile — check if already following
+    const isFollowing =
+      viewerId &&
+      followsRows.some(
+        (row) =>
+          row.relationshipType === 'follow' &&
+          row.status === 'approved' &&
+          row.userId === viewerId &&
+          row.relatedUserId === targetProfile.userId,
+      );
+    relationship = isFollowing ? 'following' : 'none';
+  }
+
+  // Derive capabilities based on visibility and relationship
+  const canFollow =
+    visibility.canFollow && !['following', 'requested', 'owner'].includes(relationship);
+  const canUnfollow = relationship === 'following';
+  const canChallengeBirdBlitz =
+    viewerId !== null &&
+    visibility.canViewFull &&
+    relationship !== 'blocked' &&
+    relationship !== 'owner';
+
+  const capabilities: ProfileCapabilities = {
+    canFollow,
+    canUnfollow,
+    canChallengeBirdBlitz,
+  };
+
+  return { visibility, relationship, capabilities };
 }

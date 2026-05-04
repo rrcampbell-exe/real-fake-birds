@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { hasSupabaseEnv } from '@/lib/supabase/env';
 import { createSupabaseAdminClient, createSupabaseServerClient } from '@/lib/supabase/server';
 import { consumeRateLimit, getRateLimitKey } from '@/lib/server/rate-limiter';
-import { resolveProfileVisibility } from '@/lib/server/profile-visibility';
+import { resolveProfileRelationshipAndCapabilities } from '@/lib/server/profile-visibility';
 import { formatJoinedMonthYear } from '@/lib/utils/profile-helpers';
 import { getCdnImageUrl, isCdnEnabled } from '@/lib/server/cdn';
 import type {
@@ -78,6 +78,12 @@ function getClientIp(request: NextRequest): string | null {
 function blockedResponse(): NextResponse<ProfileReadResponse> {
   return NextResponse.json({
     visibility: { reason: 'blocked', canViewFull: false, canFollow: false },
+    relationship: 'blocked',
+    capabilities: {
+      canFollow: false,
+      canUnfollow: false,
+      canChallengeBirdBlitz: false,
+    },
     profile: null,
   });
 }
@@ -155,6 +161,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   if (!targetProfile?.user_id || !targetProfile.username) {
     return NextResponse.json({
       visibility: { reason: 'private_unapproved', canViewFull: false, canFollow: false },
+      relationship: 'none',
+      capabilities: {
+        canFollow: false,
+        canUnfollow: false,
+        canChallengeBirdBlitz: false,
+      },
       profile: null,
     } satisfies ProfileReadResponse);
   }
@@ -183,7 +195,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       ? 'private'
       : 'public';
 
-  const visibility = resolveProfileVisibility(
+  const { visibility, relationship, capabilities } = resolveProfileRelationshipAndCapabilities(
     viewerId,
     { userId: targetProfile.user_id, privacyMode },
     followsRows,
@@ -203,6 +215,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json({
       visibility,
+      relationship,
+      capabilities,
       profile: restricted,
     } satisfies ProfileReadResponse);
   }
@@ -249,7 +263,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       progress,
     };
 
-    return NextResponse.json({ visibility, profile: payload } satisfies ProfileReadResponse);
+    return NextResponse.json({
+      visibility,
+      relationship,
+      capabilities,
+      profile: payload,
+    } satisfies ProfileReadResponse);
   }
 
   const payload: PublicProfilePayload = {
@@ -261,5 +280,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     progress,
   };
 
-  return NextResponse.json({ visibility, profile: payload } satisfies ProfileReadResponse);
+  return NextResponse.json({
+    visibility,
+    relationship,
+    capabilities,
+    profile: payload,
+  } satisfies ProfileReadResponse);
 }

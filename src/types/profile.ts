@@ -22,6 +22,28 @@ export interface ProfileVisibility {
 }
 
 // ---------------------------------------------------------------------------
+// Relationship state and capabilities (explicit, server-owned)
+// ---------------------------------------------------------------------------
+
+/** The viewer's relationship to the target profile. */
+export type UserRelationshipStatus =
+  | 'none'       // no relationship
+  | 'requested'  // viewer has pending follow request to target (target is private)
+  | 'following'  // viewer is following target (either status or owner-only)
+  | 'owner'      // viewer is viewing their own profile
+  | 'blocked';   // either party has blocked the other
+
+/** Capabilities the viewer has relative to the target. */
+export interface ProfileCapabilities {
+  /** Whether the viewer can initiate or update a follow action. */
+  canFollow: boolean;
+  /** Whether the viewer can unfollow this target. */
+  canUnfollow: boolean;
+  /** Whether the viewer can challenge this target in Bird Blitz. */
+  canChallengeBirdBlitz: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // All-time progress summary (included in full payloads)
 // ---------------------------------------------------------------------------
 
@@ -85,6 +107,10 @@ export type ProfilePayload =
 
 export interface ProfileReadResponse {
   visibility: ProfileVisibility;
+  /** The viewer's relationship to this profile (none, requested, following, owner, blocked). */
+  relationship: UserRelationshipStatus;
+  /** Capabilities the viewer has for actions on this profile. */
+  capabilities: ProfileCapabilities;
   /**
    * null only when the viewer is blocked (or target user does not exist).
    * Use visibility.reason to distinguish the two cases on the client.
