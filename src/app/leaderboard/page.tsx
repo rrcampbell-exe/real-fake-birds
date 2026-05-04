@@ -209,7 +209,7 @@ export default function LeaderboardPage() {
                       <td className={`overflow-hidden border-y ${borderColor} ${baseBackground} px-3 py-3 font-medium`}>
                         <div className="flex items-center gap-2">
                           <span className="shrink-0"><LeaderboardAvatar username={entry.username} avatarPalette={entry.avatarPalette} /></span>
-                          <span>{entry.username}</span>
+                          <Link href={`/profile/${entry.username}`} className="hover:underline">{entry.username}</Link>
                           {entry.isHouseAccount ? (
                             <Bot size={11} className="shrink-0 text-[var(--color-muted)]" aria-label="House account" />
                           ) : entry.latestBadgeName ? (
@@ -245,7 +245,7 @@ export default function LeaderboardPage() {
                           username={leaderboard.currentUserEntry.username}
                           avatarPalette={leaderboard.currentUserEntry.avatarPalette}
                         /></span>
-                        <span>{leaderboard.currentUserEntry.username}</span>
+                        <Link href={`/profile/${leaderboard.currentUserEntry.username}`} className="hover:underline">{leaderboard.currentUserEntry.username}</Link>
                         {leaderboard.currentUserEntry.latestBadgeName ? (
                           <Image
                             src={`/images/badges/${toBadgeAssetName(leaderboard.currentUserEntry.latestBadgeName)}.png`}

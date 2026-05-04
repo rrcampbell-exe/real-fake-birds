@@ -141,8 +141,8 @@ export default function MenuDrawer({ isOpen, onClose, notifications }: MenuDrawe
                         ? 'Your collection of birds'
                         : href === '/birdhouse'
                           ? 'Your hand-picked bird gallery'
-                      : href === '/rewards'
-                        ? 'Bonuses, trophies, and milestones'
+                      : href === '/profile'
+                        ? 'Your progress, trophies, and stats'
                         : 'Themes, audio, and gameplay options'}
                   </span>
                   {notification?.show && notification.label ? (
