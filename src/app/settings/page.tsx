@@ -226,7 +226,7 @@ export default function SettingsPage() {
           Theme
         </h2>
         <p className="text-sm text-[var(--color-muted)] mb-5">
-          Unlock themes with milestones or seeds. Themes beyond Cardinal are coming soon!
+          Unlock themes with milestones or seeds.
         </p>
         <div className="grid grid-cols-2 gap-3">
           {themes.map((theme) => {
