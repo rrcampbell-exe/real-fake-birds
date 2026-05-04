@@ -18,6 +18,8 @@ export interface AccountStateResponse {
     usernameCanonical: string | null;
     avatarPalette: string | null;
     isHouseAccount?: boolean;
+    joinedMonthYear?: string | null;
+    avatarFakeBirdKey?: string | null;
   } | null;
   lastLocalSyncAt: string | null;
   progressSummary: {
@@ -110,6 +112,11 @@ export interface PullAccountProgressResponse {
 export interface SaveAvatarPaletteResponse {
   action: 'save-avatar-palette';
   avatarPalette: string;
+}
+
+export interface SaveAvatarFakeBirdResponse {
+  action: 'save-avatar-fake-bird';
+  avatarFakeBirdKey: string | null;
 }
 
 export interface PurchaseThemeResponse {
@@ -289,6 +296,13 @@ export function saveAvatarPalette(avatarPalette: string): Promise<SaveAvatarPale
   return postAuthAction<SaveAvatarPaletteResponse>({
     action: 'save-avatar-palette',
     avatarPalette,
+  });
+}
+
+export function saveAvatarFakeBird(fakeBirdKey: string | null): Promise<SaveAvatarFakeBirdResponse> {
+  return postAuthAction<SaveAvatarFakeBirdResponse>({
+    action: 'save-avatar-fake-bird',
+    fakeBirdKey,
   });
 }
 

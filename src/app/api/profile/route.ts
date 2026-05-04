@@ -4,6 +4,7 @@ import { createSupabaseAdminClient, createSupabaseServerClient } from '@/lib/sup
 import { consumeRateLimit, getRateLimitKey } from '@/lib/server/rate-limiter';
 import { resolveProfileVisibility } from '@/lib/server/profile-visibility';
 import { formatJoinedMonthYear } from '@/lib/utils/profile-helpers';
+import { getCdnImageUrl, isCdnEnabled } from '@/lib/server/cdn';
 import type {
   FollowRow,
   OwnProfilePayload,
@@ -21,9 +22,49 @@ type TargetProfileRow = {
   username: string | null;
   username_canonical: string | null;
   avatar_palette: string | null;
+  avatar_fake_bird_key?: string | null;
   privacy_mode?: 'public' | 'private' | null;
   created_at: string;
 };
+
+function readAvatarFakeBirdKeyFromUserMetadata(userMetadata: unknown): string | null {
+  if (!userMetadata || typeof userMetadata !== 'object') {
+    return null;
+  }
+
+  const candidate = (userMetadata as Record<string, unknown>).avatar_fake_bird_key;
+  return typeof candidate === 'string' ? candidate : null;
+}
+
+function toCdnFakeBirdKey(avatarFakeBirdKey: string): string {
+  return avatarFakeBirdKey.startsWith('fake:')
+    ? avatarFakeBirdKey.slice('fake:'.length)
+    : avatarFakeBirdKey;
+}
+
+function isMissingSupabaseColumnError(error: unknown, columnName: string): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const candidate = error as {
+    code?: unknown;
+    message?: unknown;
+    details?: unknown;
+    hint?: unknown;
+  };
+  const code = typeof candidate.code === 'string' ? candidate.code : '';
+  const text = [candidate.message, candidate.details, candidate.hint]
+    .filter((part): part is string => typeof part === 'string')
+    .join(' ')
+    .toLowerCase();
+
+  if (!text.includes(columnName.toLowerCase())) {
+    return false;
+  }
+
+  return code === '42703' || code === 'PGRST204' || code === '';
+}
 
 function getClientIp(request: NextRequest): string | null {
   const forwardedFor = request.headers.get('x-forwarded-for');
@@ -44,21 +85,26 @@ function blockedResponse(): NextResponse<ProfileReadResponse> {
 async function fetchTargetProfile(admin: ReturnType<typeof createSupabaseAdminClient>, username: string) {
   const profileQuery = admin
     .from('profiles')
-    .select('user_id, username, username_canonical, avatar_palette, privacy_mode, created_at')
+    .select('user_id, username, username_canonical, avatar_palette, avatar_fake_bird_key, privacy_mode, created_at')
     .eq('username_canonical', username)
     .maybeSingle<TargetProfileRow>();
 
   const { data, error } = await profileQuery;
 
-  if (error?.code === '42703' && error.message.includes('privacy_mode')) {
-    return admin
+  if (isMissingSupabaseColumnError(error, 'privacy_mode') || isMissingSupabaseColumnError(error, 'avatar_fake_bird_key')) {
+    const fallbackResult = await admin
       .from('profiles')
       .select('user_id, username, username_canonical, avatar_palette, created_at')
       .eq('username_canonical', username)
-      .maybeSingle<Omit<TargetProfileRow, 'privacy_mode'>>();
+      .maybeSingle<Omit<TargetProfileRow, 'privacy_mode' | 'avatar_fake_bird_key'>>();
+
+    return {
+      ...fallbackResult,
+      avatarColumnUnavailable: isMissingSupabaseColumnError(error, 'avatar_fake_bird_key'),
+    };
   }
 
-  return { data, error };
+  return { data, error, avatarColumnUnavailable: false };
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -96,7 +142,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const admin = createSupabaseAdminClient();
 
   // Fetch the target profile
-  const { data: targetProfile, error: profileError } = await fetchTargetProfile(admin, username);
+  const {
+    data: targetProfile,
+    error: profileError,
+    avatarColumnUnavailable,
+  } = await fetchTargetProfile(admin, username);
 
   if (profileError) {
     return NextResponse.json({ error: 'profile_fetch_failed' }, { status: 500 });
@@ -174,12 +224,26 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   const joinedMonthYear = formatJoinedMonthYear(targetProfile.created_at as string);
   const avatarPalette = targetProfile.avatar_palette ?? 'finch';
+  let avatarFakeBirdKey = 'avatar_fake_bird_key' in targetProfile && typeof targetProfile.avatar_fake_bird_key === 'string'
+    ? targetProfile.avatar_fake_bird_key
+    : null;
+
+  if (!avatarFakeBirdKey && avatarColumnUnavailable) {
+    const { data: userResult, error: userError } = await admin.auth.admin.getUserById(targetProfile.user_id);
+    if (!userError) {
+      avatarFakeBirdKey = readAvatarFakeBirdKeyFromUserMetadata(userResult.user?.user_metadata);
+    }
+  }
+  const avatarFakeBirdImageUrl = avatarFakeBirdKey && isCdnEnabled()
+    ? getCdnImageUrl(toCdnFakeBirdKey(avatarFakeBirdKey), 'thumb', 'fake')
+    : null;
 
   if (visibility.reason === 'owner') {
     const payload: OwnProfilePayload = {
       kind: 'own',
       username: targetProfile.username,
       avatarPalette,
+      avatarFakeBirdImageUrl,
       joinedMonthYear,
       privacyMode,
       progress,
@@ -192,6 +256,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     kind: 'public',
     username: targetProfile.username,
     avatarPalette,
+    avatarFakeBirdImageUrl,
     joinedMonthYear,
     progress,
   };

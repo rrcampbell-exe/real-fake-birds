@@ -169,6 +169,7 @@ export interface WeeklyLeaderboardEntry {
   rank: number;
   username: string;
   avatarPalette: string | null;
+  avatarFakeBirdImageUrl?: string | null;
   primaryValue: number;
   primaryDisplayValue: string;
   tiebreakerValue: number;

@@ -33,6 +33,9 @@ type AccountStateCache = {
   email: string | null;
   username: string | null;
   isHouseAccount: boolean;
+  avatarPalette: string | null;
+  joinedMonthYear: string | null;
+  avatarFakeBirdKey: string | null;
   remoteSummary: RemoteProgressSummary | null;
   remoteUnlockedThemes: string[];
   weeklyOverview: WeeklyOverview | null;
@@ -49,6 +52,9 @@ type AccountStateContextValue = {
   isAppChromeVisible: boolean;
   accountEmail: string | null;
   accountUsername: string | null;
+  accountAvatarPalette: string | null;
+  accountJoinedMonthYear: string | null;
+  accountAvatarFakeBirdKey: string | null;
   isHouseAccount: boolean;
   remoteSummary: RemoteProgressSummary | null;
   remoteUnlockedThemes: string[];
@@ -222,6 +228,9 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
   const [bootStage, setBootStage] = useState<BootStage>('checking-session');
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
   const [accountUsername, setAccountUsername] = useState<string | null>(null);
+  const [accountAvatarPalette, setAccountAvatarPalette] = useState<string | null>(null);
+  const [accountJoinedMonthYear, setAccountJoinedMonthYear] = useState<string | null>(null);
+  const [accountAvatarFakeBirdKey, setAccountAvatarFakeBirdKey] = useState<string | null>(null);
   const [isHouseAccount, setIsHouseAccount] = useState<boolean>(false);
   const [remoteSummary, setRemoteSummary] = useState<RemoteProgressSummary | null>(null);
   const [remoteUnlockedThemes, setRemoteUnlockedThemes] = useState<string[]>([]);
@@ -235,6 +244,9 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
     setAccountEmail(cache.email);
     setAccountUsername(cache.username);
     setIsHouseAccount(cache.isHouseAccount ?? false);
+    setAccountAvatarPalette(cache.avatarPalette ?? null);
+    setAccountJoinedMonthYear(cache.joinedMonthYear ?? null);
+    setAccountAvatarFakeBirdKey(cache.avatarFakeBirdKey ?? null);
     setRemoteSummary(cache.remoteSummary);
     setRemoteUnlockedThemes(cache.remoteUnlockedThemes);
 
@@ -255,6 +267,9 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
     setIsSignedIn(false);
     setAccountEmail(null);
     setAccountUsername(null);
+    setAccountAvatarPalette(null);
+    setAccountJoinedMonthYear(null);
+    setAccountAvatarFakeBirdKey(null);
     setIsHouseAccount(false);
     setRemoteSummary(null);
     setRemoteUnlockedThemes([]);
@@ -300,6 +315,9 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
       const accountState = await fetchAccountState();
       setAccountEmail(accountState.email);
       setAccountUsername(accountState.profile?.username ?? null);
+      setAccountAvatarPalette(accountState.profile?.avatarPalette ?? null);
+      setAccountJoinedMonthYear(accountState.profile?.joinedMonthYear ?? null);
+      setAccountAvatarFakeBirdKey(accountState.profile?.avatarFakeBirdKey ?? null);
       setIsHouseAccount(accountState.profile?.isHouseAccount ?? false);
       setRemoteSummary(accountState.progressSummary);
       setRemoteUnlockedThemes(accountState.unlockedThemes);
@@ -309,6 +327,9 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
         email: accountState.email,
         username: accountState.profile?.username ?? null,
         isHouseAccount: accountState.profile?.isHouseAccount ?? false,
+        avatarPalette: accountState.profile?.avatarPalette ?? null,
+        joinedMonthYear: accountState.profile?.joinedMonthYear ?? null,
+        avatarFakeBirdKey: accountState.profile?.avatarFakeBirdKey ?? null,
         remoteSummary: accountState.progressSummary,
         remoteUnlockedThemes: accountState.unlockedThemes,
         weeklyOverview: accountState.weeklyOverview,
@@ -604,13 +625,16 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
     isAppChromeVisible,
     accountEmail,
     accountUsername,
+    accountAvatarPalette,
+    accountJoinedMonthYear,
+    accountAvatarFakeBirdKey,
     isHouseAccount,
     remoteSummary,
     remoteUnlockedThemes,
     weeklyOverview,
     refreshAccountState: () => refreshAccountState(),
     syncSignedInProgress: () => syncSignedInProgress({ silent: true }),
-  }), [accountEmail, accountUsername, isAppChromeVisible, isBackgroundSyncing, isBooting, isHouseAccount, isLoadingAccount, isSignedIn, refreshAccountState, remoteSummary, remoteUnlockedThemes, syncSignedInProgress, weeklyOverview]);
+  }), [accountAvatarFakeBirdKey, accountAvatarPalette, accountEmail, accountJoinedMonthYear, accountUsername, isAppChromeVisible, isBackgroundSyncing, isBooting, isHouseAccount, isLoadingAccount, isSignedIn, refreshAccountState, remoteSummary, remoteUnlockedThemes, syncSignedInProgress, weeklyOverview]);
 
   return (
     <AccountStateContext.Provider value={value}>

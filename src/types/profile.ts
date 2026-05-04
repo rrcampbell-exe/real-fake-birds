@@ -45,6 +45,7 @@ export interface OwnProfilePayload {
   kind: 'own';
   username: string;
   avatarPalette: string;
+  avatarFakeBirdImageUrl?: string | null;
   joinedMonthYear: string; // e.g. "April 2026"
   privacyMode: 'public' | 'private';
   progress: ProfileProgressSummary;
@@ -58,6 +59,7 @@ export interface PublicProfilePayload {
   kind: 'public';
   username: string;
   avatarPalette: string;
+  avatarFakeBirdImageUrl?: string | null;
   joinedMonthYear: string;
   progress: ProfileProgressSummary;
 }

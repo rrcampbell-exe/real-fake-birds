@@ -260,4 +260,80 @@ describe('GET /api/profile', () => {
     expect(body.profile?.progress?.birdsIdentified).toBe(42);
     expect(profileMaybeSingle).toHaveBeenCalledTimes(2);
   });
+
+  it('falls back to auth metadata when avatar_fake_bird_key is unavailable in profile schema cache', async () => {
+    const getUserById = vi.fn().mockResolvedValue({
+      data: {
+        user: {
+          user_metadata: {
+            avatar_fake_bird_key: 'spicy-mustard-pelican',
+          },
+        },
+      },
+      error: null,
+    });
+
+    const profileMaybeSingle = vi.fn()
+      .mockResolvedValueOnce({
+        data: null,
+        error: {
+          code: 'PGRST204',
+          message: 'Could not find the avatar_fake_bird_key column of profiles in schema cache',
+          details: null,
+          hint: null,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          user_id: 'target-uid',
+          username: 'birdlover',
+          username_canonical: 'birdlover',
+          avatar_palette: 'finch',
+          created_at: '2026-04-01T00:00:00Z',
+        },
+        error: null,
+      });
+
+    mockedAdminClient.mockReturnValue({
+      auth: {
+        admin: {
+          getUserById,
+        },
+      },
+      from: vi.fn((table: string) => {
+        if (table === 'profiles') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            maybeSingle: profileMaybeSingle,
+          };
+        }
+
+        if (table === 'player_progress') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({ data: BASE_PROGRESS, error: null }),
+          };
+        }
+
+        if (table === 'follows') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            or: vi.fn().mockResolvedValue({ data: [], error: null }),
+          };
+        }
+
+        return {};
+      }),
+    } as unknown as ReturnType<typeof createSupabaseAdminClient>);
+
+    const response = await GET(buildRequest('birdlover'));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(getUserById).toHaveBeenCalledWith('target-uid');
+    expect(body.profile?.kind).toBe('public');
+    expect(profileMaybeSingle).toHaveBeenCalledTimes(2);
+  });
 });

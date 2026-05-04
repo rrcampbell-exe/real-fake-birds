@@ -15,18 +15,19 @@ import {
   createWeeklyResetState,
   finalizeExpiredWeeklyLeaderboards,
   mapLeaderboardStatsRow,
-  tryInsertProgressEvent,
 } from '@/lib/server/weekly-leaderboard-finalization';
 import { normalizeBirdScore } from '@/lib/utils/player-progress';
+import { formatJoinedMonthYear } from '@/lib/utils/profile-helpers';
 import { validateUsername } from '@/lib/auth/username';
 import { deriveBirdKey } from '@/lib/utils/bird-journal';
 import { getDailyMissionStreaks } from '@/lib/utils/daily-mission-history';
-import { getCurrentWeekStart, getWeekEndTimestamp } from '@/lib/utils/weekly-leaderboard';
+import { getWeekEndTimestamp } from '@/lib/utils/weekly-leaderboard';
 import { ensureAccountProfileFromUserMetadata } from '@/lib/auth/account-profile';
 import { hasSupabaseEnv } from '@/lib/supabase/env';
 import { createSupabaseAdminClient, createSupabaseAuthClient, createSupabaseServerClient } from '@/lib/supabase/server';
 import { consumeRateLimit, getRateLimitKey } from '@/lib/server/rate-limiter';
 import { verifyTurnstileToken } from '@/lib/server/turnstile';
+import { getCdnImageUrl, isCdnEnabled } from '@/lib/server/cdn';
 import type {
   BirdhouseStore,
   BirdJournalEntry,
@@ -37,7 +38,7 @@ import type {
   WeeklyPlacementSummary,
 } from '@/types';
 
-type AuthAction = 'validate-username' | 'register-account' | 'get-account-state' | 'get-leaderboard' | 'sign-in-with-username' | 'save-profile' | 'save-avatar-palette' | 'sync-local-progress' | 'sync-bird-journal' | 'sync-birdhouse' | 'pull-account-progress' | 'purchase-theme' | 'apply-progress-events' | 'sync-daily-mission-completion';
+type AuthAction = 'validate-username' | 'register-account' | 'get-account-state' | 'get-leaderboard' | 'sign-in-with-username' | 'save-profile' | 'save-avatar-palette' | 'save-avatar-fake-bird' | 'sync-local-progress' | 'sync-bird-journal' | 'sync-birdhouse' | 'pull-account-progress' | 'purchase-theme' | 'apply-progress-events' | 'sync-daily-mission-completion';
 type RewardAuthAction = 'claim-mission-reward' | 'claim-mission-set-bonus' | 'purchase-streak-insurance';
 
 interface ValidateUsernameRequest {
@@ -102,6 +103,27 @@ interface SaveAvatarPaletteRequest {
   avatarPalette: string;
 }
 
+interface SaveAvatarFakeBirdRequest {
+  action: AuthAction;
+  fakeBirdKey: string | null;
+}
+
+type AccountProfileRow = {
+  username: string | null;
+  username_canonical: string | null;
+  avatar_palette: string | null;
+  is_house_account: boolean | null;
+  created_at: string | null;
+  avatar_fake_bird_key?: string | null;
+};
+
+type LeaderboardAvatarRow = {
+  user_id: string;
+  avatar_palette: string | null;
+  avatar_fake_bird_key: string | null;
+  is_house_account: boolean | null;
+};
+
 interface SyncLocalProgressRequest {
   action: AuthAction;
   progress: {
@@ -154,6 +176,45 @@ interface AuthenticatedRequestContext {
   userId: string;
   email: string | null;
   user: NonNullable<Awaited<ReturnType<Awaited<ReturnType<typeof createSupabaseServerClient>>['auth']['getUser']>>['data']['user']>;
+}
+
+function readAvatarFakeBirdKeyFromUserMetadata(userMetadata: unknown): string | null {
+  if (!userMetadata || typeof userMetadata !== 'object') {
+    return null;
+  }
+
+  const candidate = (userMetadata as Record<string, unknown>).avatar_fake_bird_key;
+  return typeof candidate === 'string' ? candidate : null;
+}
+
+function toCdnFakeBirdKey(avatarFakeBirdKey: string): string {
+  return avatarFakeBirdKey.startsWith('fake:')
+    ? avatarFakeBirdKey.slice('fake:'.length)
+    : avatarFakeBirdKey;
+}
+
+function isMissingSupabaseColumnError(error: unknown, columnName: string): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const candidate = error as {
+    code?: unknown;
+    message?: unknown;
+    details?: unknown;
+    hint?: unknown;
+  };
+  const code = typeof candidate.code === 'string' ? candidate.code : '';
+  const text = [candidate.message, candidate.details, candidate.hint]
+    .filter((part): part is string => typeof part === 'string')
+    .join(' ')
+    .toLowerCase();
+
+  if (!text.includes(columnName.toLowerCase())) {
+    return false;
+  }
+
+  return code === '42703' || code === 'PGRST204' || code === '';
 }
 
 function isValidateUsernameRequest(value: unknown): value is ValidateUsernameRequest {
@@ -233,6 +294,16 @@ function isSaveAvatarPaletteRequest(value: unknown): value is SaveAvatarPaletteR
   return candidate.action === 'save-avatar-palette' && typeof candidate.avatarPalette === 'string';
 }
 
+function isSaveAvatarFakeBirdRequest(value: unknown): value is SaveAvatarFakeBirdRequest {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<SaveAvatarFakeBirdRequest>;
+  return candidate.action === 'save-avatar-fake-bird'
+    && (typeof candidate.fakeBirdKey === 'string' || candidate.fakeBirdKey === null);
+}
+
 function isPurchaseThemeRequest(value: unknown): value is PurchaseThemeRequest {
   if (!value || typeof value !== 'object') {
     return false;
@@ -240,6 +311,87 @@ function isPurchaseThemeRequest(value: unknown): value is PurchaseThemeRequest {
 
   const candidate = value as Partial<PurchaseThemeRequest>;
   return candidate.action === 'purchase-theme' && typeof candidate.themeName === 'string';
+}
+
+async function readAccountProfile(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  userId: string,
+): Promise<AccountProfileRow | null> {
+  const { data: profile, error: profileError } = await admin
+    .from('profiles')
+    .select('username, username_canonical, avatar_palette, is_house_account, created_at, avatar_fake_bird_key')
+    .eq('user_id', userId)
+    .maybeSingle<AccountProfileRow>();
+
+  if (!profileError) {
+    return profile;
+  }
+
+  if (!isMissingSupabaseColumnError(profileError, 'avatar_fake_bird_key')) {
+    throw profileError;
+  }
+
+  const { data: fallbackProfile, error: fallbackError } = await admin
+    .from('profiles')
+    .select('username, username_canonical, avatar_palette, is_house_account, created_at')
+    .eq('user_id', userId)
+    .maybeSingle<Omit<AccountProfileRow, 'avatar_fake_bird_key'>>();
+
+  if (fallbackError) {
+    throw fallbackError;
+  }
+
+  return fallbackProfile
+    ? {
+        ...fallbackProfile,
+        avatar_fake_bird_key: null,
+      }
+    : null;
+}
+
+async function readLeaderboardAvatarRows(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  userIds: string[],
+): Promise<LeaderboardAvatarRow[]> {
+  if (userIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await admin
+    .from('profiles')
+    .select('user_id, avatar_palette, avatar_fake_bird_key, is_house_account')
+    .in('user_id', userIds);
+
+  if (!error) {
+    return (data ?? []).map((row) => ({
+      user_id: row.user_id as string,
+      avatar_palette: typeof row.avatar_palette === 'string' ? row.avatar_palette : null,
+      avatar_fake_bird_key: typeof (row as Record<string, unknown>).avatar_fake_bird_key === 'string'
+        ? (row as Record<string, unknown>).avatar_fake_bird_key as string
+        : null,
+      is_house_account: row.is_house_account === true,
+    }));
+  }
+
+  if (!isMissingSupabaseColumnError(error, 'avatar_fake_bird_key')) {
+    throw error;
+  }
+
+  const { data: fallbackRows, error: fallbackError } = await admin
+    .from('profiles')
+    .select('user_id, avatar_palette, is_house_account')
+    .in('user_id', userIds);
+
+  if (fallbackError) {
+    throw fallbackError;
+  }
+
+  return (fallbackRows ?? []).map((row) => ({
+    user_id: row.user_id as string,
+    avatar_palette: typeof row.avatar_palette === 'string' ? row.avatar_palette : null,
+    avatar_fake_bird_key: null,
+    is_house_account: row.is_house_account === true,
+  }));
 }
 
 function isProgressEvent(value: unknown): value is ProgressEvent {
@@ -1125,12 +1277,8 @@ export async function POST(request: NextRequest) {
       const admin = createSupabaseAdminClient();
       const { currentWeekStart } = await finalizeExpiredWeeklyLeaderboards(admin);
       await ensureAccountProfileFromUserMetadata({ admin, user: context.user });
-      const [{ data: profile }, { data: progress }, { data: unlockedThemes }, leaderboardRow] = await Promise.all([
-        admin
-          .from('profiles')
-          .select('username, username_canonical, avatar_palette, is_house_account')
-          .eq('user_id', context.userId)
-          .maybeSingle(),
+      const [profile, { data: progress }, { data: unlockedThemes }, leaderboardRow] = await Promise.all([
+        readAccountProfile(admin, context.userId),
         admin
           .from('player_progress')
           .select('last_local_sync_at, birds_identified, seeds, best_streak, best_daily_streak, best_weekly_placement, first_place_count, second_place_count, third_place_count')
@@ -1159,6 +1307,10 @@ export async function POST(request: NextRequest) {
               usernameCanonical: profile.username_canonical,
               avatarPalette: profile.avatar_palette,
               isHouseAccount: profile.is_house_account === true,
+              joinedMonthYear: typeof profile.created_at === 'string' ? formatJoinedMonthYear(profile.created_at) : null,
+              avatarFakeBirdKey: typeof profile.avatar_fake_bird_key === 'string'
+                ? profile.avatar_fake_bird_key
+                : readAvatarFakeBirdKeyFromUserMetadata(context.user.user_metadata),
             }
           : null,
         lastLocalSyncAt: progress?.last_local_sync_at ?? null,
@@ -1228,13 +1380,8 @@ export async function POST(request: NextRequest) {
             .map((row) => row.userId)
         )
       );
-      const [{ data: avatarRows }, { data: progressRows }] = await Promise.all([
-        avatarUserIds.length > 0
-          ? admin
-              .from('profiles')
-              .select('user_id, avatar_palette, is_house_account')
-              .in('user_id', avatarUserIds)
-          : Promise.resolve({ data: [] }),
+      const [avatarRows, { data: progressRows }] = await Promise.all([
+        readLeaderboardAvatarRows(admin, avatarUserIds),
         avatarUserIds.length > 0
           ? admin
               .from('player_progress')
@@ -1242,11 +1389,43 @@ export async function POST(request: NextRequest) {
               .in('user_id', avatarUserIds)
           : Promise.resolve({ data: [] }),
       ]);
+      const avatarFakeBirdKeyByUserId = new Map<string, string | null>(
+        avatarRows.map((row) => [row.user_id, row.avatar_fake_bird_key]),
+      );
+
+      const metadataFallbackUserIds = avatarUserIds.filter((userId) => {
+        const key = avatarFakeBirdKeyByUserId.get(userId);
+        return typeof key !== 'string' || key.length === 0;
+      });
+
+      if (metadataFallbackUserIds.length > 0) {
+        await Promise.all(
+          metadataFallbackUserIds.map(async (userId) => {
+            const { data: userResult, error } = await admin.auth.admin.getUserById(userId);
+            if (error) {
+              return;
+            }
+
+            const metadataKey = readAvatarFakeBirdKeyFromUserMetadata(userResult.user?.user_metadata);
+            if (metadataKey) {
+              avatarFakeBirdKeyByUserId.set(userId, metadataKey);
+            }
+          }),
+        );
+      }
+
       const avatarPaletteByUserId = new Map(
-        (avatarRows ?? []).map((row) => [row.user_id as string, typeof row.avatar_palette === 'string' ? row.avatar_palette : null])
+        avatarRows.map((row) => [row.user_id, row.avatar_palette])
+      );
+      const avatarFakeBirdImageUrlByUserId = new Map(
+        avatarRows.map((row) => {
+          const key = avatarFakeBirdKeyByUserId.get(row.user_id) ?? null;
+          const url = key && isCdnEnabled() ? getCdnImageUrl(toCdnFakeBirdKey(key), 'thumb', 'fake') : null;
+          return [row.user_id, url];
+        })
       );
       const isHouseAccountByUserId = new Map(
-        (avatarRows ?? []).map((row) => [row.user_id as string, row.is_house_account === true])
+        avatarRows.map((row) => [row.user_id, row.is_house_account === true])
       );
       const birdsIdentifiedByUserId = new Map(
         (progressRows ?? []).map((row) => [row.user_id as string, typeof row.birds_identified === 'number' ? row.birds_identified : 0])
@@ -1261,6 +1440,7 @@ export async function POST(request: NextRequest) {
         .map((row) => ({
           ...row.entry,
           avatarPalette: avatarPaletteByUserId.get(row.userId) ?? null,
+          avatarFakeBirdImageUrl: avatarFakeBirdImageUrlByUserId.get(row.userId) ?? null,
           isHouseAccount: isHouseAccountByUserId.get(row.userId) ?? false,
           latestBadgeName: isHouseAccountByUserId.get(row.userId) ? null : getLatestBadgeName(row.userId),
         }));
@@ -1268,6 +1448,7 @@ export async function POST(request: NextRequest) {
         ? {
             ...currentUserEntry,
             avatarPalette: avatarPaletteByUserId.get(context?.userId ?? '') ?? null,
+            avatarFakeBirdImageUrl: avatarFakeBirdImageUrlByUserId.get(context?.userId ?? '') ?? null,
             isHouseAccount: isHouseAccountByUserId.get(context?.userId ?? '') ?? false,
             latestBadgeName: isHouseAccountByUserId.get(context?.userId ?? '') ? null : getLatestBadgeName(context?.userId ?? ''),
           }
@@ -1953,6 +2134,54 @@ export async function POST(request: NextRequest) {
       });
     } catch {
       return NextResponse.json({ error: 'avatar_palette_save_failed' }, { status: 500 });
+    }
+  }
+
+  if (isSaveAvatarFakeBirdRequest(body)) {
+    const context = await getAuthenticatedRequestContext();
+
+    if (!context) {
+      return hasSupabaseEnv()
+        ? NextResponse.json({ error: 'not_authenticated' }, { status: 401 })
+        : configErrorResponse();
+    }
+
+    try {
+      const admin = createSupabaseAdminClient();
+      const fakeBirdKey = body.fakeBirdKey;
+
+      const { error: updateError } = await admin
+        .from('profiles')
+        .update({ avatar_fake_bird_key: fakeBirdKey })
+        .eq('user_id', context.userId);
+
+      if (updateError) {
+        const isMissingAvatarColumn = isMissingSupabaseColumnError(updateError, 'avatar_fake_bird_key');
+        if (!isMissingAvatarColumn) {
+          throw updateError;
+        }
+
+        const existingMetadata = context.user.user_metadata && typeof context.user.user_metadata === 'object'
+          ? context.user.user_metadata as Record<string, unknown>
+          : {};
+        const { error: metadataUpdateError } = await admin.auth.admin.updateUserById(context.userId, {
+          user_metadata: {
+            ...existingMetadata,
+            avatar_fake_bird_key: fakeBirdKey,
+          },
+        });
+
+        if (metadataUpdateError) {
+          throw metadataUpdateError;
+        }
+      }
+
+      return NextResponse.json({
+        action: 'save-avatar-fake-bird',
+        avatarFakeBirdKey: fakeBirdKey,
+      });
+    } catch {
+      return NextResponse.json({ error: 'avatar_fake_bird_save_failed' }, { status: 500 });
     }
   }
 
