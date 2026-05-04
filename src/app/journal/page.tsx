@@ -10,6 +10,7 @@ import BirdhouseSwapSheet from '@/components/birdhouse/BirdhouseSwapSheet';
 import BirdCard from '@/components/journal/BirdCard';
 import JournalControls, { type JournalFilter, type JournalSort } from '@/components/journal/JournalControls';
 import { flushQueuedProgressEventsForSignedInUser } from '@/lib/auth/account-session';
+import { syncDailyMissionCompletion } from '@/lib/auth/account-sync';
 import { track, trackClientError, trackFirstPurchase } from '@/lib/analytics';
 import { useBirdhouse } from '@/hooks/useBirdhouse';
 import { useBirdJournal } from '@/hooks/useBirdJournal';
@@ -160,7 +161,7 @@ export default function JournalPage() {
   };
 
   const handleOpenDetails = (birdKey: string) => {
-    const entry = journal.find((journalEntry) => journalEntry.birdKey === birdKey);
+    const entry = effectiveJournal.find((journalEntry) => journalEntry.birdKey === birdKey);
     if (!entry?.metadata.sciName) {
       return;
     }
@@ -228,6 +229,10 @@ export default function JournalPage() {
           screen: 'journal',
         });
       });
+
+      if (missionUpdate.completedDailyMissionSet) {
+        void syncDailyMissionCompletion(missionDate).catch(() => undefined);
+      }
     } catch (error) {
       trackClientError('journal_open_details_failed', error, {
         bird_key: birdKey,
