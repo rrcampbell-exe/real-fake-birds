@@ -208,7 +208,7 @@ export default function LeaderboardPage() {
                       <td className={`whitespace-nowrap rounded-l-2xl border-y border-l ${borderColor} ${baseBackground} px-2 sm:px-3 py-3 font-semibold`}>#{entry.rank}</td>
                       <td className={`overflow-hidden border-y ${borderColor} ${baseBackground} px-3 py-3 font-medium`}>
                         <div className="flex items-center gap-2">
-                          <span className="shrink-0"><LeaderboardAvatar username={entry.username} avatarPalette={entry.avatarPalette} /></span>
+                          <span className="shrink-0"><LeaderboardAvatar username={entry.username} avatarPalette={entry.avatarPalette} avatarBirdImageUrl={entry.avatarFakeBirdImageUrl ?? null} /></span>
                           <Link href={`/profile/${entry.username}`} className="hover:underline">{entry.username}</Link>
                           {entry.isHouseAccount ? (
                             <Bot size={11} className="shrink-0 text-[var(--color-muted)]" aria-label="House account" />
@@ -244,6 +244,7 @@ export default function LeaderboardPage() {
                         <span className="shrink-0"><LeaderboardAvatar
                           username={leaderboard.currentUserEntry.username}
                           avatarPalette={leaderboard.currentUserEntry.avatarPalette}
+                          avatarBirdImageUrl={leaderboard.currentUserEntry.avatarFakeBirdImageUrl ?? null}
                         /></span>
                         <Link href={`/profile/${leaderboard.currentUserEntry.username}`} className="hover:underline">{leaderboard.currentUserEntry.username}</Link>
                         {leaderboard.currentUserEntry.latestBadgeName ? (
