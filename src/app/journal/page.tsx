@@ -10,6 +10,7 @@ import BirdhouseSwapSheet from '@/components/birdhouse/BirdhouseSwapSheet';
 import BirdCard from '@/components/journal/BirdCard';
 import JournalControls, { type JournalFilter, type JournalSort } from '@/components/journal/JournalControls';
 import { flushQueuedProgressEventsForSignedInUser } from '@/lib/auth/account-session';
+import { syncDailyMissionCompletion } from '@/lib/auth/account-sync';
 import { track, trackClientError, trackFirstPurchase } from '@/lib/analytics';
 import { useBirdhouse } from '@/hooks/useBirdhouse';
 import { useBirdJournal } from '@/hooks/useBirdJournal';
@@ -126,10 +127,10 @@ export default function JournalPage() {
     : null;
 
   const showJournalToast = (title: string, detail: string) => {
-    setJournalToastBatch({
-      id: Date.now(),
+    setJournalToastBatch((previous) => ({
+      id: (previous?.id ?? 0) + 1,
       toasts: [{ id: 0, title, detail }],
-    });
+    }));
   };
 
   const handleRevealFakeImage = async (birdKey: string) => {
@@ -160,7 +161,7 @@ export default function JournalPage() {
   };
 
   const handleOpenDetails = (birdKey: string) => {
-    const entry = journal.find((journalEntry) => journalEntry.birdKey === birdKey);
+    const entry = effectiveJournal.find((journalEntry) => journalEntry.birdKey === birdKey);
     if (!entry?.metadata.sciName) {
       return;
     }
@@ -198,7 +199,10 @@ export default function JournalPage() {
               : `+${missionUpdate.missionSetBonusSeedsEarned} bonus seeds.`,
           });
         }
-        setJournalToastBatch({ id: Date.now(), toasts: newToasts });
+        setJournalToastBatch((previous) => ({
+          id: (previous?.id ?? 0) + 1,
+          toasts: newToasts,
+        }));
       }
 
       if (!isSignedIn) {
@@ -228,6 +232,10 @@ export default function JournalPage() {
           screen: 'journal',
         });
       });
+
+      if (missionUpdate.completedDailyMissionSet) {
+        void syncDailyMissionCompletion(missionDate).catch(() => undefined);
+      }
     } catch (error) {
       trackClientError('journal_open_details_failed', error, {
         bird_key: birdKey,
@@ -239,7 +247,7 @@ export default function JournalPage() {
     }
   };
 
-  const effectiveJournal = useMemo<BirdJournalEntry[]>(() => {
+  const effectiveJournal: BirdJournalEntry[] = (() => {
     if (!isSignedIn || serverBrowseEntries.length === 0) {
       return journal;
     }
@@ -248,7 +256,7 @@ export default function JournalPage() {
     for (const entry of journal) byKey.set(entry.birdKey, entry);
     for (const entry of serverBrowseEntries) byKey.set(entry.birdKey, entry);
     return Array.from(byKey.values());
-  }, [isSignedIn, journal, serverBrowseEntries]);
+  })();
 
   const filteredJournal = useMemo(() => {
     // When a server search is active, use those results directly (they cover full history)
