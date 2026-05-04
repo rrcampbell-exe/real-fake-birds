@@ -134,6 +134,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
   }
 
+  const admin = createSupabaseAdminClient();
   const { action, targetUserId: inputTargetUserId, targetUsername } = body;
   const { userId } = context;
 
@@ -155,8 +156,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (userId === targetUserId) {
     return NextResponse.json({ error: 'cannot_self_action' }, { status: 400 });
   }
-
-  const admin = createSupabaseAdminClient();
 
   // Fetch target profile to check privacy mode
   const targetProfile = await fetchTargetProfile(admin, targetUserId);
