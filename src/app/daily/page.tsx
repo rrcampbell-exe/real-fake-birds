@@ -84,11 +84,11 @@ export default function DailyChallengePage() {
 
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
-              href="/rewards"
+              href="/profile"
               className="inline-flex items-center gap-2 rounded-full bg-[var(--color-secondary)] px-4 py-2 text-sm font-semibold text-[var(--color-on-secondary)] transition hover:brightness-110"
             >
               <Sprout size={16} />
-              Open Rewards
+              Open Profile
             </Link>
           </div>
       </section>

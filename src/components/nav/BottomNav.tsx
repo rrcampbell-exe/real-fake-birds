@@ -32,7 +32,7 @@ export default function BottomNav() {
   const { play } = useSound();
   const hasIncompleteDaily = sessionMissionsState.missions.some((mission) => !mission.completed);
   const showDailyNotification = hasIncompleteDaily && lastSeenDailyMissionDate !== sessionMissionsState.date;
-  const rewardsNotificationLabel = hasUnseenBadges ? 'See your newest badge now!' : undefined;
+  const profileNotificationLabel = hasUnseenBadges ? 'See your newest badge now!' : undefined;
   const settingsNotificationLabel = hasNewThemeUnlock
     ? 'Try your new theme now!'
     : undefined;
@@ -97,9 +97,9 @@ export default function BottomNav() {
             show: showLeaderboardNotification,
             label: showLeaderboardNotification ? 'Visit Leaderboard to see this week\'s challenge and standings.' : undefined,
           },
-          '/rewards': {
+          '/profile': {
             show: hasUnseenBadges,
-            label: rewardsNotificationLabel,
+            label: profileNotificationLabel,
           },
           '/settings': {
             show: hasNewThemeUnlock,
