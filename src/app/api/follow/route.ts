@@ -10,7 +10,8 @@ const FOLLOW_ACTION_MAX_REQUESTS = 30;
 
 type FollowRequest = {
   action: 'request' | 'approve' | 'deny' | 'unfollow';
-  targetUserId: string;
+  targetUserId?: string;
+  targetUsername?: string;
 };
 
 function isFollowRequest(body: unknown): body is FollowRequest {
@@ -21,7 +22,7 @@ function isFollowRequest(body: unknown): body is FollowRequest {
   const candidate = body as Record<string, unknown>;
   return (
     ['request', 'approve', 'deny', 'unfollow'].includes(candidate.action as string) &&
-    typeof candidate.targetUserId === 'string'
+    (typeof candidate.targetUserId === 'string' || typeof candidate.targetUsername === 'string')
   );
 }
 
@@ -89,6 +90,19 @@ async function fetchTargetProfile(
   return data;
 }
 
+async function fetchTargetProfileByUsername(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  targetUsername: string,
+) {
+  const { data } = await admin
+    .from('profiles')
+    .select('user_id, privacy_mode')
+    .eq('username_canonical', targetUsername.toLowerCase())
+    .maybeSingle<{ user_id: string; privacy_mode: 'public' | 'private' }>();
+
+  return data;
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!hasSupabaseEnv()) {
     return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
@@ -120,8 +134,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
   }
 
-  const { action, targetUserId } = body;
+  const { action, targetUserId: inputTargetUserId, targetUsername } = body;
   const { userId } = context;
+
+  // Resolve targetUserId from either ID or username
+  let targetUserId = inputTargetUserId;
+  if (!targetUserId && targetUsername) {
+    const targetProfile = await fetchTargetProfileByUsername(admin, targetUsername);
+    if (!targetProfile) {
+      return NextResponse.json({ error: 'target_not_found' }, { status: 404 });
+    }
+    targetUserId = targetProfile.user_id;
+  }
+
+  if (!targetUserId) {
+    return NextResponse.json({ error: 'invalid_request_body' }, { status: 400 });
+  }
 
   // Prevent self-actions
   if (userId === targetUserId) {

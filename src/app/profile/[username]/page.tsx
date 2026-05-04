@@ -46,14 +46,76 @@ function useProfileData(username: string) {
     };
   }, [username]);
 
-  return { data, isLoading, error };
+  return { data, isLoading, error, refetch: () => {
+    setIsLoading(true);
+    fetch(`/api/profile?username=${encodeURIComponent(username.toLowerCase())}`)
+      .then(async (res) => {
+        if (!res.ok && res.status !== 200) {
+          throw new Error('profile_fetch_failed');
+        }
+        return res.json() as Promise<ProfileReadResponse>;
+      })
+      .then((json) => {
+        if (!cancelled) {
+          setData(json);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError('Unable to load this profile.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      });
+  } };
 }
 
 export default function UserProfilePage() {
   useScreenViewed('profile-view');
   const params = useParams();
   const username = typeof params?.username === 'string' ? params.username : '';
-  const { data, isLoading, error } = useProfileData(username);
+  const { data, isLoading, error, refetch } = useProfileData(username);
+  const [isFollowActionPending, setIsFollowActionPending] = useState(false);
+  const [followActionError, setFollowActionError] = useState<string | null>(null);
+
+  const handleFollowAction = async () => {
+    if (!data?.profile || data.profile.kind === 'restricted') {
+      return;
+    }
+
+    setIsFollowActionPending(true);
+    setFollowActionError(null);
+
+    try {
+      // Determine action based on current relationship
+      const action = data.relationship === 'following' ? 'unfollow' : 'request';
+
+      const response = await fetch('/api/follow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          targetUsername: profile.username,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setFollowActionError(errorData.error || 'Failed to update follow status');
+        return;
+      }
+
+      // Refetch profile data to get updated relationship state
+      await refetch();
+    } catch (err) {
+      setFollowActionError('Failed to update follow status');
+    } finally {
+      setIsFollowActionPending(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -89,7 +151,7 @@ export default function UserProfilePage() {
     );
   }
 
-  const { profile, visibility } = data;
+  const { profile, visibility, relationship, capabilities } = data;
 
   if (profile.kind === 'restricted') {
     return (
@@ -107,14 +169,23 @@ export default function UserProfilePage() {
           <Lock size={14} />
           <span>This profile is private.</span>
         </div>
-        {visibility.canFollow && (
+        {capabilities.canFollow && (
           <button
             type="button"
-            className="inline-flex items-center justify-center rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium w-fit"
-            disabled
+            onClick={handleFollowAction}
+            disabled={isFollowActionPending}
+            className="inline-flex items-center justify-center rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium w-fit transition hover:bg-[var(--color-surface-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Request to follow
+            {isFollowActionPending ? 'Requesting...' : 'Request to follow'}
           </button>
+        )}
+        {relationship === 'requested' && (
+          <div className="inline-flex items-center justify-center rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium w-fit text-[var(--color-muted)]">
+            Request sent
+          </div>
+        )}
+        {followActionError && (
+          <p className="text-xs text-red-600">{followActionError}</p>
         )}
       </div>
     );
@@ -130,13 +201,43 @@ export default function UserProfilePage() {
           avatarBirdImageUrl={profile.avatarFakeBirdImageUrl ?? null}
           size="lg"
         />
-        <div>
+        <div className="flex-1">
           <h1 className="font-[family-name:var(--font-display)] text-xl font-bold">
             {profile.username}
           </h1>
           <p className="text-xs text-[var(--color-muted)]">Joined {profile.joinedMonthYear}</p>
         </div>
       </div>
+
+      {/* Follow action button for non-owned profiles */}
+      {relationship !== 'owner' && (
+        <div className="flex gap-2">
+          {capabilities.canFollow && (
+            <button
+              type="button"
+              onClick={handleFollowAction}
+              disabled={isFollowActionPending}
+              className="flex-1 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium transition hover:bg-[var(--color-surface-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isFollowActionPending ? 'Following...' : 'Follow'}
+            </button>
+          )}
+          {capabilities.canUnfollow && (
+            <button
+              type="button"
+              onClick={handleFollowAction}
+              disabled={isFollowActionPending}
+              className="flex-1 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium transition hover:bg-[var(--color-surface-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isFollowActionPending ? 'Unfollowing...' : 'Unfollow'}
+            </button>
+          )}
+        </div>
+      )}
+      {followActionError && (
+        <p className="text-xs text-red-600">{followActionError}</p>
+      )}
+
       <div className="grid grid-cols-3 gap-4 text-center">
         <div>
           <p className="font-[family-name:var(--font-display)] text-2xl font-bold">
@@ -157,6 +258,22 @@ export default function UserProfilePage() {
           <p className="text-xs text-[var(--color-muted)]">Seeds</p>
         </div>
       </div>
+
+      {/* Bird Blitz CTA - placeholder, gated by backend capability */}
+      {capabilities.canChallengeBirdBlitz && (
+        <button
+          type="button"
+          disabled
+          className="flex items-center gap-3 rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3 text-[var(--color-muted)] opacity-50 cursor-not-allowed"
+        >
+          <div className="flex-1 min-w-0 text-left">
+            <p className="text-sm font-semibold">Bird Blitz</p>
+            <p className="text-xs">Coming soon</p>
+          </div>
+          <span className="text-xs">&rsaquo;</span>
+        </button>
+      )}
+
       <Link
         href={`/profile/${username}/birdhouse`}
         className="flex items-center gap-3 rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3 transition hover:bg-[var(--color-surface-hover)]"
