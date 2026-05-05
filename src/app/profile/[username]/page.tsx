@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Lock, Birdhouse } from 'lucide-react';
@@ -12,65 +12,42 @@ function useProfileData(username: string) {
   const [data, setData] = useState<ProfileReadResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const cancelledRef = useRef(false);
+
+  const fetchProfile = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(
+        `/api/profile?username=${encodeURIComponent(username.toLowerCase())}`,
+      );
+      if (!res.ok && res.status !== 200) {
+        throw new Error('profile_fetch_failed');
+      }
+      const json = (await res.json()) as ProfileReadResponse;
+      if (!cancelledRef.current) {
+        setData(json);
+      }
+    } catch {
+      if (!cancelledRef.current) {
+        setError('Unable to load this profile.');
+      }
+    } finally {
+      if (!cancelledRef.current) {
+        setIsLoading(false);
+      }
+    }
+  }, [username]);
 
   useEffect(() => {
     if (!username) return;
-
-    let cancelled = false;
-
-    fetch(`/api/profile?username=${encodeURIComponent(username.toLowerCase())}`)
-      .then(async (res) => {
-        if (!res.ok && res.status !== 200) {
-          throw new Error('profile_fetch_failed');
-        }
-        return res.json() as Promise<ProfileReadResponse>;
-      })
-      .then((json) => {
-        if (!cancelled) {
-          setData(json);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setError('Unable to load this profile.');
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      });
-
+    cancelledRef.current = false;
+    fetchProfile();
     return () => {
-      cancelled = true;
+      cancelledRef.current = true;
     };
-  }, [username]);
+  }, [username, fetchProfile]);
 
-  return { data, isLoading, error, refetch: () => {
-    setIsLoading(true);
-    fetch(`/api/profile?username=${encodeURIComponent(username.toLowerCase())}`)
-      .then(async (res) => {
-        if (!res.ok && res.status !== 200) {
-          throw new Error('profile_fetch_failed');
-        }
-        return res.json() as Promise<ProfileReadResponse>;
-      })
-      .then((json) => {
-        if (!cancelled) {
-          setData(json);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setError('Unable to load this profile.');
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      });
-  } };
+  return { data, isLoading, error, refetch: fetchProfile };
 }
 
 export default function UserProfilePage() {
