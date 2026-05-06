@@ -39,10 +39,12 @@ function useOwnProfile(username: string | null) {
         if (!cancelled && data?.profile?.kind === 'own') {
           ownProfileCache.set(key, data.profile as OwnProfilePayload);
           setFetchedProfile(data.profile as OwnProfilePayload);
-          setLoadedKey(key);
         }
       })
       .catch(() => {/* silently degrade */})
+      .finally(() => {
+        if (!cancelled) setLoadedKey(key);
+      });
 
     return () => { cancelled = true; };
   }, [cachedProfile, key]);
@@ -57,7 +59,7 @@ function useOwnProfile(username: string | null) {
 export default function ProfilePage() {
   useScreenViewed('profile');
   const isHydrated = useHasHydrated();
-  const { isSignedIn, isHouseAccount, accountUsername, accountAvatarPalette, accountJoinedMonthYear, accountAvatarFakeBirdKey, refreshAccountState } = useAccountState();
+  const { isSignedIn, isHouseAccount, accountUsername, accountAvatarPalette, accountJoinedMonthYear, accountAvatarFakeBirdKey, accountPrivacyMode, refreshAccountState } = useAccountState();
   const { isPageBackgroundRefreshing } = usePageProgressSync();
   const { birdhouse } = useBirdhouse();
   const { journalByKey } = useBirdJournal();
@@ -177,7 +179,7 @@ export default function ProfilePage() {
         avatarPalette={accountAvatarPalette ?? ''}
         avatarFakeBirdImageUrl={avatarFakeBirdImageUrl}
         joinedMonthYear={accountJoinedMonthYear ?? ''}
-        privacyMode={profile?.privacyMode}
+        privacyMode={profile?.privacyMode ?? accountPrivacyMode ?? undefined}
         isOwner
         isPrivacyLoading={isProfileLoading}
         onEditAvatar={() => setPickerOpen(true)}
