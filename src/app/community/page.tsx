@@ -532,6 +532,7 @@ export default function CommunityPage() {
                         entry={entry}
                         onRelationshipAction={handleRelationshipAction}
                         isActionPending={actionPending === entry.userId}
+                        hideProfileButtonOnMobile
                       />
                     ))}
                   </ul>

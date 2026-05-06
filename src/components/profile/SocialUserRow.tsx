@@ -15,6 +15,7 @@ interface SocialUserRowProps {
   profileHref?: string;
   onProfileClick?: () => void;
   trailingControls?: ReactNode;
+  hideProfileButtonOnMobile?: boolean;
 }
 
 function getRelationshipLabel(entry: SocialUserEntry): string | null {
@@ -40,6 +41,7 @@ export default function SocialUserRow({
   profileHref,
   onProfileClick,
   trailingControls,
+  hideProfileButtonOnMobile = false,
 }: SocialUserRowProps) {
   const resolvedProfileHref = profileHref ?? `/profile/${entry.username}`;
   const relationshipLabel = getRelationshipLabel(entry);
@@ -66,7 +68,9 @@ export default function SocialUserRow({
       <Link
         href={resolvedProfileHref}
         onClick={onProfileClick}
-        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 text-xs font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-surface-hover)]"
+        className={`${
+          hideProfileButtonOnMobile ? 'hidden sm:inline-flex' : 'inline-flex'
+        } h-9 items-center justify-center gap-1.5 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 text-xs font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-surface-hover)]`}
       >
         See profile
         <ArrowRight size={13} aria-hidden="true" />
