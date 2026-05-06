@@ -31,14 +31,42 @@ function getClientIp(request: NextRequest): string | null {
 }
 
 function toEntry(birdKey: string, birdType: 'real' | 'fake'): PublicBirdhouseEntry {
+  const normalizedKey = birdType === 'fake' && birdKey.startsWith('fake:')
+    ? birdKey.slice('fake:'.length)
+    : birdKey;
+
   if (!isCdnEnabled()) {
-    return { birdKey, imageUrl: null, thumbUrl: null };
+    return { birdKey: normalizedKey, imageUrl: null, thumbUrl: null };
   }
   return {
-    birdKey,
-    imageUrl: getCdnImageUrl(birdKey, 'full', birdType),
-    thumbUrl: getCdnImageUrl(birdKey, 'thumb', birdType),
+    birdKey: normalizedKey,
+    imageUrl: getCdnImageUrl(normalizedKey, 'full', birdType),
+    thumbUrl: getCdnImageUrl(normalizedKey, 'thumb', birdType),
   };
+}
+
+function isMissingSupabaseColumnError(error: unknown, columnName: string): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const candidate = error as {
+    code?: unknown;
+    message?: unknown;
+    details?: unknown;
+    hint?: unknown;
+  };
+  const code = typeof candidate.code === 'string' ? candidate.code : '';
+  const text = [candidate.message, candidate.details, candidate.hint]
+    .filter((part): part is string => typeof part === 'string')
+    .join(' ')
+    .toLowerCase();
+
+  if (!text.includes(columnName.toLowerCase())) {
+    return false;
+  }
+
+  return code === '42703' || code === 'PGRST204' || code === '';
 }
 
 export async function GET(
@@ -79,11 +107,37 @@ export async function GET(
   const admin = createSupabaseAdminClient();
 
   // Fetch target profile
-  const { data: targetProfile, error: profileError } = await admin
+  const { data: canonicalProfile, error: canonicalProfileError } = await admin
     .from('profiles')
     .select('user_id, username, privacy_mode')
     .eq('username_canonical', normalizedUsername)
     .maybeSingle<{ user_id: string; username: string; privacy_mode: string | null }>();
+
+  let targetProfile = canonicalProfile;
+  let profileError = canonicalProfileError;
+
+  if (
+    !targetProfile?.user_id
+    || isMissingSupabaseColumnError(profileError, 'username_canonical')
+    || isMissingSupabaseColumnError(profileError, 'privacy_mode')
+  ) {
+    const fallbackResult = await admin
+      .from('profiles')
+      .select('user_id, username')
+      .ilike('username', normalizedUsername)
+      .maybeSingle<{ user_id: string; username: string }>();
+
+    if (fallbackResult.data) {
+      targetProfile = {
+        user_id: fallbackResult.data.user_id,
+        username: fallbackResult.data.username,
+        privacy_mode: null,
+      };
+      profileError = null;
+    } else if (!targetProfile?.user_id) {
+      profileError = fallbackResult.error;
+    }
+  }
 
   if (profileError) {
     return NextResponse.json({ error: 'profile_fetch_failed' }, { status: 500 });

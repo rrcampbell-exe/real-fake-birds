@@ -6,40 +6,53 @@ import { useBirdhouse } from '@/hooks/useBirdhouse';
 import { useBirdJournal } from '@/hooks/useBirdJournal';
 import { formatBirdName } from '@/lib/utils/format-bird-name';
 
-export default function BirdhousePreviewCard() {
-  const { birdhouse } = useBirdhouse();
-  const { journalByKey } = useBirdJournal();
+export interface BirdhousePreviewEntry {
+  birdName: string | null;
+  imageUrl: string | null;
+}
 
-  const latestRealKey = birdhouse.real[birdhouse.real.length - 1] ?? null;
-  const latestFakeKey = birdhouse.fake[birdhouse.fake.length - 1] ?? null;
-  const latestReal = latestRealKey ? journalByKey[latestRealKey] ?? null : null;
-  const latestFake = latestFakeKey ? journalByKey[latestFakeKey] ?? null : null;
+interface BirdhousePreviewSectionProps {
+  title?: string;
+  buttonLabel?: string;
+  viewHref: string;
+  realHref: string;
+  fakeHref: string;
+  latestReal: BirdhousePreviewEntry | null;
+  latestFake: BirdhousePreviewEntry | null;
+  recentNames: string[];
+  emptyMessage?: string;
+}
 
-  const recentKeys = [...birdhouse.real, ...birdhouse.fake].slice(-3).reverse();
-  const recentNames = recentKeys
-    .map((birdKey) => journalByKey[birdKey]?.birdName)
-    .filter((birdName): birdName is string => Boolean(birdName))
-    .map((birdName) => formatBirdName(birdName));
-
+export function BirdhousePreviewSection({
+  title = 'Birdhouses',
+  buttonLabel = 'View Birdhouses',
+  viewHref,
+  realHref,
+  fakeHref,
+  latestReal,
+  latestFake,
+  recentNames,
+  emptyMessage = 'No birds placed yet. Start curating your roost.',
+}: BirdhousePreviewSectionProps) {
   return (
     <section>
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">
-          Birdhouses
+          {title}
         </h2>
         <Link
-          href="/birdhouse"
+          href={viewHref}
           className="inline-flex items-center gap-1 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1 text-xs font-semibold text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-hover)]"
         >
           <Birdhouse size={13} aria-hidden="true" />
-          View Birdhouses
+          {buttonLabel}
         </Link>
       </div>
 
       <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] p-4">
         <div className="grid grid-cols-2 gap-3">
-          <BirdhouseLatestCard label="Latest Real" entry={latestReal} href="/birdhouse?tab=real" />
-          <BirdhouseLatestCard label="Latest Fake" entry={latestFake} href="/birdhouse?tab=fake" />
+          <BirdhouseLatestCard label="Latest Real" entry={latestReal} href={realHref} />
+          <BirdhouseLatestCard label="Latest Fake" entry={latestFake} href={fakeHref} />
         </div>
 
         <div className="mt-3 min-h-6">
@@ -58,11 +71,44 @@ export default function BirdhousePreviewCard() {
               ))}
             </div>
           ) : (
-            <p className="mt-2 text-sm text-[var(--color-muted)]">No birds placed yet. Start curating your roost.</p>
+            <p className="mt-2 text-sm text-[var(--color-muted)]">{emptyMessage}</p>
           )}
         </div>
       </div>
     </section>
+  );
+}
+
+export default function BirdhousePreviewCard() {
+  const { birdhouse } = useBirdhouse();
+  const { journalByKey } = useBirdJournal();
+
+  const latestRealKey = birdhouse.real[birdhouse.real.length - 1] ?? null;
+  const latestFakeKey = birdhouse.fake[birdhouse.fake.length - 1] ?? null;
+  const latestReal = latestRealKey ? journalByKey[latestRealKey] ?? null : null;
+  const latestFake = latestFakeKey ? journalByKey[latestFakeKey] ?? null : null;
+
+  const recentKeys = [...birdhouse.real, ...birdhouse.fake].slice(-3).reverse();
+  const recentNames = recentKeys
+    .map((birdKey) => journalByKey[birdKey]?.birdName)
+    .filter((birdName): birdName is string => Boolean(birdName))
+    .map((birdName) => formatBirdName(birdName));
+
+  return (
+    <BirdhousePreviewSection
+      viewHref="/birdhouse"
+      realHref="/birdhouse?tab=real"
+      fakeHref="/birdhouse?tab=fake"
+      latestReal={latestReal ? {
+        birdName: latestReal.birdName,
+        imageUrl: latestReal.metadata.imageThumbUrl ?? latestReal.metadata.imageUrl ?? null,
+      } : null}
+      latestFake={latestFake ? {
+        birdName: latestFake.birdName,
+        imageUrl: latestFake.metadata.imageThumbUrl ?? latestFake.metadata.imageUrl ?? null,
+      } : null}
+      recentNames={recentNames}
+    />
   );
 }
 
@@ -72,10 +118,10 @@ function BirdhouseLatestCard({
   href,
 }: {
   label: string;
-  entry: { birdName: string; metadata: { imageThumbUrl?: string | null; imageUrl?: string | null } } | null;
+  entry: BirdhousePreviewEntry | null;
   href: string;
 }) {
-  const imageUrl = entry?.metadata.imageThumbUrl ?? entry?.metadata.imageUrl ?? null;
+  const imageUrl = entry?.imageUrl ?? null;
 
   return (
     <Link
@@ -100,7 +146,7 @@ function BirdhouseLatestCard({
           )}
         </div>
         <p className="text-sm font-medium leading-tight text-[var(--color-text)]">
-          {entry?.birdName ? formatBirdName(entry.birdName) : 'None yet'}
+            {entry?.birdName ? formatBirdName(entry.birdName) : 'None yet'}
         </p>
       </div>
     </Link>

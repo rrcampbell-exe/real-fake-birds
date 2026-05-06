@@ -28,6 +28,10 @@ vi.mock('@/hooks/usePageProgressSync', () => ({
   usePageProgressSync: vi.fn(),
 }));
 
+vi.mock('@/components/account/AccountStateProvider', () => ({
+  useAccountState: vi.fn(),
+}));
+
 vi.mock('@/hooks/useScreenViewed', () => ({
   useScreenViewed: vi.fn(),
 }));
@@ -43,10 +47,12 @@ vi.mock('@/components/birdhouse/BirdhouseToggleButton', () => ({
 import { useBirdhouse } from '@/hooks/useBirdhouse';
 import { useBirdJournal } from '@/hooks/useBirdJournal';
 import { usePageProgressSync } from '@/hooks/usePageProgressSync';
+import { useAccountState } from '@/components/account/AccountStateProvider';
 
 const mockedUseBirdhouse = vi.mocked(useBirdhouse);
 const mockedUseBirdJournal = vi.mocked(useBirdJournal);
 const mockedUsePageProgressSync = vi.mocked(usePageProgressSync);
+const mockedUseAccountState = vi.mocked(useAccountState);
 
 describe('BirdhousePage', () => {
   beforeEach(() => {
@@ -55,6 +61,11 @@ describe('BirdhousePage', () => {
       isPageSyncLoading: false,
       isSignedIn: false,
     });
+    mockedUseAccountState.mockReturnValue({
+      isSignedIn: false,
+      accountAvatarFakeBirdKey: null,
+      refreshAccountState: vi.fn(),
+    } as never);
   });
 
   it('shows a revealed fake bird image on the Fake Birds tab', () => {

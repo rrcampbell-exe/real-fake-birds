@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { BookOpen, Birdhouse, Compass, Sparkles, X } from 'lucide-react';
+import { BookOpen, Birdhouse, Bird, Compass, Sparkles, X } from 'lucide-react';
 import { useBirdhouse } from '@/hooks/useBirdhouse';
 import { useBirdJournal } from '@/hooks/useBirdJournal';
 import { usePageProgressSync } from '@/hooks/usePageProgressSync';
@@ -13,6 +13,8 @@ import { useScreenViewed } from '@/hooks/useScreenViewed';
 import { writeBirdhouseLastVisitedAt } from '@/lib/utils/birdhouse';
 import { formatBirdName } from '@/lib/utils/format-bird-name';
 import BirdhouseToggleButton from '@/components/birdhouse/BirdhouseToggleButton';
+import { useAccountState } from '@/components/account/AccountStateProvider';
+import { saveAvatarFakeBird } from '@/lib/auth/account-sync';
 import type { BirdJournalEntry } from '@/types';
 
 type BirdhouseTab = 'real' | 'fake';
@@ -68,12 +70,14 @@ export default function BirdhousePage() {
   const { isPageBackgroundRefreshing } = usePageProgressSync();
   const { birdhouse, fakeCap, realCap } = useBirdhouse();
   const { journalByKey } = useBirdJournal();
+  const { isSignedIn, accountAvatarFakeBirdKey, refreshAccountState } = useAccountState();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<BirdhouseTab>(() => searchParams.get('tab') === 'fake' ? 'fake' : 'real');
   const [flippedKeys, setFlippedKeys] = useState<Set<string>>(new Set());
   const [fetchedEntries, setFetchedEntries] = useState<Record<string, BirdJournalEntry>>({});
+  const [savingAvatarKey, setSavingAvatarKey] = useState<string | null>(null);
   const fetchedKeySet = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -384,6 +388,29 @@ export default function BirdhousePage() {
                         iconSize={16}
                         className="border-[var(--color-surface-border)]"
                       />
+                      {isSignedIn && !entry.isReal && (
+                        <button
+                          type="button"
+                          disabled={savingAvatarKey === entry.birdKey || accountAvatarFakeBirdKey === entry.birdKey}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            setSavingAvatarKey(entry.birdKey);
+                            try {
+                              await saveAvatarFakeBird(entry.birdKey);
+                              await refreshAccountState();
+                            } catch {
+                              // silently degrade
+                            } finally {
+                              setSavingAvatarKey(null);
+                            }
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-surface-hover)] disabled:opacity-50"
+                          aria-label={accountAvatarFakeBirdKey === entry.birdKey ? 'Current avatar' : 'Set as avatar'}
+                        >
+                          <Bird size={12} aria-hidden="true" />
+                          {accountAvatarFakeBirdKey === entry.birdKey ? 'Profile Image' : 'Set as Profile Image'}
+                        </button>
+                      )}
                       <Link
                         href={`/journal?bird=${encodeURIComponent(entry.birdKey)}`}
                         className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-secondary)] hover:underline"

@@ -14,7 +14,7 @@ vi.mock('@/components/rewards/TrophyCase', () => ({
 }));
 
 vi.mock('@/components/rewards/PersonalBests', () => ({
-  default: () => <div>PersonalBests</div>,
+  default: ({ includeSummaryStats }: { includeSummaryStats?: boolean }) => <div>{includeSummaryStats ? 'PersonalBests:combined' : 'PersonalBests'}</div>,
 }));
 
 vi.mock('@/hooks/useStoredValue', () => ({
@@ -71,5 +71,19 @@ describe('RewardsSection', () => {
       accuracy: 88,
       birdsIdentified: 8,
     }));
+  });
+
+  it('renders the combined stats grid variant', () => {
+    vi.mocked(useStoredJson).mockReturnValue({
+      birdsSeen: 9,
+      birdsIdentified: 8,
+      bestStreak: 7,
+      currentStreak: 4,
+    });
+
+    const { getByText } = render(<RewardsSection />);
+
+    expect(getByText('Stats')).toBeTruthy();
+    expect(getByText('PersonalBests:combined')).toBeTruthy();
   });
 });

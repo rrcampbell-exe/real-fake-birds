@@ -23,3 +23,6 @@ create policy "birdhouse_public_read" on birdhouse
         and (p.privacy_mode is null or p.privacy_mode = 'public')
     )
   );
+
+-- Reload PostgREST schema cache so new tables are immediately visible
+notify pgrst, 'reload schema';
