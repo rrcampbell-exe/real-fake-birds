@@ -34,8 +34,8 @@ function buildMockAdmin({
   targetProfile = null,
   existingFollows = [],
   insertError = null,
-  updateError = null,
-  deleteError = null,
+  updateError: _updateError = null,
+  deleteError: _deleteError = null,
 }: {
   targetProfile?: { user_id: string; privacy_mode: 'public' | 'private' } | null;
   existingFollows?: unknown[];
@@ -49,6 +49,7 @@ function buildMockAdmin({
         return {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
+          ilike: vi.fn().mockReturnThis(),
           maybeSingle: vi.fn().mockResolvedValue({ data: targetProfile, error: null }),
         };
       }
