@@ -1,7 +1,8 @@
-import { Birdhouse, BookOpen, CalendarDays, CircleUser, Settings, UserStar } from 'lucide-react';
+import { Binoculars, Birdhouse, BookOpen, CalendarDays, CircleUser, Settings, UserStar } from 'lucide-react';
 
 export const secondaryNavLinks = [
   { href: '/profile', label: 'Profile', shortLabel: 'Profile', icon: CircleUser },
+  { href: '/community', label: 'The Roost', shortLabel: 'Community', icon: Binoculars },
   { href: '/daily', label: 'Daily Missions', shortLabel: 'Daily', icon: CalendarDays },
   { href: '/leaderboard', label: 'Leaderboard', shortLabel: 'Leaderboard', icon: UserStar },
   { href: '/journal', label: 'Field Journal', shortLabel: 'Journal', icon: BookOpen },

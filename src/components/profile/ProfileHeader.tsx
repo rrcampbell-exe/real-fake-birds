@@ -1,7 +1,8 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { Camera, Lock, Globe } from 'lucide-react';
+import { Bot, Camera, Lock, Globe } from 'lucide-react';
 import LeaderboardAvatar from '@/components/leaderboard/LeaderboardAvatar';
 import FollowerSummary from '@/components/profile/FollowerSummary';
 
@@ -12,7 +13,16 @@ interface ProfileHeaderProps {
   joinedMonthYear: string;
   privacyMode?: 'public' | 'private';
   isOwner?: boolean;
+  isPrivacyLoading?: boolean;
   onEditAvatar?: () => void;
+  followerCount?: number;
+  followingCount?: number;
+  isHouseAccount?: boolean;
+  onFollowersClick?: () => void;
+  onFollowingClick?: () => void;
+  followersHref?: string;
+  followingHref?: string;
+  headerActions?: ReactNode;
 }
 
 export default function ProfileHeader({
@@ -22,12 +32,22 @@ export default function ProfileHeader({
   joinedMonthYear,
   privacyMode,
   isOwner = false,
+  isPrivacyLoading = false,
   onEditAvatar,
+  followerCount,
+  followingCount,
+  isHouseAccount = false,
+  onFollowersClick,
+  onFollowingClick,
+  followersHref,
+  followingHref,
+  headerActions,
 }: ProfileHeaderProps) {
   const isPublic = privacyMode !== 'private';
 
   return (
     <div className="flex items-start gap-4">
+      {/* Col 1: Avatar with optional edit overlay */}
       <div className="relative shrink-0">
         <LeaderboardAvatar
           username={username}
@@ -46,15 +66,40 @@ export default function ProfileHeader({
           </button>
         )}
       </div>
+
+      {/* Col 2: Username, follower summary, joined date */}
       <div className="min-w-0 flex-1 flex flex-col gap-2">
-        <div className="flex items-start gap-2">
-          <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold leading-tight truncate flex-1">
+        <div className="flex min-w-0 items-center gap-2">
+          <h1 className="truncate font-[family-name:var(--font-display)] text-2xl font-bold leading-tight">
             {username}
           </h1>
-          {isOwner && privacyMode && (
+          {isHouseAccount ? (
+            <Bot size={14} className="shrink-0 text-[var(--color-muted)]" aria-label="House account" />
+          ) : null}
+        </div>
+        {(isPublic || isOwner) && (
+          <FollowerSummary
+            followerCount={followerCount}
+            followingCount={followingCount}
+            onFollowersClick={onFollowersClick}
+            onFollowingClick={onFollowingClick}
+            followersHref={followersHref}
+            followingHref={followingHref}
+          />
+        )}
+        <p className="text-xs text-[var(--color-muted)]">Joined {joinedMonthYear}</p>
+      </div>
+
+      {/* Col 3: Privacy pill (own profile) or action buttons (other profiles) */}
+      {(headerActions || isOwner) && (
+        <div className="shrink-0 flex flex-col items-end gap-2 pt-1">
+          {isOwner && isPrivacyLoading && (
+            <div className="h-5 w-16 rounded-full bg-[var(--color-surface)] animate-pulse" />
+          )}
+          {isOwner && !isPrivacyLoading && privacyMode && (
             <Link
               href="/settings"
-              className="shrink-0 inline-flex items-center gap-1 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-2 py-px text-[0.65rem] font-medium text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors"
+              className="inline-flex items-center gap-1 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] px-2 py-px text-[0.65rem] font-medium text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors"
               aria-label="Change privacy setting in Settings"
             >
               {privacyMode === 'private' ? (
@@ -65,10 +110,9 @@ export default function ProfileHeader({
               {privacyMode === 'private' ? 'Private' : 'Public'}
             </Link>
           )}
+          {headerActions}
         </div>
-        {(isPublic || isOwner) && <FollowerSummary />}
-        <p className="text-xs text-[var(--color-muted)]">Joined {joinedMonthYear}</p>
-      </div>
+      )}
     </div>
   );
 }

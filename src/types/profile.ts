@@ -53,6 +53,9 @@ export interface ProfileProgressSummary {
   bestStreak: number;
   bestDailyStreak: number;
   bestWeeklyPlacement: number | null;
+  firstPlaceCount: number;
+  secondPlaceCount: number;
+  thirdPlaceCount: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -68,8 +71,11 @@ export interface OwnProfilePayload {
   username: string;
   avatarPalette: string;
   avatarFakeBirdImageUrl?: string | null;
+  isHouseAccount: boolean;
   joinedMonthYear: string; // e.g. "April 2026"
   privacyMode: 'public' | 'private';
+  followerCount: number;
+  followingCount: number;
   progress: ProfileProgressSummary;
 }
 
@@ -82,8 +88,11 @@ export interface PublicProfilePayload {
   username: string;
   avatarPalette: string;
   avatarFakeBirdImageUrl?: string | null;
+  isHouseAccount: boolean;
   joinedMonthYear: string;
   progress: ProfileProgressSummary;
+  followerCount: number;
+  followingCount: number;
 }
 
 /**
@@ -93,7 +102,10 @@ export interface PublicProfilePayload {
 export interface RestrictedProfilePayload {
   kind: 'restricted';
   username: string;
+  isHouseAccount: boolean;
   joinedMonthYear: string;
+  followerCount: number;
+  followingCount: number;
 }
 
 export type ProfilePayload =

@@ -23,6 +23,7 @@ type TargetProfileRow = {
   username_canonical: string | null;
   avatar_palette: string | null;
   avatar_fake_bird_key?: string | null;
+  is_house_account?: boolean | null;
   privacy_mode?: 'public' | 'private' | null;
   created_at: string;
 };
@@ -91,7 +92,7 @@ function blockedResponse(): NextResponse<ProfileReadResponse> {
 async function fetchTargetProfile(admin: ReturnType<typeof createSupabaseAdminClient>, username: string) {
   const profileQuery = admin
     .from('profiles')
-    .select('user_id, username, username_canonical, avatar_palette, avatar_fake_bird_key, privacy_mode, created_at')
+    .select('user_id, username, username_canonical, avatar_palette, avatar_fake_bird_key, is_house_account, privacy_mode, created_at')
     .eq('username_canonical', username)
     .maybeSingle<TargetProfileRow>();
 
@@ -100,7 +101,7 @@ async function fetchTargetProfile(admin: ReturnType<typeof createSupabaseAdminCl
   if (isMissingSupabaseColumnError(error, 'privacy_mode') || isMissingSupabaseColumnError(error, 'avatar_fake_bird_key')) {
     const fallbackResult = await admin
       .from('profiles')
-      .select('user_id, username, username_canonical, avatar_palette, created_at')
+      .select('user_id, username, username_canonical, avatar_palette, is_house_account, created_at')
       .eq('username_canonical', username)
       .maybeSingle<Omit<TargetProfileRow, 'privacy_mode' | 'avatar_fake_bird_key'>>();
 
@@ -201,6 +202,21 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     followsRows,
   );
 
+  const [{ count: followerCount }, { count: followingCount }] = await Promise.all([
+    admin
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('related_user_id', targetProfile.user_id)
+      .eq('relationship_type', 'follow')
+      .eq('status', 'approved'),
+    admin
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', targetProfile.user_id)
+      .eq('relationship_type', 'follow')
+      .eq('status', 'approved'),
+  ]);
+
   if (!visibility.canViewFull) {
     if (visibility.reason === 'blocked') {
       return blockedResponse();
@@ -210,7 +226,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const restricted: RestrictedProfilePayload = {
       kind: 'restricted',
       username: targetProfile.username,
+      isHouseAccount: targetProfile.is_house_account === true,
       joinedMonthYear: formatJoinedMonthYear(targetProfile.created_at as string),
+      followerCount: followerCount ?? 0,
+      followingCount: followingCount ?? 0,
     };
 
     return NextResponse.json({
@@ -221,12 +240,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     } satisfies ProfileReadResponse);
   }
 
-  // Full access — fetch progress summary
-  const { data: progressRow } = await admin
-    .from('player_progress')
-    .select('birds_identified, seeds, best_streak, best_daily_streak, best_weekly_placement')
-    .eq('user_id', targetProfile.user_id)
-    .maybeSingle();
+  // Full access — fetch progress summary and follower count in parallel
+  const [{ data: progressRow }] = await Promise.all([
+    admin
+      .from('player_progress')
+      .select('birds_identified, seeds, best_streak, best_daily_streak, best_weekly_placement, first_place_count, second_place_count, third_place_count')
+      .eq('user_id', targetProfile.user_id)
+      .maybeSingle(),
+  ]);
 
   const progress: ProfileProgressSummary = {
     birdsIdentified: progressRow?.birds_identified ?? 0,
@@ -234,6 +255,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     bestStreak: progressRow?.best_streak ?? 0,
     bestDailyStreak: progressRow?.best_daily_streak ?? 0,
     bestWeeklyPlacement: progressRow?.best_weekly_placement ?? null,
+    firstPlaceCount: progressRow?.first_place_count ?? 0,
+    secondPlaceCount: progressRow?.second_place_count ?? 0,
+    thirdPlaceCount: progressRow?.third_place_count ?? 0,
   };
 
   const joinedMonthYear = formatJoinedMonthYear(targetProfile.created_at as string);
@@ -258,8 +282,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       username: targetProfile.username,
       avatarPalette,
       avatarFakeBirdImageUrl,
+      isHouseAccount: targetProfile.is_house_account === true,
       joinedMonthYear,
       privacyMode,
+      followerCount: followerCount ?? 0,
+      followingCount: followingCount ?? 0,
       progress,
     };
 
@@ -276,8 +303,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     username: targetProfile.username,
     avatarPalette,
     avatarFakeBirdImageUrl,
+    isHouseAccount: targetProfile.is_house_account === true,
     joinedMonthYear,
     progress,
+    followerCount: followerCount ?? 0,
+    followingCount: followingCount ?? 0,
   };
 
   return NextResponse.json({
