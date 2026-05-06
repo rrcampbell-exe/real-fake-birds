@@ -64,12 +64,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ users: [] } satisfies UserSearchResponse);
   }
 
+  // Escape ILIKE wildcards so user input is treated as a literal substring.
+  // Backslash must be escaped first to avoid double-escaping.
+  const escaped = normalized.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+
   const admin = createSupabaseAdminClient();
 
   const { data, error } = await admin
     .from('profiles')
     .select('user_id')
-    .ilike('username_canonical', `%${normalized}%`)
+    .ilike('username_canonical', `%${escaped}%`)
     .neq('user_id', viewerId)
     .limit(SEARCH_RESULTS_LIMIT);
 
@@ -77,7 +81,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const fallbackResult = await admin
       .from('profiles')
       .select('user_id')
-      .ilike('username_canonical', `%${normalized}%`)
+      .ilike('username_canonical', `%${escaped}%`)
       .neq('user_id', viewerId)
       .limit(SEARCH_RESULTS_LIMIT);
 
