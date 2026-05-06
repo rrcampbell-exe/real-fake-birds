@@ -38,7 +38,7 @@ import type {
   WeeklyPlacementSummary,
 } from '@/types';
 
-type AuthAction = 'validate-username' | 'register-account' | 'get-account-state' | 'get-leaderboard' | 'sign-in-with-username' | 'save-profile' | 'save-avatar-palette' | 'save-avatar-fake-bird' | 'sync-local-progress' | 'sync-bird-journal' | 'sync-birdhouse' | 'pull-account-progress' | 'purchase-theme' | 'apply-progress-events' | 'sync-daily-mission-completion';
+type AuthAction = 'validate-username' | 'register-account' | 'get-account-state' | 'get-leaderboard' | 'sign-in-with-username' | 'save-profile' | 'save-avatar-palette' | 'save-avatar-fake-bird' | 'save-privacy-mode' | 'sync-local-progress' | 'sync-bird-journal' | 'sync-birdhouse' | 'pull-account-progress' | 'purchase-theme' | 'apply-progress-events' | 'sync-daily-mission-completion';
 type RewardAuthAction = 'claim-mission-reward' | 'claim-mission-set-bonus' | 'purchase-streak-insurance';
 
 interface ValidateUsernameRequest {
@@ -108,6 +108,11 @@ interface SaveAvatarFakeBirdRequest {
   fakeBirdKey: string | null;
 }
 
+interface SavePrivacyModeRequest {
+  action: AuthAction;
+  privacyMode: 'public' | 'private';
+}
+
 type AccountProfileRow = {
   username: string | null;
   username_canonical: string | null;
@@ -115,6 +120,7 @@ type AccountProfileRow = {
   is_house_account: boolean | null;
   created_at: string | null;
   avatar_fake_bird_key?: string | null;
+  privacy_mode?: 'public' | 'private' | null;
 };
 
 type LeaderboardAvatarRow = {
@@ -304,6 +310,16 @@ function isSaveAvatarFakeBirdRequest(value: unknown): value is SaveAvatarFakeBir
     && (typeof candidate.fakeBirdKey === 'string' || candidate.fakeBirdKey === null);
 }
 
+function isSavePrivacyModeRequest(value: unknown): value is SavePrivacyModeRequest {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<SavePrivacyModeRequest>;
+  return candidate.action === 'save-privacy-mode'
+    && (candidate.privacyMode === 'public' || candidate.privacyMode === 'private');
+}
+
 function isPurchaseThemeRequest(value: unknown): value is PurchaseThemeRequest {
   if (!value || typeof value !== 'object') {
     return false;
@@ -319,7 +335,7 @@ async function readAccountProfile(
 ): Promise<AccountProfileRow | null> {
   const { data: profile, error: profileError } = await admin
     .from('profiles')
-    .select('username, username_canonical, avatar_palette, is_house_account, created_at, avatar_fake_bird_key')
+    .select('username, username_canonical, avatar_palette, is_house_account, created_at, avatar_fake_bird_key, privacy_mode')
     .eq('user_id', userId)
     .maybeSingle<AccountProfileRow>();
 
@@ -327,7 +343,8 @@ async function readAccountProfile(
     return profile;
   }
 
-  if (!isMissingSupabaseColumnError(profileError, 'avatar_fake_bird_key')) {
+  if (!isMissingSupabaseColumnError(profileError, 'avatar_fake_bird_key')
+    && !isMissingSupabaseColumnError(profileError, 'privacy_mode')) {
     throw profileError;
   }
 
@@ -335,7 +352,7 @@ async function readAccountProfile(
     .from('profiles')
     .select('username, username_canonical, avatar_palette, is_house_account, created_at')
     .eq('user_id', userId)
-    .maybeSingle<Omit<AccountProfileRow, 'avatar_fake_bird_key'>>();
+    .maybeSingle<Omit<AccountProfileRow, 'avatar_fake_bird_key' | 'privacy_mode'>>();
 
   if (fallbackError) {
     throw fallbackError;
@@ -345,6 +362,7 @@ async function readAccountProfile(
     ? {
         ...fallbackProfile,
         avatar_fake_bird_key: null,
+        privacy_mode: null,
       }
     : null;
 }
@@ -1298,6 +1316,17 @@ export async function POST(request: NextRequest) {
         thirdPlaceCount: typeof progress?.third_place_count === 'number' ? progress.third_place_count : 0,
       });
 
+      const ownAvatarFakeBirdKey = profile
+        ? (
+            typeof profile.avatar_fake_bird_key === 'string'
+              ? profile.avatar_fake_bird_key
+              : readAvatarFakeBirdKeyFromUserMetadata(context.user.user_metadata)
+          )
+        : null;
+      const ownAvatarFakeBirdImageUrl = ownAvatarFakeBirdKey && isCdnEnabled()
+        ? getCdnImageUrl(toCdnFakeBirdKey(ownAvatarFakeBirdKey), 'thumb', 'fake')
+        : null;
+
       return NextResponse.json({
         action: 'get-account-state',
         email: context.email,
@@ -1308,9 +1337,9 @@ export async function POST(request: NextRequest) {
               avatarPalette: profile.avatar_palette,
               isHouseAccount: profile.is_house_account === true,
               joinedMonthYear: typeof profile.created_at === 'string' ? formatJoinedMonthYear(profile.created_at) : null,
-              avatarFakeBirdKey: typeof profile.avatar_fake_bird_key === 'string'
-                ? profile.avatar_fake_bird_key
-                : readAvatarFakeBirdKeyFromUserMetadata(context.user.user_metadata),
+              avatarFakeBirdKey: ownAvatarFakeBirdKey,
+              avatarFakeBirdImageUrl: ownAvatarFakeBirdImageUrl,
+              privacyMode: ('privacy_mode' in profile && profile.privacy_mode === 'private') ? 'private' : 'public',
             }
           : null,
         lastLocalSyncAt: progress?.last_local_sync_at ?? null,
@@ -2182,6 +2211,37 @@ export async function POST(request: NextRequest) {
       });
     } catch {
       return NextResponse.json({ error: 'avatar_fake_bird_save_failed' }, { status: 500 });
+    }
+  }
+
+  if (isSavePrivacyModeRequest(body)) {
+    const context = await getAuthenticatedRequestContext();
+
+    if (!context) {
+      return hasSupabaseEnv()
+        ? NextResponse.json({ error: 'not_authenticated' }, { status: 401 })
+        : configErrorResponse();
+    }
+
+    try {
+      const admin = createSupabaseAdminClient();
+      const { error: updateError } = await admin
+        .from('profiles')
+        .update({ privacy_mode: body.privacyMode })
+        .eq('user_id', context.userId);
+
+      if (updateError) {
+        if (isMissingSupabaseColumnError(updateError, 'privacy_mode')) {
+          // Column not yet migrated — treat as no-op but return success so the
+          // client doesn't surface an error when running against an old schema.
+          return NextResponse.json({ action: 'save-privacy-mode', privacyMode: body.privacyMode });
+        }
+        throw updateError;
+      }
+
+      return NextResponse.json({ action: 'save-privacy-mode', privacyMode: body.privacyMode });
+    } catch {
+      return NextResponse.json({ error: 'privacy_mode_save_failed' }, { status: 500 });
     }
   }
 

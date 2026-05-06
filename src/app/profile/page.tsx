@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Bird } from 'lucide-react';
+import { Binoculars, Bird } from 'lucide-react';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import { useScreenViewed } from '@/hooks/useScreenViewed';
 import { useHasHydrated } from '@/hooks/useHasHydrated';
@@ -12,24 +12,24 @@ import { useBirdJournal } from '@/hooks/useBirdJournal';
 import { saveAvatarFakeBird } from '@/lib/auth/account-sync';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import AvatarPickerSheet from '@/components/profile/AvatarPickerSheet';
-import ProgressSummary from '@/components/profile/ProgressSummary';
 import RewardsSection from '@/components/profile/RewardsSection';
 import BirdhousePreviewCard from '@/components/profile/BirdhousePreviewCard';
 import type { OwnProfilePayload } from '@/types/profile';
+import type { FollowersResponse } from '@/app/api/followers/route';
 
 // Module-level cache: persists across client-side navigation within the same session.
 const ownProfileCache = new Map<string, OwnProfilePayload>();
 
 function useOwnProfile(username: string | null) {
   const key = username?.toLowerCase() ?? null;
-  const [profile, setProfile] = useState<OwnProfilePayload | null>(
-    () => (key ? ownProfileCache.get(key) ?? null : null)
-  );
-  const [isLoading, setIsLoading] = useState(false);
+  const cachedProfile = key ? ownProfileCache.get(key) ?? null : null;
+  const [fetchedProfile, setFetchedProfile] = useState<OwnProfilePayload | null>(cachedProfile);
+  const [loadedKey, setLoadedKey] = useState<string | null>(cachedProfile ? key : null);
 
   useEffect(() => {
-    if (!key) return;
-    if (ownProfileCache.has(key)) return; // already cached — skip fetch
+    if (!key || cachedProfile) {
+      return;
+    }
 
     let cancelled = false;
 
@@ -38,16 +38,19 @@ function useOwnProfile(username: string | null) {
       .then((data) => {
         if (!cancelled && data?.profile?.kind === 'own') {
           ownProfileCache.set(key, data.profile as OwnProfilePayload);
-          setProfile(data.profile as OwnProfilePayload);
+          setFetchedProfile(data.profile as OwnProfilePayload);
         }
       })
       .catch(() => {/* silently degrade */})
       .finally(() => {
-        if (!cancelled) setIsLoading(false);
+        if (!cancelled) setLoadedKey(key);
       });
 
     return () => { cancelled = true; };
-  }, [key]);
+  }, [cachedProfile, key]);
+
+  const profile = cachedProfile ?? (loadedKey === key ? fetchedProfile : null);
+  const isLoading = Boolean(key && !cachedProfile && loadedKey !== key);
 
   return { profile, isLoading };
 }
@@ -56,17 +59,46 @@ function useOwnProfile(username: string | null) {
 export default function ProfilePage() {
   useScreenViewed('profile');
   const isHydrated = useHasHydrated();
-  const { isSignedIn, accountUsername, accountAvatarPalette, accountJoinedMonthYear, accountAvatarFakeBirdKey, refreshAccountState, remoteSummary } = useAccountState();
+  const { isSignedIn, isHouseAccount, accountUsername, accountAvatarPalette, accountJoinedMonthYear, accountAvatarFakeBirdKey, accountPrivacyMode, refreshAccountState } = useAccountState();
   const { isPageBackgroundRefreshing } = usePageProgressSync();
   const { birdhouse } = useBirdhouse();
   const { journalByKey } = useBirdJournal();
-  const { profile } = useOwnProfile(
+  const { profile, isLoading: isProfileLoading } = useOwnProfile(
     isSignedIn && accountUsername ? accountUsername : null,
   );
   const [pickerOpen, setPickerOpen] = useState(false);
   // Tracks the key we just saved so the avatar updates instantly without
   // waiting for refreshAccountState() to round-trip and update the context.
   const [pendingAvatarBirdKey, setPendingAvatarBirdKey] = useState<string | null | undefined>(undefined);
+
+  const [followerCounts, setFollowerCounts] = useState<{ followers: number; following: number } | null>(null);
+  const cancelledRef = useRef(false);
+
+  const fetchFollowerCounts = useCallback(async () => {
+    cancelledRef.current = false;
+    try {
+      const res = await fetch('/api/followers');
+      if (!res.ok) return;
+      const json = (await res.json()) as FollowersResponse;
+      if (!cancelledRef.current) {
+        setFollowerCounts({ followers: json.followers.length, following: json.following.length });
+      }
+    } catch {
+      // silently degrade
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isSignedIn) {
+      return;
+    }
+
+    queueMicrotask(() => {
+      void fetchFollowerCounts();
+    });
+
+    return () => { cancelledRef.current = true; };
+  }, [isSignedIn, fetchFollowerCounts]);
 
 
   const fakeBirdsForPicker = birdhouse.fake
@@ -101,9 +133,22 @@ export default function ProfilePage() {
 
   if (!isHydrated) {
     return (
-      <div className="w-full max-w-lg mx-auto px-4 py-8">
-        <div className="h-8 w-48 rounded bg-[var(--color-surface)] animate-pulse mb-2" />
-        <div className="h-4 w-64 rounded bg-[var(--color-surface)] animate-pulse" />
+      <div className="w-full max-w-lg mx-auto px-4 py-8 flex flex-col gap-8">
+        <div className="flex items-start gap-4">
+          <div className="h-16 w-16 shrink-0 rounded-full bg-[var(--color-surface)] animate-pulse" />
+          <div className="flex-1 flex flex-col gap-2 pt-1">
+            <div className="h-7 w-40 rounded bg-[var(--color-surface)] animate-pulse" />
+            <div className="h-4 w-52 rounded bg-[var(--color-surface)] animate-pulse" />
+            <div className="h-3 w-28 rounded bg-[var(--color-surface)] animate-pulse" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="h-16 rounded-2xl bg-[var(--color-surface)] animate-pulse" />
+          <div className="h-16 rounded-2xl bg-[var(--color-surface)] animate-pulse" />
+          <div className="h-16 rounded-2xl bg-[var(--color-surface)] animate-pulse" />
+          <div className="h-16 rounded-2xl bg-[var(--color-surface)] animate-pulse" />
+        </div>
+        <div className="h-12 rounded-2xl bg-[var(--color-surface)] animate-pulse" />
       </div>
     );
   }
@@ -134,9 +179,15 @@ export default function ProfilePage() {
         avatarPalette={accountAvatarPalette ?? ''}
         avatarFakeBirdImageUrl={avatarFakeBirdImageUrl}
         joinedMonthYear={accountJoinedMonthYear ?? ''}
-        privacyMode={profile?.privacyMode}
+        privacyMode={profile?.privacyMode ?? accountPrivacyMode ?? undefined}
         isOwner
+        isPrivacyLoading={isProfileLoading}
         onEditAvatar={() => setPickerOpen(true)}
+        followerCount={followerCounts?.followers}
+        followingCount={followerCounts?.following}
+        isHouseAccount={isHouseAccount}
+        followersHref="/community?tab=followers"
+        followingHref="/community?tab=following"
       />
 
       <AvatarPickerSheet
@@ -154,17 +205,21 @@ export default function ProfilePage() {
         </div>
       ) : null}
 
-      {remoteSummary ? (
-        <ProgressSummary
-          progress={{
-            birdsIdentified: remoteSummary.birdsIdentified,
-            seeds: remoteSummary.seeds,
-            bestStreak: remoteSummary.bestStreak,
-            bestDailyStreak: remoteSummary.bestDailyStreak,
-            bestWeeklyPlacement: remoteSummary.bestWeeklyPlacement,
-          }}
-        />
-      ) : null}
+      <Link
+        href="/community"
+        className="flex items-center gap-3 rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3 transition hover:bg-[var(--color-surface-hover)]"
+      >
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-surface-hover)] text-[var(--color-secondary)]">
+          <Binoculars size={18} aria-hidden="true" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-[var(--color-text)]">The Roost</p>
+          <p className="text-xs text-[var(--color-muted)]">
+            Find birders, manage followers, and keep your flock in one place.
+          </p>
+        </div>
+        <span className="text-xs text-[var(--color-muted)]">&rsaquo;</span>
+      </Link>
 
       <BirdhousePreviewCard />
 

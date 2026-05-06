@@ -10,6 +10,7 @@ import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { secondaryNavLinks } from './nav-links';
 
 const playAndProgressHrefs = new Set(['/profile', '/daily', '/leaderboard']);
+const communityHrefs = new Set(['/community']);
 const collectionHrefs = new Set(['/journal', '/birdhouse', '/settings']);
 
 interface RouteNotification {
@@ -55,6 +56,7 @@ export default function MenuDrawer({ isOpen, onClose, notifications }: MenuDrawe
   };
 
   const playAndProgressLinks = secondaryNavLinks.filter((link) => playAndProgressHrefs.has(link.href));
+  const communityLinks = secondaryNavLinks.filter((link) => communityHrefs.has(link.href));
   const collectionLinks = secondaryNavLinks.filter((link) => collectionHrefs.has(link.href));
 
   const renderNavLink = ({ href, label, icon: Icon }: (typeof secondaryNavLinks)[number]) => {
@@ -97,6 +99,8 @@ export default function MenuDrawer({ isOpen, onClose, notifications }: MenuDrawe
                 ? 'This week\'s live standings'
                 : href === '/journal'
                   ? 'Your collection of birds'
+                  : href === '/community'
+                    ? 'Find birders, followers, and your flock'
                   : href === '/birdhouse'
                     ? 'Your hand-picked bird gallery'
                     : href === '/profile'
@@ -166,6 +170,13 @@ export default function MenuDrawer({ isOpen, onClose, notifications }: MenuDrawe
               Play &amp; Progress
             </p>
             {playAndProgressLinks.map(renderNavLink)}
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
+              Community
+            </p>
+            {communityLinks.map(renderNavLink)}
           </section>
 
           <section className="flex flex-col gap-3">

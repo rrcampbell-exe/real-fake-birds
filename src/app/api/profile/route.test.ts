@@ -45,9 +45,24 @@ function buildMockAdmin({
         };
       }
       if (table === 'follows') {
+        // Supports both:
+        //   - relationship lookup: .select(...).or(...)
+        //   - follower count:      .select('*', { count: 'exact', head: true }).eq(...).eq(...).eq(...)
+        const countChain = {
+          eq: vi.fn().mockReturnThis(),
+          // resolve with count=follows.length when used as a count query
+          then: (resolve: (v: { count: number; error: null }) => void) =>
+            resolve({ count: follows.length, error: null }),
+        };
+        countChain.eq = vi.fn().mockReturnValue(countChain);
         return {
-          select: vi.fn().mockReturnThis(),
-          or: vi.fn().mockResolvedValue({ data: follows, error: null }),
+          select: vi.fn().mockImplementation((_cols: unknown, opts?: { count?: string; head?: boolean }) => {
+            if (opts?.count === 'exact') return countChain;
+            return {
+              eq: vi.fn().mockReturnThis(),
+              or: vi.fn().mockResolvedValue({ data: follows, error: null }),
+            };
+          }),
         };
       }
       if (table === 'player_progress') {
@@ -124,6 +139,8 @@ describe('GET /api/profile', () => {
     expect(body.profile?.kind).toBe('public');
     expect(body.profile?.username).toBe('birdlover');
     expect(body.profile?.progress?.birdsIdentified).toBe(42);
+    expect(body.profile?.followerCount).toBe(0);
+    expect(body.profile?.followingCount).toBe(0);
     // Must NOT include privacyMode in public payload
     expect(body.profile?.privacyMode).toBeUndefined();
   });
@@ -150,6 +167,8 @@ describe('GET /api/profile', () => {
     const body = await response.json();
     expect(body.profile?.kind).toBe('own');
     expect(body.profile?.privacyMode).toBe('public');
+    expect(body.profile?.followerCount).toBe(0);
+    expect(body.profile?.followingCount).toBe(0);
     expect(body.visibility?.reason).toBe('owner');
   });
 
@@ -241,9 +260,13 @@ describe('GET /api/profile', () => {
         }
 
         if (table === 'follows') {
+          const countChain = { eq: vi.fn().mockReturnThis(), then: (r: (v: { count: number; error: null }) => void) => r({ count: 0, error: null }) };
+          countChain.eq = vi.fn().mockReturnValue(countChain);
           return {
-            select: vi.fn().mockReturnThis(),
-            or: vi.fn().mockResolvedValue({ data: [], error: null }),
+            select: vi.fn().mockImplementation((_c: unknown, opts?: { count?: string }) => {
+              if (opts?.count === 'exact') return countChain;
+              return { eq: vi.fn().mockReturnThis(), or: vi.fn().mockResolvedValue({ data: [], error: null }) };
+            }),
           };
         }
 
@@ -318,9 +341,13 @@ describe('GET /api/profile', () => {
         }
 
         if (table === 'follows') {
+          const countChain = { eq: vi.fn().mockReturnThis(), then: (r: (v: { count: number; error: null }) => void) => r({ count: 0, error: null }) };
+          countChain.eq = vi.fn().mockReturnValue(countChain);
           return {
-            select: vi.fn().mockReturnThis(),
-            or: vi.fn().mockResolvedValue({ data: [], error: null }),
+            select: vi.fn().mockImplementation((_c: unknown, opts?: { count?: string }) => {
+              if (opts?.count === 'exact') return countChain;
+              return { eq: vi.fn().mockReturnThis(), or: vi.fn().mockResolvedValue({ data: [], error: null }) };
+            }),
           };
         }
 

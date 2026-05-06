@@ -20,6 +20,8 @@ export interface AccountStateResponse {
     isHouseAccount?: boolean;
     joinedMonthYear?: string | null;
     avatarFakeBirdKey?: string | null;
+    avatarFakeBirdImageUrl?: string | null;
+    privacyMode?: 'public' | 'private' | null;
   } | null;
   lastLocalSyncAt: string | null;
   progressSummary: {
@@ -303,6 +305,18 @@ export function saveAvatarFakeBird(fakeBirdKey: string | null): Promise<SaveAvat
   return postAuthAction<SaveAvatarFakeBirdResponse>({
     action: 'save-avatar-fake-bird',
     fakeBirdKey,
+  });
+}
+
+export interface SavePrivacyModeResponse {
+  action: 'save-privacy-mode';
+  privacyMode: 'public' | 'private';
+}
+
+export function savePrivacyMode(privacyMode: 'public' | 'private'): Promise<SavePrivacyModeResponse> {
+  return postAuthAction<SavePrivacyModeResponse>({
+    action: 'save-privacy-mode',
+    privacyMode,
   });
 }
 

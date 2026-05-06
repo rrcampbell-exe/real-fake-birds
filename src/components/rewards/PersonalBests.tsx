@@ -1,6 +1,6 @@
 'use client';
 
-import { Bird, CalendarDays, Flame, Target, Trophy, Zap, Award } from 'lucide-react';
+import { Bird, CalendarArrowUp, CalendarDays, Flame, Target, Zap, Award } from 'lucide-react';
 import SeedIcon from '@/components/icons/SeedIcon';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import { useStoredJson } from '@/hooks/useStoredValue';
@@ -9,7 +9,7 @@ import { formatNumber } from '@/lib/utils/number-format';
 import { defaultBirdScore, normalizeBirdScore } from '@/lib/utils/player-progress';
 import type { DailyMissionHistoryEntry } from '@/types';
 
-export default function PersonalBests() {
+export default function PersonalBests({ includeSummaryStats = false }: { includeSummaryStats?: boolean }) {
   const { remoteSummary } = useAccountState();
   const storedStats = useStoredJson<typeof defaultBirdScore | null>('birdScore', null);
   const dailyHistory = useStoredJson<DailyMissionHistoryEntry[]>(
@@ -23,33 +23,49 @@ export default function PersonalBests() {
     birdsSeen,
     birdsIdentified,
     currentStreak,
-    bestStreak,
-    seeds,
     currentDailyStreak,
     bestDailyStreak,
   } = normalizeBirdScore(storedStats);
   const derivedDailyStreaks = getDailyMissionStreaks(dailyHistory);
   const accuracy = birdsSeen > 0 ? Math.floor((birdsIdentified / birdsSeen) * 100) : 0;
   const effectiveCurrentDailyStreak = Math.max(currentDailyStreak, derivedDailyStreaks.currentStreak);
-  const effectiveBestDailyStreak = Math.max(bestDailyStreak, derivedDailyStreaks.bestStreak);
+  const effectiveBestDailyStreak = Math.max(bestDailyStreak, derivedDailyStreaks.bestStreak, remoteSummary?.bestDailyStreak ?? 0);
+
+  const summaryItems = includeSummaryStats && remoteSummary
+    ? [
+        {
+          label: 'Birds Identified',
+          value: remoteSummary.birdsIdentified,
+          icon: Bird,
+          color: 'text-[var(--color-text)]',
+        },
+        {
+          label: 'Best Guess Streak',
+          value: remoteSummary.bestStreak,
+          icon: Zap,
+          color: 'text-[var(--color-secondary)]',
+        },
+        {
+          label: 'Best Daily Streak',
+          value: effectiveBestDailyStreak,
+          icon: CalendarArrowUp,
+          color: 'text-[var(--color-success)]',
+        },
+        {
+          label: 'Seeds',
+          value: remoteSummary.seeds,
+          icon: SeedIcon,
+          color: 'text-[var(--color-secondary)]',
+        },
+      ]
+    : [];
 
   const items = [
-    {
-      label: 'Best Guess Streak',
-      value: bestStreak,
-      icon: Zap,
-      color: 'text-[var(--color-secondary)]',
-    },
+    ...summaryItems,
     {
       label: 'Current Guess Streak',
       value: currentStreak,
       icon: Flame,
-      color: 'text-[var(--color-streak)]',
-    },
-    {
-      label: 'Best Daily Streak',
-      value: effectiveBestDailyStreak,
-      icon: Trophy,
       color: 'text-[var(--color-streak)]',
     },
     {
@@ -59,8 +75,6 @@ export default function PersonalBests() {
       color: 'text-[var(--color-success)]',
     },
     { label: 'Accuracy', value: `${accuracy}%`, icon: Target, color: 'text-[var(--color-success)]' },
-    { label: 'Birds Identified', value: birdsIdentified, icon: Bird, color: 'text-[var(--color-text)]' },
-    { label: 'Seeds', value: seeds, icon: SeedIcon, color: 'text-[var(--color-secondary)]' },
     {
       label: 'Best Weekly Finish',
       value: remoteSummary?.bestWeeklyPlacement ? `#${remoteSummary.bestWeeklyPlacement}` : '---',

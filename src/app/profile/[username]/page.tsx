@@ -1,66 +1,197 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
-import { Lock, Birdhouse } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import { useScreenViewed } from '@/hooks/useScreenViewed';
-import LeaderboardAvatar from '@/components/leaderboard/LeaderboardAvatar';
+import BirdhousePreviewCard from '@/components/profile/BirdhousePreviewCard';
+import ProfileConnectionsModal from '@/components/profile/ProfileConnectionsModal';
+import ProfileHeader from '@/components/profile/ProfileHeader';
+import ProgressSummary from '@/components/profile/ProgressSummary';
+import PublicBirdhousePreviewCard from '@/components/profile/PublicBirdhousePreviewCard';
+import TrophyCaseReadOnly from '@/components/rewards/TrophyCaseReadOnly';
 import type { ProfileReadResponse } from '@/types/profile';
+
+function mapFollowError(code: string | null, action: 'request' | 'unfollow'): string {
+  if (!code) {
+    return action === 'unfollow'
+      ? 'Unable to unfollow right now. Please try again.'
+      : 'Unable to follow right now. Please try again.';
+  }
+
+  if (code === 'target_not_found') return 'That player profile could not be found.';
+  if (code === 'cannot_self_action') return 'You cannot follow your own profile.';
+  if (code === 'already_following') return 'You are already following this player.';
+  if (code === 'request_already_sent') return 'Follow request already sent.';
+  if (code === 'blocked') return 'You cannot follow this player.';
+  if (code === 'unauthenticated') return 'Please sign in to follow players.';
+  if (code === 'rate_limited') return 'Too many follow actions. Please wait and try again.';
+  if (code === 'not_following') return 'You are not currently following this player.';
+  if (code === 'database_error' || code === 'service_unavailable') {
+    return 'The follow service is unavailable right now. Please try again.';
+  }
+
+  return action === 'unfollow'
+    ? 'Unable to unfollow right now. Please try again.'
+    : 'Unable to follow right now. Please try again.';
+}
 
 function useProfileData(username: string) {
   const [data, setData] = useState<ProfileReadResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const cancelledRef = useRef(false);
+
+  const fetchProfile = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(
+        `/api/profile?username=${encodeURIComponent(username.toLowerCase())}`,
+      );
+      if (!res.ok && res.status !== 200) {
+        throw new Error('profile_fetch_failed');
+      }
+      const json = (await res.json()) as ProfileReadResponse;
+      if (!cancelledRef.current) {
+        setData(json);
+      }
+    } catch {
+      if (!cancelledRef.current) {
+        setError('Unable to load this profile.');
+      }
+    } finally {
+      if (!cancelledRef.current) {
+        setIsLoading(false);
+      }
+    }
+  }, [username]);
 
   useEffect(() => {
     if (!username) return;
-
-    let cancelled = false;
-
-    fetch(`/api/profile?username=${encodeURIComponent(username.toLowerCase())}`)
-      .then(async (res) => {
-        if (!res.ok && res.status !== 200) {
-          throw new Error('profile_fetch_failed');
-        }
-        return res.json() as Promise<ProfileReadResponse>;
-      })
-      .then((json) => {
-        if (!cancelled) {
-          setData(json);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setError('Unable to load this profile.');
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      });
-
+    cancelledRef.current = false;
+    fetchProfile();
     return () => {
-      cancelled = true;
+      cancelledRef.current = true;
     };
-  }, [username]);
+  }, [username, fetchProfile]);
 
-  return { data, isLoading, error };
+  return { data, setData, isLoading, error };
 }
 
 export default function UserProfilePage() {
   useScreenViewed('profile-view');
   const params = useParams();
   const username = typeof params?.username === 'string' ? params.username : '';
-  const { data, isLoading, error } = useProfileData(username);
+  const { data, setData, isLoading, error } = useProfileData(username);
+  const [isFollowActionPending, setIsFollowActionPending] = useState(false);
+  const [followActionError, setFollowActionError] = useState<string | null>(null);
+  const [connectionsModalTab, setConnectionsModalTab] = useState<'followers' | 'following'>('followers');
+  const [isConnectionsModalOpen, setIsConnectionsModalOpen] = useState(false);
+
+  const handleFollowAction = async () => {
+    if (!data?.profile) return;
+
+    const action = data.relationship === 'following' ? 'unfollow' : 'request';
+    const targetUsername = username || data.profile.username;
+    const isRestrictedProfile = data.profile.kind === 'restricted';
+
+    // Compute optimistic next state
+    const optimisticRelationship =
+      action === 'unfollow'
+        ? ('none' as const)
+        : isRestrictedProfile
+          ? ('requested' as const)
+          : ('following' as const);
+
+    const optimisticCapabilities = {
+      ...data.capabilities,
+      canFollow: action === 'unfollow',
+      canUnfollow: action === 'request' && !isRestrictedProfile,
+    };
+
+    // Optimistically update follower count on public profiles
+    const optimisticProfile =
+      data.profile && data.profile.kind === 'public'
+        ? {
+            ...data.profile,
+            followerCount:
+              action === 'unfollow'
+                ? Math.max(0, data.profile.followerCount - 1)
+                : data.profile.followerCount + 1,
+          }
+        : data.profile;
+
+    // Snapshot for rollback
+    const snapshot = data;
+
+    // Apply optimistic update immediately — no loading state, no page flash
+    setData({ ...data, relationship: optimisticRelationship, capabilities: optimisticCapabilities, profile: optimisticProfile });
+    setFollowActionError(null);
+    setIsFollowActionPending(true);
+
+    try {
+      const response = await fetch('/api/follow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, targetUsername }),
+      });
+
+      if (!response.ok) {
+        let errorCode: string | null = null;
+        try {
+          const errorData = (await response.json()) as { error?: string };
+          errorCode = typeof errorData.error === 'string' ? errorData.error : null;
+        } catch {
+          // ignore parse error
+        }
+        // Rollback optimistic update
+        setData(snapshot);
+        setFollowActionError(mapFollowError(errorCode, action));
+      }
+    } catch {
+      // Rollback optimistic update
+      setData(snapshot);
+      setFollowActionError(mapFollowError(null, action));
+    } finally {
+      setIsFollowActionPending(false);
+    }
+  };
 
   if (isLoading) {
     return (
-      <div className="w-full max-w-lg mx-auto px-4 py-8 flex flex-col gap-4">
-        <div className="h-8 w-48 rounded bg-[var(--color-surface)] animate-pulse" />
-        <div className="h-4 w-32 rounded bg-[var(--color-surface)] animate-pulse" />
-        <div className="h-4 w-64 rounded bg-[var(--color-surface)] animate-pulse" />
+      <div className="w-full max-w-lg mx-auto px-4 py-8 flex flex-col gap-8">
+        {/* Header: avatar | text | action pill */}
+        <div className="flex items-start gap-4">
+          <div className="h-16 w-16 shrink-0 rounded-full bg-[var(--color-surface)] animate-pulse" />
+          <div className="flex-1 flex flex-col gap-2 pt-1">
+            <div className="h-7 w-40 rounded bg-[var(--color-surface)] animate-pulse" />
+            <div className="h-4 w-52 rounded bg-[var(--color-surface)] animate-pulse" />
+            <div className="h-3 w-28 rounded bg-[var(--color-surface)] animate-pulse" />
+          </div>
+          <div className="h-8 w-16 shrink-0 rounded-full bg-[var(--color-surface)] animate-pulse" />
+        </div>
+        {/* Stats: label + 2×2 grid */}
+        <div className="flex flex-col gap-3">
+          <div className="h-6 w-12 rounded bg-[var(--color-surface)] animate-pulse" />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="h-16 rounded-2xl bg-[var(--color-surface)] animate-pulse" />
+            <div className="h-16 rounded-2xl bg-[var(--color-surface)] animate-pulse" />
+            <div className="h-16 rounded-2xl bg-[var(--color-surface)] animate-pulse" />
+            <div className="h-16 rounded-2xl bg-[var(--color-surface)] animate-pulse" />
+          </div>
+        </div>
+        {/* Birdhouse link row */}
+        <div className="h-14 rounded-2xl bg-[var(--color-surface)] animate-pulse" />
+        {/* Trophy case: label + badge row */}
+        <div className="flex flex-col gap-3">
+          <div className="h-6 w-28 rounded bg-[var(--color-surface)] animate-pulse" />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="h-28 rounded-xl bg-[var(--color-surface)] animate-pulse" />
+            <div className="h-28 rounded-xl bg-[var(--color-surface)] animate-pulse" />
+            <div className="h-28 rounded-xl bg-[var(--color-surface)] animate-pulse" />
+            <div className="h-28 rounded-xl bg-[var(--color-surface)] animate-pulse" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -89,32 +220,44 @@ export default function UserProfilePage() {
     );
   }
 
-  const { profile, visibility } = data;
+  const { profile, relationship, capabilities } = data;
 
   if (profile.kind === 'restricted') {
     return (
       <div className="w-full max-w-lg mx-auto px-4 py-8 flex flex-col gap-4">
-        <div className="flex items-center gap-3">
-          <LeaderboardAvatar username={profile.username} avatarPalette={null} size="lg" />
-          <div>
-            <h1 className="font-[family-name:var(--font-display)] text-xl font-bold">
-              {profile.username}
-            </h1>
-            <p className="text-xs text-[var(--color-muted)]">Joined {profile.joinedMonthYear}</p>
-          </div>
-        </div>
+        <ProfileHeader
+          username={profile.username}
+          avatarPalette=""
+          joinedMonthYear={profile.joinedMonthYear}
+          isHouseAccount={profile.isHouseAccount}
+          followerCount={profile.followerCount}
+          followingCount={profile.followingCount}
+          headerActions={
+            <>
+              {capabilities.canFollow && (
+                <button
+                  type="button"
+                  onClick={handleFollowAction}
+                  disabled={isFollowActionPending}
+                  className="inline-flex h-8 items-center justify-center rounded-full border border-[var(--color-secondary)] bg-[var(--color-secondary)] px-3 text-xs font-semibold text-[var(--color-on-secondary)] transition hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Follow
+                </button>
+              )}
+              {relationship === 'requested' && (
+                <span className="inline-flex h-8 items-center justify-center rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 text-xs font-medium text-[var(--color-muted)]">
+                  Request sent
+                </span>
+              )}
+            </>
+          }
+        />
         <div className="flex items-center gap-2 text-sm text-[var(--color-muted)]">
           <Lock size={14} />
           <span>This profile is private.</span>
         </div>
-        {visibility.canFollow && (
-          <button
-            type="button"
-            className="inline-flex items-center justify-center rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium w-fit"
-            disabled
-          >
-            Request to follow
-          </button>
+        {followActionError && (
+          <p className="text-xs text-red-600">{followActionError}</p>
         )}
       </div>
     );
@@ -123,51 +266,77 @@ export default function UserProfilePage() {
   // Full profile (public or approved follower)
   return (
     <div className="w-full max-w-lg mx-auto px-4 py-8 flex flex-col gap-8">
-      <div className="flex items-center gap-3">
-        <LeaderboardAvatar
-          username={profile.username}
-          avatarPalette={profile.avatarPalette ?? null}
-          avatarBirdImageUrl={profile.avatarFakeBirdImageUrl ?? null}
-          size="lg"
+      <ProfileHeader
+        username={profile.username}
+        avatarPalette={profile.avatarPalette ?? ''}
+        avatarFakeBirdImageUrl={profile.avatarFakeBirdImageUrl ?? null}
+        joinedMonthYear={profile.joinedMonthYear}
+        followerCount={'followerCount' in profile ? profile.followerCount : undefined}
+        followingCount={'followingCount' in profile ? profile.followingCount : undefined}
+        isHouseAccount={profile.isHouseAccount}
+        onFollowersClick={data.visibility.reason === 'public_profile' ? () => {
+          setConnectionsModalTab('followers');
+          setIsConnectionsModalOpen(true);
+        } : undefined}
+        onFollowingClick={data.visibility.reason === 'public_profile' ? () => {
+          setConnectionsModalTab('following');
+          setIsConnectionsModalOpen(true);
+        } : undefined}
+        headerActions={
+          <div className="flex flex-col items-end gap-2">
+            {(capabilities.canFollow || capabilities.canUnfollow) && (
+              <button
+                type="button"
+                onClick={handleFollowAction}
+                disabled={isFollowActionPending}
+                className={`inline-flex h-8 items-center justify-center rounded-full px-3 text-xs font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                  capabilities.canUnfollow
+                    ? 'border border-[var(--color-secondary)] bg-[var(--color-surface)] text-[var(--color-secondary)] hover:bg-[var(--color-surface-hover)]'
+                    : 'border border-[var(--color-secondary)] bg-[var(--color-secondary)] text-[var(--color-on-secondary)] hover:brightness-105'
+                }`}
+              >
+                {capabilities.canUnfollow ? 'Unfollow' : 'Follow'}
+              </button>
+            )}
+          </div>
+        }
+      />
+
+      {followActionError && (
+        <p className="-mt-5 text-xs text-red-600">{followActionError}</p>
+      )}
+
+      <ProgressSummary progress={profile.progress} />
+
+      {data.visibility.reason === 'owner' ? (
+        <BirdhousePreviewCard />
+      ) : (
+        <PublicBirdhousePreviewCard username={profile.username} />
+      )}
+
+      <section>
+        <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold mb-3">
+          Trophy Case
+        </h2>
+        <TrophyCaseReadOnly
+          birdsIdentified={profile.progress.birdsIdentified}
+          firstPlaceCount={profile.progress.firstPlaceCount}
+          secondPlaceCount={profile.progress.secondPlaceCount}
+          thirdPlaceCount={profile.progress.thirdPlaceCount}
+          badgeLimit={4}
         />
-        <div>
-          <h1 className="font-[family-name:var(--font-display)] text-xl font-bold">
-            {profile.username}
-          </h1>
-          <p className="text-xs text-[var(--color-muted)]">Joined {profile.joinedMonthYear}</p>
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-4 text-center">
-        <div>
-          <p className="font-[family-name:var(--font-display)] text-2xl font-bold">
-            {profile.progress.birdsIdentified}
-          </p>
-          <p className="text-xs text-[var(--color-muted)]">Birds ID&apos;d</p>
-        </div>
-        <div>
-          <p className="font-[family-name:var(--font-display)] text-2xl font-bold">
-            {profile.progress.bestStreak}
-          </p>
-          <p className="text-xs text-[var(--color-muted)]">Best Streak</p>
-        </div>
-        <div>
-          <p className="font-[family-name:var(--font-display)] text-2xl font-bold">
-            {profile.progress.seeds}
-          </p>
-          <p className="text-xs text-[var(--color-muted)]">Seeds</p>
-        </div>
-      </div>
-      <Link
-        href={`/profile/${username}/birdhouse`}
-        className="flex items-center gap-3 rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3 transition hover:bg-[var(--color-surface-hover)]"
-      >
-        <Birdhouse size={20} className="shrink-0 text-[var(--color-secondary)]" aria-hidden="true" />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold">Birdhouse</p>
-          <p className="text-xs text-[var(--color-muted)]">Birds worth keeping</p>
-        </div>
-        <span className="text-xs text-[var(--color-muted)]">&rsaquo;</span>
-      </Link>
+      </section>
+
+      {data.visibility.reason === 'public_profile' ? (
+        <ProfileConnectionsModal
+          isOpen={isConnectionsModalOpen}
+          username={profile.username}
+          initialTab={connectionsModalTab}
+          followerCount={'followerCount' in profile ? profile.followerCount : undefined}
+          followingCount={'followingCount' in profile ? profile.followingCount : undefined}
+          onClose={() => setIsConnectionsModalOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

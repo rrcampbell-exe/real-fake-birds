@@ -36,11 +36,11 @@ export default function RewardsSection() {
       <section>
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">
-            Personal Bests
+            Stats
           </h2>
           <ShareButton payload={statsSharePayload} eventLabel="stats" />
         </div>
-        <PersonalBests />
+        <PersonalBests includeSummaryStats />
       </section>
 
       <section>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveProfileVisibility } from './profile-visibility';
+import { resolveProfileVisibility, resolveProfileRelationshipAndCapabilities } from './profile-visibility';
 import type { FollowRow } from '@/types/profile';
 
 const TARGET = { userId: 'target-uid', privacyMode: 'public' as const };
@@ -71,5 +71,75 @@ describe('resolveProfileVisibility', () => {
     const result = resolveProfileVisibility(null, TARGET_PRIVATE, NO_FOLLOWS);
     expect(result.reason).toBe('private_unapproved');
     expect(result.canFollow).toBe(false);
+  });
+});
+
+describe('resolveProfileRelationshipAndCapabilities', () => {
+  it('returns owner relationship for the profile owner', () => {
+    const result = resolveProfileRelationshipAndCapabilities('target-uid', TARGET, NO_FOLLOWS);
+    expect(result.relationship).toBe('owner');
+    expect(result.capabilities.canFollow).toBe(false);
+    expect(result.capabilities.canUnfollow).toBe(false);
+    expect(result.capabilities.canChallengeBirdBlitz).toBe(false);
+  });
+
+  it('returns none relationship for non-following viewer of public profile', () => {
+    const result = resolveProfileRelationshipAndCapabilities(VIEWER_ID, TARGET, NO_FOLLOWS);
+    expect(result.relationship).toBe('none');
+    expect(result.capabilities.canFollow).toBe(true);
+    expect(result.capabilities.canUnfollow).toBe(false);
+    expect(result.capabilities.canChallengeBirdBlitz).toBe(true);
+  });
+
+  it('returns following relationship for approved follower of public profile', () => {
+    const rows = [followRow(VIEWER_ID, 'target-uid', 'follow', 'approved')];
+    const result = resolveProfileRelationshipAndCapabilities(VIEWER_ID, TARGET, rows);
+    expect(result.relationship).toBe('following');
+    expect(result.capabilities.canFollow).toBe(false);
+    expect(result.capabilities.canUnfollow).toBe(true);
+    expect(result.capabilities.canChallengeBirdBlitz).toBe(true);
+  });
+
+  it('returns requested relationship for pending follow to private profile', () => {
+    const rows = [followRow(VIEWER_ID, 'target-uid', 'follow', 'pending')];
+    const result = resolveProfileRelationshipAndCapabilities(VIEWER_ID, TARGET_PRIVATE, rows);
+    expect(result.relationship).toBe('requested');
+    expect(result.capabilities.canFollow).toBe(false);
+    expect(result.capabilities.canUnfollow).toBe(false);
+    expect(result.capabilities.canChallengeBirdBlitz).toBe(false);
+  });
+
+  it('returns following relationship for approved follower of private profile', () => {
+    const rows = [followRow(VIEWER_ID, 'target-uid', 'follow', 'approved')];
+    const result = resolveProfileRelationshipAndCapabilities(VIEWER_ID, TARGET_PRIVATE, rows);
+    expect(result.relationship).toBe('following');
+    expect(result.capabilities.canFollow).toBe(false);
+    expect(result.capabilities.canUnfollow).toBe(true);
+    expect(result.capabilities.canChallengeBirdBlitz).toBe(true);
+  });
+
+  it('returns blocked relationship when either party has blocked', () => {
+    const rows = [followRow('target-uid', VIEWER_ID, 'block')];
+    const result = resolveProfileRelationshipAndCapabilities(VIEWER_ID, TARGET, rows);
+    expect(result.relationship).toBe('blocked');
+    expect(result.capabilities.canFollow).toBe(false);
+    expect(result.capabilities.canUnfollow).toBe(false);
+    expect(result.capabilities.canChallengeBirdBlitz).toBe(false);
+  });
+
+  it('allows guest to view public profile but prevents following and challenging', () => {
+    const result = resolveProfileRelationshipAndCapabilities(null, TARGET, NO_FOLLOWS);
+    expect(result.relationship).toBe('none');
+    expect(result.capabilities.canFollow).toBe(false);
+    expect(result.capabilities.canUnfollow).toBe(false);
+    expect(result.capabilities.canChallengeBirdBlitz).toBe(false);
+  });
+
+  it('prevents challenge on private unapproved viewer', () => {
+    const result = resolveProfileRelationshipAndCapabilities(VIEWER_ID, TARGET_PRIVATE, NO_FOLLOWS);
+    expect(result.relationship).toBe('none');
+    expect(result.capabilities.canFollow).toBe(true);
+    expect(result.capabilities.canUnfollow).toBe(false);
+    expect(result.capabilities.canChallengeBirdBlitz).toBe(false);
   });
 });

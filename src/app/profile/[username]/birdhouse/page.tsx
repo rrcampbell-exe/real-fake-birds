@@ -1,107 +1,148 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Birdhouse, ArrowLeft } from 'lucide-react';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { ArrowLeft, Birdhouse, Sparkles } from 'lucide-react';
 import { formatBirdName } from '@/lib/utils/format-bird-name';
 import type { PublicBirdhousePayload, PublicBirdhouseEntry } from '@/app/api/birdhouse/[username]/route';
 
 type BirdhouseTab = 'real' | 'fake';
 
-interface PageProps {
-  params: Promise<{ username: string }>;
-}
-
-function BirdCard({ entry, birdType }: { entry: PublicBirdhouseEntry; birdType: 'real' | 'fake' }) {
-  const displayName = formatBirdName(entry.birdKey);
-  const imageUrl = entry.thumbUrl ?? entry.imageUrl;
-
-  return (
-    <div className="flex aspect-[3/4] flex-col overflow-hidden rounded-[1.75rem] border border-[var(--color-surface-border)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]">
-      <div className="relative flex-1 overflow-hidden bg-[var(--color-surface-hover)]">
-        {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imageUrl}
-            alt={displayName}
-            className="h-full w-auto max-w-full rounded-xl object-contain"
-            loading="lazy"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <Birdhouse size={32} className="text-[var(--color-muted)]" />
-          </div>
-        )}
-        {birdType === 'fake' && (
-          <div className="absolute top-2 left-2 rounded-full bg-[var(--color-secondary)] px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-[var(--color-on-secondary)]">
-            Fake
-          </div>
-        )}
-      </div>
-      <div className="px-3 py-3">
-        <p className="truncate text-sm font-semibold">{displayName}</p>
-      </div>
-    </div>
-  );
-}
-
 function EmptyBirdhouse({ tab, username }: { tab: BirdhouseTab; username: string }) {
   return (
-    <div className="rounded-[2rem] border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-8 text-center">
+    <section className="rounded-[2rem] border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-8 text-center shadow-[var(--shadow-card)]">
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--color-surface-hover)] text-[var(--color-secondary)]">
-        <Birdhouse size={28} />
+        <Sparkles size={28} />
       </div>
-      <h2 className="mt-5 font-[family-name:var(--font-display)] text-xl font-bold">
+      <h2 className="mt-5 font-[family-name:var(--font-display)] text-2xl font-bold text-[var(--color-text)]">
         No {tab} birds yet
       </h2>
-      <p className="mt-2 text-sm text-[var(--color-muted)]">
+      <p className="mt-3 text-sm leading-6 text-[var(--color-muted)]">
         {username} hasn&apos;t added any {tab} birds to their birdhouse yet.
       </p>
-    </div>
+    </section>
   );
 }
 
-export default function PublicBirdhousePage({ params }: PageProps) {
+function keyToDisplayName(key: string): string {
+  return key
+    .split('-')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+function PublicBirdCard({ entry, birdType }: { entry: PublicBirdhouseEntry; birdType: BirdhouseTab }) {
+  const displayBirdName = entry.birdKey.includes(' ')
+    ? formatBirdName(entry.birdKey)
+    : keyToDisplayName(entry.birdKey);
+  const visibleImageUrl = entry.imageUrl ?? entry.thumbUrl;
+
+  return (
+    <article className="group relative overflow-hidden rounded-[1.8rem] border border-[var(--color-surface-border)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]">
+      {visibleImageUrl ? (
+        <div className="relative aspect-[3/4] overflow-hidden">
+          <Image
+            src={visibleImageUrl}
+            alt={displayBirdName}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
+            className="object-cover object-center transition duration-500 group-hover:scale-[1.03]"
+            unoptimized
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_18%,rgba(8,12,18,0.15)_45%,rgba(8,12,18,0.82)_100%)]" />
+        </div>
+      ) : (
+        <div className="flex aspect-[3/4] flex-col justify-end bg-[linear-gradient(160deg,color-mix(in_srgb,var(--color-secondary)_32%,transparent),color-mix(in_srgb,var(--color-primary)_78%,black_22%))] p-5">
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/70">
+            {birdType === 'real' ? 'Real Bird' : 'Fake Bird'}
+          </p>
+          <h2 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-bold leading-tight text-white">
+            {displayBirdName}
+          </h2>
+        </div>
+      )}
+
+      <div className="absolute inset-x-0 bottom-0 p-5">
+        <div className="rounded-[1.35rem] border border-white/10 bg-black/35 p-4 backdrop-blur-sm">
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/75">
+            {birdType === 'real' ? 'Real Bird' : 'Fake Bird'}
+          </p>
+          <h2 className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold leading-tight text-white">
+            {displayBirdName}
+          </h2>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+export default function PublicBirdhousePage() {
+  const params = useParams<{ username?: string }>();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [username, setUsername] = useState<string>('');
-  const [tab, setTab] = useState<BirdhouseTab>(() =>
-    searchParams.get('tab') === 'fake' ? 'fake' : 'real',
-  );
-  const [birdhouse, setBirdhouse] = useState<PublicBirdhousePayload | null>(null);
-  const [status, setStatus] = useState<'loading' | 'error' | 'private' | 'ready'>('loading');
+  const username = typeof params?.username === 'string' ? params.username : '';
+  const tab: BirdhouseTab = searchParams.get('tab') === 'fake' ? 'fake' : 'real';
+  const [fetchState, setFetchState] = useState<{
+    username: string | null;
+    birdhouse: PublicBirdhousePayload | null;
+    status: 'loading' | 'error' | 'private' | 'ready';
+  }>({
+    username: username || null,
+    birdhouse: null,
+    status: username ? 'loading' : 'error',
+  });
 
   useEffect(() => {
-    params.then(({ username: slug }) => {
-      setUsername(slug);
-      setStatus('loading');
+    if (!username) {
+      return;
+    }
 
-      fetch(`/api/birdhouse/${encodeURIComponent(slug)}`)
-        .then(async (res) => {
-          if (res.status === 403) {
-            setStatus('private');
-            return;
-          }
-          if (!res.ok) {
-            setStatus('error');
-            return;
-          }
-          const data = (await res.json()) as PublicBirdhousePayload;
-          setBirdhouse(data);
-          setStatus('ready');
-        })
-        .catch(() => setStatus('error'));
-    }).catch(() => setStatus('error'));
-  }, [params]);
+    const controller = new AbortController();
+
+    fetch(`/api/birdhouse/${encodeURIComponent(username)}`, { signal: controller.signal })
+      .then(async (res) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        if (res.status === 403) {
+          setFetchState({ username, birdhouse: null, status: 'private' });
+          return;
+        }
+        if (!res.ok) {
+          setFetchState({ username, birdhouse: null, status: 'error' });
+          return;
+        }
+        const data = (await res.json()) as PublicBirdhousePayload;
+        if (!controller.signal.aborted) {
+          setFetchState({ username, birdhouse: data, status: 'ready' });
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setFetchState({ username, birdhouse: null, status: 'error' });
+        }
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [username]);
+
+  const status = !username
+    ? 'error'
+    : fetchState.username === username
+      ? fetchState.status
+      : 'loading';
+  const birdhouse = fetchState.username === username ? fetchState.birdhouse : null;
 
   const setTabAndSyncUrl = (nextTab: BirdhouseTab) => {
     if (nextTab === tab) {
       return;
     }
 
-    setTab(nextTab);
     const nextParams = new URLSearchParams(searchParams.toString());
     nextParams.set('tab', nextTab);
     router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
@@ -112,8 +153,7 @@ export default function PublicBirdhousePage({ params }: PageProps) {
     : [];
 
   return (
-    <div className="w-full max-w-lg mx-auto px-4 py-8 flex flex-col gap-6">
-      {/* Back link */}
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8">
       {username && (
         <Link
           href={`/profile/${username}`}
@@ -124,17 +164,24 @@ export default function PublicBirdhousePage({ params }: PageProps) {
         </Link>
       )}
 
-      <div>
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold">
-          {username ? `${username}'s Birdhouse` : 'Birdhouse'}
-        </h1>
-        <p className="text-sm text-[var(--color-muted)] mt-1">
-          Birds worth keeping.
-        </p>
-      </div>
+      <section className="relative overflow-hidden rounded-[2rem] border border-[var(--color-surface-border)] bg-[radial-gradient(circle_at_82%_35%,color-mix(in_srgb,var(--color-secondary)_16%,transparent),transparent_30%),linear-gradient(145deg,color-mix(in_srgb,var(--color-surface)_78%,#fff_22%),color-mix(in_srgb,var(--color-primary)_62%,black_38%))] p-6 shadow-[var(--shadow-card)]">
+        <div className="relative flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-secondary)]">
+              <Birdhouse size={14} />
+              {username ? `${username}'s Birdhouse` : 'Birdhouse'}
+            </div>
+            <h1 className="mt-4 font-[family-name:var(--font-display)] text-3xl font-bold text-[var(--color-text)] md:text-4xl">
+              Birds worth boasting about.
+            </h1>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--color-muted)]">
+              {username ? `${username}'s curated collection.` : 'A curated collection from a fellow real fake birder.'}
+            </p>
+          </div>
+        </div>
+      </section>
 
-      {/* Tab bar */}
-      <div className="flex gap-2">
+      <section className="flex flex-wrap items-center gap-3">
         {(['real', 'fake'] as const).map((t) => {
           const active = t === tab;
           const count = birdhouse ? (t === 'real' ? birdhouse.real.length : birdhouse.fake.length) : 0;
@@ -158,36 +205,35 @@ export default function PublicBirdhousePage({ params }: PageProps) {
             </button>
           );
         })}
-      </div>
+      </section>
 
-      {/* Content */}
       {status === 'loading' && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className="aspect-[3/4] animate-pulse rounded-[1.75rem] bg-[var(--color-surface-hover)]"
+              className="flex aspect-[3/4] animate-pulse flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-[var(--color-surface-border)] bg-[color-mix(in_srgb,var(--color-surface)_90%,white_10%)]"
             />
           ))}
         </div>
       )}
 
       {status === 'private' && (
-        <div className="rounded-[2rem] border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-8 text-center">
+        <section className="rounded-[2rem] border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-8 text-center shadow-[var(--shadow-card)]">
           <h2 className="font-[family-name:var(--font-display)] text-xl font-bold">Private Profile</h2>
           <p className="mt-2 text-sm text-[var(--color-muted)]">
             This birdhouse is only visible to followers.
           </p>
-        </div>
+        </section>
       )}
 
       {status === 'error' && (
-        <div className="rounded-[2rem] border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-8 text-center">
+        <section className="rounded-[2rem] border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-8 text-center shadow-[var(--shadow-card)]">
           <h2 className="font-[family-name:var(--font-display)] text-xl font-bold">Not Found</h2>
           <p className="mt-2 text-sm text-[var(--color-muted)]">
             This birdhouse doesn&apos;t exist or couldn&apos;t be loaded.
           </p>
-        </div>
+        </section>
       )}
 
       {status === 'ready' && entries.length === 0 && (
@@ -195,11 +241,11 @@ export default function PublicBirdhousePage({ params }: PageProps) {
       )}
 
       {status === 'ready' && entries.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <section className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {entries.map((entry) => (
-            <BirdCard key={entry.birdKey} entry={entry} birdType={tab} />
+            <PublicBirdCard key={entry.birdKey} entry={entry} birdType={tab} />
           ))}
-        </div>
+        </section>
       )}
     </div>
   );

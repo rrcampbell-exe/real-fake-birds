@@ -160,6 +160,14 @@ export default function LeaderboardPage() {
 
         <div className="flex flex-wrap items-center gap-3">
           {sharePayload ? <ShareButton payload={sharePayload} eventLabel="weekly-leaderboard" /> : null}
+          {hasMounted && Boolean(accountUsername) ? (
+            <Link
+              href="/community"
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-surface-hover)]"
+            >
+              The Roost
+            </Link>
+          ) : null}
           {hasMounted && !accountUsername && !isLoading && Boolean(leaderboard) ? (
             <Link
               href="/settings"
