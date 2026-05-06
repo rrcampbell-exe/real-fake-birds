@@ -248,8 +248,6 @@ async function handleFollowPost(request: NextRequest): Promise<NextResponse> {
     return handleUnfollow(admin, userId, targetUserId, followsRows);
   } else if (action === 'remove_follower') {
     return handleRemoveFollower(admin, userId, targetUserId);
-  } else if (action === 'remove_follower') {
-    return handleRemoveFollower(admin, userId, targetUserId);
   }
 
   return NextResponse.json({ error: 'invalid_action' }, { status: 400 });
