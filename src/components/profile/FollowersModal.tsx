@@ -156,24 +156,56 @@ export default function FollowersModal({
     }
   };
 
+  const searchCancelledRef = useRef(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      searchCancelledRef.current = true;
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+        searchDebounceRef.current = null;
+      }
+      setIsSearching(false);
+      return;
+    }
+
+    searchCancelledRef.current = false;
+
+    return () => {
+      searchCancelledRef.current = true;
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+        searchDebounceRef.current = null;
+      }
+    };
+  }, [isOpen]);
+
   const handleSearchChange = (q: string) => {
     setSearchQuery(q);
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+      searchDebounceRef.current = null;
+    }
     if (q.trim().length < 1) {
       setSearchResults([]);
       return;
     }
     searchDebounceRef.current = setTimeout(async () => {
+      if (searchCancelledRef.current) return;
+
       setIsSearching(true);
       try {
         const res = await fetch(`/api/users/search?q=${encodeURIComponent(q.trim())}`);
-        if (!res.ok) return;
+        if (!res.ok || searchCancelledRef.current) return;
         const json = (await res.json()) as { users: UserSearchEntry[] };
+        if (searchCancelledRef.current) return;
         setSearchResults(json.users ?? []);
       } catch {
         // silently degrade
       } finally {
-        setIsSearching(false);
+        if (!searchCancelledRef.current) {
+          setIsSearching(false);
+        }
       }
     }, 300);
   };
