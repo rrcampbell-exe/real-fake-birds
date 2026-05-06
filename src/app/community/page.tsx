@@ -94,6 +94,16 @@ export default function CommunityPage() {
     }
   }, [activeTab]);
 
+  // Clear any pending debounce and mark cancelled on unmount.
+  useEffect(() => {
+    return () => {
+      cancelledRef.current = true;
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (!isSignedIn) {
       setConnections(null);
@@ -138,6 +148,7 @@ export default function CommunityPage() {
     }
 
     searchDebounceRef.current = setTimeout(async () => {
+      if (cancelledRef.current) return;
       setIsSearching(true);
       try {
         const res = await fetch(`/api/users/search?q=${encodeURIComponent(query.trim())}`);
@@ -146,11 +157,15 @@ export default function CommunityPage() {
         }
 
         const json = (await res.json()) as { users: UserSearchEntry[] };
-        setSearchResults(json.users ?? []);
+        if (!cancelledRef.current) {
+          setSearchResults(json.users ?? []);
+        }
       } catch {
         // silently degrade
       } finally {
-        setIsSearching(false);
+        if (!cancelledRef.current) {
+          setIsSearching(false);
+        }
       }
     }, 300);
   };
