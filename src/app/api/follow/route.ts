@@ -55,6 +55,30 @@ async function getAuthenticatedRequestContext() {
   }
 }
 
+function isMissingSupabaseColumnError(error: unknown, columnName: string): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const candidate = error as {
+    code?: unknown;
+    message?: unknown;
+    details?: unknown;
+    hint?: unknown;
+  };
+  const code = typeof candidate.code === 'string' ? candidate.code : '';
+  const text = [candidate.message, candidate.details, candidate.hint]
+    .filter((part): part is string => typeof part === 'string')
+    .join(' ')
+    .toLowerCase();
+
+  if (!text.includes(columnName.toLowerCase())) {
+    return false;
+  }
+
+  return code === '42703' || code === 'PGRST204' || code === '';
+}
+
 async function fetchFollowsForUsers(
   admin: ReturnType<typeof createSupabaseAdminClient>,
   userId: string,
@@ -90,8 +114,13 @@ async function fetchTargetProfile(
     return data;
   }
 
-  // If query failed due to missing privacy_mode column, retry without it
   if (error) {
+    // Only retry without privacy_mode when the column is literally missing (schema not yet migrated).
+    // Any other error fails safely to avoid treating private accounts as public.
+    if (!isMissingSupabaseColumnError(error, 'privacy_mode')) {
+      return null;
+    }
+
     const { data: fallback } = await admin
       .from('profiles')
       .select('user_id')
@@ -101,8 +130,6 @@ async function fetchTargetProfile(
     if (fallback?.user_id) {
       return { user_id: fallback.user_id, privacy_mode: 'public' as const };
     }
-
-    return null;
   }
 
   return null;
@@ -124,8 +151,13 @@ async function fetchTargetProfileByUsername(
     return data;
   }
 
-  // If query failed due to missing column, retry without privacy_mode
   if (error) {
+    // Only retry without privacy_mode when the column is literally missing (schema not yet migrated).
+    // Any other error fails safely to avoid treating private accounts as public.
+    if (!isMissingSupabaseColumnError(error, 'privacy_mode')) {
+      return null;
+    }
+
     const { data: fallback } = await admin
       .from('profiles')
       .select('user_id')
