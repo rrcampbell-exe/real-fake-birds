@@ -136,6 +136,29 @@ export async function ensureAccountProfileFromUserMetadata(options: {
     return { status: 'error', profile: null };
   }
 
+  // Auto-follow catbird house account on new user creation (idempotent, silent failure if not found)
+  try {
+    const { data: catbirdProfile } = await admin
+      .from('profiles')
+      .select('user_id')
+      .eq('username_canonical', 'catbird')
+      .maybeSingle<{ user_id: string }>();
+
+    if (catbirdProfile?.user_id) {
+      await admin.from('follows').upsert(
+        {
+          user_id: user.id,
+          related_user_id: catbirdProfile.user_id,
+          relationship_type: 'follow',
+          status: 'approved',
+        },
+        { onConflict: 'user_id,related_user_id,relationship_type' }
+      );
+    }
+  } catch {
+    // Non-fatal: dev environments won't have catbird account
+  }
+
   return {
     status: 'created',
     profile: {
