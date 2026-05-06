@@ -3,12 +3,12 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Check, Music4, Volume2, VolumeX, Camera } from 'lucide-react';
+import { Check, Music4, Volume2, VolumeX, Camera, Lock } from 'lucide-react';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import UsernameAvailabilityCard from '@/components/auth/UsernameAvailabilityCard';
 import LeaderboardAvatar from '@/components/leaderboard/LeaderboardAvatar';
 import { flushQueuedProgressEventsForSignedInUser } from '@/lib/auth/account-session';
-import { purchaseTheme, saveAvatarPalette } from '@/lib/auth/account-sync';
+import { purchaseTheme, saveAvatarPalette, savePrivacyMode } from '@/lib/auth/account-sync';
 import { themes } from '@/lib/themes';
 import { resolveTheme, setTheme } from '@/lib/utils/theme-handler';
 import { finch } from '@/lib/themes';
@@ -48,6 +48,8 @@ export default function SettingsPage() {
     isSignedIn,
     accountAvatarPalette,
     accountAvatarFakeBirdKey,
+    accountAvatarFakeBirdImageUrl,
+    accountPrivacyMode,
     remoteSummary,
     remoteUnlockedThemes,
     refreshAccountState,
@@ -77,6 +79,20 @@ export default function SettingsPage() {
         : getUnlockedThemeNames(defaultBirdScore)
   );
   const [pendingPurchaseThemeName, setPendingPurchaseThemeName] = useState<string | null>(null);
+  const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
+
+  const handlePrivacyToggle = async () => {
+    const next = accountPrivacyMode === 'private' ? 'public' : 'private';
+    setIsSavingPrivacy(true);
+    try {
+      await savePrivacyMode(next);
+      await refreshAccountState();
+    } catch {
+      // silently degrade
+    } finally {
+      setIsSavingPrivacy(false);
+    }
+  };
   const {
     isSfxMuted,
     sfxVolume,
@@ -224,6 +240,45 @@ export default function SettingsPage() {
       </div>
       <UsernameAvailabilityCard />
 
+      {isSignedIn && accountPrivacyMode !== null && (
+        <section>
+          <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold mb-3">
+            Privacy
+          </h2>
+          <div className="flex items-start gap-4 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-hover)] text-[var(--color-muted)]">
+              <Lock size={18} aria-hidden="true" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-[var(--color-text)]">
+                Private account
+              </p>
+              <p className="text-xs text-[var(--color-muted)] mt-0.5">
+                {accountPrivacyMode === 'private'
+                  ? 'New followers must request to follow you. Only approved followers can see your stats.'
+                  : 'When on, new followers must request to follow you before seeing your stats.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => { void handlePrivacyToggle(); }}
+              disabled={isSavingPrivacy}
+              className={`relative mt-0.5 w-11 h-6 shrink-0 rounded-full transition-colors cursor-pointer disabled:opacity-50 ${
+                accountPrivacyMode === 'private' ? 'bg-[var(--color-secondary)]' : 'bg-[var(--color-surface-border)]'
+              }`}
+              aria-label={accountPrivacyMode === 'private' ? 'Turn off private account' : 'Turn on private account'}
+              aria-pressed={accountPrivacyMode === 'private'}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+                  accountPrivacyMode === 'private' ? 'translate-x-5' : ''
+                }`}
+              />
+            </button>
+          </div>
+        </section>
+      )}
+
       {isSignedIn && (
         <section>
           <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold mb-3">
@@ -233,6 +288,7 @@ export default function SettingsPage() {
             <LeaderboardAvatar
               username={""}
               avatarPalette={accountAvatarPalette ?? null}
+              avatarBirdImageUrl={accountAvatarFakeBirdImageUrl ?? null}
               size="sm"
             />
             <div className="flex-1 min-w-0">

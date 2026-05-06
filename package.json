@@ -35,8 +35,10 @@
     "validate:fake:moderate:images": "npx tsx scripts/validate-fake-birds.ts --moderate-text --moderate-images",
     "backfill:sciname": "npx tsx scripts/backfill-cdn-sciname.ts",
     "backfill:sciname:dry-run": "npx tsx scripts/backfill-cdn-sciname.ts --dry-run",
-    "migrate": "SUPABASE_PROJECT_REF=pyizgeecjvbxgbjwpcjj supabase db push",
-    "migrate:prod": "SUPABASE_PROJECT_REF=bbmuqhogdpadbirwllrw supabase db push"
+    "supabase:link:dev": "npx supabase link --project-ref pyizgeecjvbxgbjwpcjj",
+    "supabase:link:prod": "npx supabase link --project-ref bbmuqhogdpadbirwllrw",
+    "migrate": "npm run supabase:link:dev && npx supabase db push --linked",
+    "migrate:prod": "npm run supabase:link:prod && npx supabase db push --linked"
   },
   "dependencies": {
     "@capacitor-community/native-audio": "^8.0.0",

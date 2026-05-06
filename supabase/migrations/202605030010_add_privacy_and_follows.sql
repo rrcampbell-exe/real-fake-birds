@@ -48,3 +48,6 @@ drop policy if exists "profiles_public_read" on public.profiles;
 create policy "profiles_public_read"
   on public.profiles for select
   using (true);
+
+-- Reload PostgREST schema cache so new tables are immediately visible
+notify pgrst, 'reload schema';

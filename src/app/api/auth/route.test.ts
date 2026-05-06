@@ -532,7 +532,7 @@ describe('auth route', () => {
         };
       }
 
-      if (columns === 'username, username_canonical, avatar_palette, is_house_account, created_at, avatar_fake_bird_key') {
+      if (columns === 'username, username_canonical, avatar_palette, is_house_account, created_at, avatar_fake_bird_key, privacy_mode') {
         return {
           eq: vi.fn().mockReturnValue({
             maybeSingle: vi.fn().mockResolvedValue({

@@ -36,6 +36,8 @@ type AccountStateCache = {
   avatarPalette: string | null;
   joinedMonthYear: string | null;
   avatarFakeBirdKey: string | null;
+  avatarFakeBirdImageUrl: string | null;
+  privacyMode: 'public' | 'private' | null;
   remoteSummary: RemoteProgressSummary | null;
   remoteUnlockedThemes: string[];
   weeklyOverview: WeeklyOverview | null;
@@ -55,6 +57,8 @@ type AccountStateContextValue = {
   accountAvatarPalette: string | null;
   accountJoinedMonthYear: string | null;
   accountAvatarFakeBirdKey: string | null;
+  accountAvatarFakeBirdImageUrl: string | null;
+  accountPrivacyMode: 'public' | 'private' | null;
   isHouseAccount: boolean;
   remoteSummary: RemoteProgressSummary | null;
   remoteUnlockedThemes: string[];
@@ -231,6 +235,8 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
   const [accountAvatarPalette, setAccountAvatarPalette] = useState<string | null>(null);
   const [accountJoinedMonthYear, setAccountJoinedMonthYear] = useState<string | null>(null);
   const [accountAvatarFakeBirdKey, setAccountAvatarFakeBirdKey] = useState<string | null>(null);
+  const [accountAvatarFakeBirdImageUrl, setAccountAvatarFakeBirdImageUrl] = useState<string | null>(null);
+  const [accountPrivacyMode, setAccountPrivacyMode] = useState<'public' | 'private' | null>(null);
   const [isHouseAccount, setIsHouseAccount] = useState<boolean>(false);
   const [remoteSummary, setRemoteSummary] = useState<RemoteProgressSummary | null>(null);
   const [remoteUnlockedThemes, setRemoteUnlockedThemes] = useState<string[]>([]);
@@ -247,6 +253,8 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
     setAccountAvatarPalette(cache.avatarPalette ?? null);
     setAccountJoinedMonthYear(cache.joinedMonthYear ?? null);
     setAccountAvatarFakeBirdKey(cache.avatarFakeBirdKey ?? null);
+    setAccountAvatarFakeBirdImageUrl(cache.avatarFakeBirdImageUrl ?? null);
+    setAccountPrivacyMode(cache.privacyMode ?? null);
     setRemoteSummary(cache.remoteSummary);
     setRemoteUnlockedThemes(cache.remoteUnlockedThemes);
 
@@ -270,6 +278,8 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
     setAccountAvatarPalette(null);
     setAccountJoinedMonthYear(null);
     setAccountAvatarFakeBirdKey(null);
+    setAccountAvatarFakeBirdImageUrl(null);
+    setAccountPrivacyMode(null);
     setIsHouseAccount(false);
     setRemoteSummary(null);
     setRemoteUnlockedThemes([]);
@@ -318,6 +328,8 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
       setAccountAvatarPalette(accountState.profile?.avatarPalette ?? null);
       setAccountJoinedMonthYear(accountState.profile?.joinedMonthYear ?? null);
       setAccountAvatarFakeBirdKey(accountState.profile?.avatarFakeBirdKey ?? null);
+      setAccountAvatarFakeBirdImageUrl(accountState.profile?.avatarFakeBirdImageUrl ?? null);
+      setAccountPrivacyMode(accountState.profile?.privacyMode ?? null);
       setIsHouseAccount(accountState.profile?.isHouseAccount ?? false);
       setRemoteSummary(accountState.progressSummary);
       setRemoteUnlockedThemes(accountState.unlockedThemes);
@@ -330,6 +342,8 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
         avatarPalette: accountState.profile?.avatarPalette ?? null,
         joinedMonthYear: accountState.profile?.joinedMonthYear ?? null,
         avatarFakeBirdKey: accountState.profile?.avatarFakeBirdKey ?? null,
+        avatarFakeBirdImageUrl: accountState.profile?.avatarFakeBirdImageUrl ?? null,
+        privacyMode: accountState.profile?.privacyMode ?? null,
         remoteSummary: accountState.progressSummary,
         remoteUnlockedThemes: accountState.unlockedThemes,
         weeklyOverview: accountState.weeklyOverview,
@@ -628,13 +642,15 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
     accountAvatarPalette,
     accountJoinedMonthYear,
     accountAvatarFakeBirdKey,
+    accountAvatarFakeBirdImageUrl,
+    accountPrivacyMode,
     isHouseAccount,
     remoteSummary,
     remoteUnlockedThemes,
     weeklyOverview,
     refreshAccountState: () => refreshAccountState(),
     syncSignedInProgress: () => syncSignedInProgress({ silent: true }),
-  }), [accountAvatarFakeBirdKey, accountAvatarPalette, accountEmail, accountJoinedMonthYear, accountUsername, isAppChromeVisible, isBackgroundSyncing, isBooting, isHouseAccount, isLoadingAccount, isSignedIn, refreshAccountState, remoteSummary, remoteUnlockedThemes, syncSignedInProgress, weeklyOverview]);
+  }), [accountAvatarFakeBirdImageUrl, accountAvatarFakeBirdKey, accountAvatarPalette, accountEmail, accountJoinedMonthYear, accountPrivacyMode, accountUsername, isAppChromeVisible, isBackgroundSyncing, isBooting, isHouseAccount, isLoadingAccount, isSignedIn, refreshAccountState, remoteSummary, remoteUnlockedThemes, syncSignedInProgress, weeklyOverview]);
 
   return (
     <AccountStateContext.Provider value={value}>
