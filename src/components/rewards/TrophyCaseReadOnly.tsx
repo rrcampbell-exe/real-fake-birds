@@ -19,7 +19,7 @@ interface TrophyCaseReadOnlyProps {
 /**
  * Read-only trophy display for other-user profiles.
  * Shows up to `badgeLimit` most-recently-earned milestone badges + podium finishes.
- * Does not read from localStorage or AccountState.
+ * Does not read from AccountState.
  */
 export default function TrophyCaseReadOnly({
   birdsIdentified,
