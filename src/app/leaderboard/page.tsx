@@ -4,13 +4,11 @@ import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Binoculars, Bird, BookOpen, Bot, Feather, Flame, Sprout, Target, Trophy, HatGlasses, UserStar } from 'lucide-react';
-import ShareButton from '@/components/ShareButton';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import LeaderboardAvatar from '@/components/leaderboard/LeaderboardAvatar';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { useHasHydrated } from '@/hooks/useHasHydrated';
 import { useScreenViewed } from '@/hooks/useScreenViewed';
-import { buildWeeklyLeaderboardSharePayload } from '@/lib/utils/share-data';
 import { getTimeRemainingInWeek, markLeaderboardWeekSeen } from '@/lib/utils/weekly-leaderboard';
 import type { WeeklyChallengeIcon } from '@/types';
 
@@ -74,18 +72,6 @@ export default function LeaderboardPage() {
     }
 
     markLeaderboardWeekSeen(leaderboard.weekStart);
-  }, [leaderboard]);
-
-  const sharePayload = useMemo(() => {
-    if (!leaderboard?.currentUserEntry) {
-      return null;
-    }
-
-    return buildWeeklyLeaderboardSharePayload({
-      challengeName: leaderboard.challenge.name,
-      rank: leaderboard.currentUserEntry.rank,
-      isFinal: false,
-    });
   }, [leaderboard]);
 
   const Icon = leaderboard ? challengeIcons[leaderboard.challenge.icon] : UserStar;
@@ -159,15 +145,6 @@ export default function LeaderboardPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {sharePayload ? <ShareButton payload={sharePayload} eventLabel="weekly-leaderboard" /> : null}
-          {hasMounted && Boolean(accountUsername) ? (
-            <Link
-              href="/community"
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-surface-hover)]"
-            >
-              The Roost
-            </Link>
-          ) : null}
           {hasMounted && !accountUsername && !isLoading && Boolean(leaderboard) ? (
             <Link
               href="/settings"

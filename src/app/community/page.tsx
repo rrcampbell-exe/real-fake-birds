@@ -6,7 +6,6 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowRight,
   Binoculars,
-  Bird,
   Check,
   Search,
   UserMinus,
@@ -35,7 +34,7 @@ function parseTab(value: string | null): CommunityTab {
 
 export default function CommunityPage() {
   useScreenViewed('community-roost');
-  const { isSignedIn, accountPrivacyMode } = useAccountState();
+  const { isSignedIn } = useAccountState();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -50,6 +49,7 @@ export default function CommunityPage() {
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelledRef = useRef(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const isMountedTabRef = useRef(true);
 
   const fetchConnections = useCallback(async () => {
     if (!isSignedIn) {
@@ -89,6 +89,10 @@ export default function CommunityPage() {
   }, [searchParams]);
 
   useEffect(() => {
+    if (isMountedTabRef.current) {
+      isMountedTabRef.current = false;
+      return;
+    }
     if (activeTab === 'find') {
       searchInputRef.current?.focus();
     }
@@ -368,8 +372,8 @@ export default function CommunityPage() {
 
   const tabs: Array<{ id: CommunityTab; label: string; count?: number }> = [
     { id: 'find', label: 'Find Birders' },
-    { id: 'following', label: 'Following', count: following.length },
     { id: 'followers', label: 'Followers', count: followers.length },
+    { id: 'following', label: 'Following', count: following.length },
     ...(pendingCount > 0 ? [{ id: 'requests' as const, label: 'Requests', count: pendingCount }] : []),
   ];
 
@@ -394,22 +398,6 @@ export default function CommunityPage() {
             <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--color-muted)]">
               Find friends, follow along, and grow your gaggle.
             </p>
-          </div>
-
-          <div className={`grid gap-3 sm:min-w-[18rem] ${accountPrivacyMode === 'private' ? 'grid-cols-3' : 'grid-cols-2'}`}>
-            {[
-              { label: 'Following', value: following.length },
-              { label: 'Followers', value: followers.length },
-              ...(accountPrivacyMode === 'private' ? [{ label: 'Requests', value: pendingCount }] : []),
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="rounded-[1.35rem] border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-3 text-center"
-              >
-                <p className="font-[family-name:var(--font-display)] text-2xl font-bold text-[var(--color-text)]">{item.value}</p>
-                <p className="mt-1 text-[0.72rem] uppercase tracking-[0.14em] text-[var(--color-muted)]">{item.label}</p>
-              </div>
-            ))}
           </div>
         </div>
       </section>
@@ -508,22 +496,6 @@ export default function CommunityPage() {
                   </div>
                 )}
 
-                {!isSearching && searchQuery.trim().length === 0 && (
-                  <div className="rounded-[1.5rem] border border-dashed border-[var(--color-surface-border)] bg-[color-mix(in_srgb,var(--color-surface)_88%,white_12%)] p-5">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-surface)] text-[var(--color-secondary)]">
-                        <Bird size={18} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-[var(--color-text)]">Start with a username</p>
-                        <p className="mt-1 text-sm leading-6 text-[var(--color-muted)]">
-                          Search works best when you already know who you are looking for. If you want to explore, the leaderboard is still the quickest field guide.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {!isSearching && searchQuery.trim().length > 0 && searchResults.length > 0 && (
                   <ul className="flex flex-col gap-3">
                     {searchResults.map((entry) => (
@@ -556,11 +528,6 @@ export default function CommunityPage() {
                 <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-[var(--color-text)]">
                   {activeTab === 'followers' ? 'Your followers' : 'Birders you follow'}
                 </h2>
-                <p className="mt-1 text-sm text-[var(--color-muted)]">
-                  {activeTab === 'followers'
-                    ? 'Anyone who is currently perched on your updates.'
-                    : 'The birders whose profiles you can reach again quickly.'}
-                </p>
               </div>
 
               {isLoading && (
