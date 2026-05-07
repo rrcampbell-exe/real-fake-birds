@@ -34,7 +34,7 @@ function parseTab(value: string | null): CommunityTab {
 
 export default function CommunityPage() {
   useScreenViewed('community-roost');
-  const { isSignedIn, accountPrivacyMode } = useAccountState();
+  const { isSignedIn } = useAccountState();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -398,22 +398,6 @@ export default function CommunityPage() {
             <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--color-muted)]">
               Find friends, follow along, and grow your gaggle.
             </p>
-          </div>
-
-          <div className={`grid gap-3 sm:min-w-[18rem] ${accountPrivacyMode === 'private' ? 'grid-cols-3' : 'grid-cols-2'}`}>
-            {[
-              { label: 'Followers', value: followers.length },
-              { label: 'Following', value: following.length },
-              ...(accountPrivacyMode === 'private' ? [{ label: 'Requests', value: pendingCount }] : []),
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="rounded-[1.35rem] border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-3 py-3 text-center"
-              >
-                <p className="font-[family-name:var(--font-display)] text-2xl font-bold text-[var(--color-text)]">{item.value}</p>
-                <p className="mt-1 text-[0.72rem] uppercase tracking-[0.14em] text-[var(--color-muted)]">{item.label}</p>
-              </div>
-            ))}
           </div>
         </div>
       </section>

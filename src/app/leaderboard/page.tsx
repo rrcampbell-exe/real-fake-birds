@@ -9,7 +9,6 @@ import LeaderboardAvatar from '@/components/leaderboard/LeaderboardAvatar';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { useHasHydrated } from '@/hooks/useHasHydrated';
 import { useScreenViewed } from '@/hooks/useScreenViewed';
-import { buildWeeklyLeaderboardSharePayload } from '@/lib/utils/share-data';
 import { getTimeRemainingInWeek, markLeaderboardWeekSeen } from '@/lib/utils/weekly-leaderboard';
 import type { WeeklyChallengeIcon } from '@/types';
 
