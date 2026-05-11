@@ -7,6 +7,7 @@ import { useScreenViewed } from '@/hooks/useScreenViewed';
 import BirdhousePreviewCard from '@/components/profile/BirdhousePreviewCard';
 import ProfileConnectionsModal from '@/components/profile/ProfileConnectionsModal';
 import ProfileHeader from '@/components/profile/ProfileHeader';
+import ProfileSafetyActions from '@/components/profile/ProfileSafetyActions';
 import ProgressSummary from '@/components/profile/ProgressSummary';
 import PublicBirdhousePreviewCard from '@/components/profile/PublicBirdhousePreviewCard';
 import TrophyCaseReadOnly from '@/components/rewards/TrophyCaseReadOnly';
@@ -42,8 +43,12 @@ function useProfileData(username: string) {
   const [error, setError] = useState<string | null>(null);
   const cancelledRef = useRef(false);
 
-  const fetchProfile = useCallback(async () => {
-    setIsLoading(true);
+  const fetchProfile = useCallback(async (options?: { background?: boolean }) => {
+    if (!options?.background) {
+      setIsLoading(true);
+      setError(null);
+    }
+
     try {
       const res = await fetch(
         `/api/profile?username=${encodeURIComponent(username.toLowerCase())}`,
@@ -54,13 +59,16 @@ function useProfileData(username: string) {
       const json = (await res.json()) as ProfileReadResponse;
       if (!cancelledRef.current) {
         setData(json);
+        setError(null);
       }
-    } catch {
-      if (!cancelledRef.current) {
+      return json;
+    } catch (cause) {
+      if (!cancelledRef.current && !options?.background) {
         setError('Unable to load this profile.');
       }
+      throw cause;
     } finally {
-      if (!cancelledRef.current) {
+      if (!cancelledRef.current && !options?.background) {
         setIsLoading(false);
       }
     }
@@ -69,20 +77,20 @@ function useProfileData(username: string) {
   useEffect(() => {
     if (!username) return;
     cancelledRef.current = false;
-    fetchProfile();
+    void fetchProfile().catch(() => undefined);
     return () => {
       cancelledRef.current = true;
     };
   }, [username, fetchProfile]);
 
-  return { data, setData, isLoading, error };
+  return { data, setData, isLoading, error, fetchProfile };
 }
 
 export default function UserProfilePage() {
   useScreenViewed('profile-view');
   const params = useParams();
   const username = typeof params?.username === 'string' ? params.username : '';
-  const { data, setData, isLoading, error } = useProfileData(username);
+  const { data, setData, isLoading, error, fetchProfile } = useProfileData(username);
   const [isFollowActionPending, setIsFollowActionPending] = useState(false);
   const [followActionError, setFollowActionError] = useState<string | null>(null);
   const [connectionsModalTab, setConnectionsModalTab] = useState<'followers' | 'following'>('followers');
@@ -157,6 +165,46 @@ export default function UserProfilePage() {
     }
   };
 
+  const handleProfileBlocked = useCallback(() => {
+    setFollowActionError(null);
+    setIsConnectionsModalOpen(false);
+    setData((current) => {
+      if (!current?.profile) {
+        return current;
+      }
+
+      return {
+        visibility: { reason: 'blocked', canViewFull: false, canFollow: false },
+        relationship: 'blocked',
+        blockState: 'viewer_blocked_target',
+        capabilities: {
+          canFollow: false,
+          canUnfollow: false,
+          canChallengeBirdBlitz: false,
+        },
+        profile: {
+          kind: 'blocked',
+          username: current.profile.username,
+          isHouseAccount: current.profile.isHouseAccount,
+          joinedMonthYear: current.profile.joinedMonthYear,
+        },
+      };
+    });
+  }, [setData]);
+
+  const handleProfileUnblocked = useCallback(async () => {
+    await fetchProfile({ background: true });
+  }, [fetchProfile]);
+
+  const profileSafetyActions = data?.profile ? (
+    <ProfileSafetyActions
+      targetUsername={data.profile.username}
+      blockState={data.blockState}
+      onBlocked={handleProfileBlocked}
+      onUnblocked={handleProfileUnblocked}
+    />
+  ) : null;
+
   if (isLoading) {
     return (
       <div className="w-full max-w-lg mx-auto px-4 py-8 flex flex-col gap-8">
@@ -222,6 +270,36 @@ export default function UserProfilePage() {
 
   const { profile, relationship, capabilities } = data;
 
+  if (profile.kind === 'blocked') {
+    return (
+      <div className="w-full max-w-lg mx-auto px-4 py-8 flex flex-col gap-4">
+        <ProfileHeader
+          username={profile.username}
+          avatarPalette=""
+          joinedMonthYear={profile.joinedMonthYear}
+          isHouseAccount={profile.isHouseAccount}
+          headerActions={profileSafetyActions}
+          showFollowerSummary={false}
+        />
+        <div className="rounded-[1.5rem] border border-red-300/12 bg-[color-mix(in_srgb,var(--color-primary)_82%,black)] px-4 py-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-red-300/15 bg-red-500/10 text-red-100">
+              <Lock size={16} />
+            </div>
+            <div>
+              <p className="font-[family-name:var(--font-display)] text-lg font-semibold text-[var(--color-text)]">
+                This player is blocked.
+              </p>
+              <p className="mt-1 text-sm leading-6 text-[var(--color-muted)]">
+                This player will not be able to interact with you until you unblock them.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (profile.kind === 'restricted') {
     return (
       <div className="w-full max-w-lg mx-auto px-4 py-8 flex flex-col gap-4">
@@ -233,7 +311,7 @@ export default function UserProfilePage() {
           followerCount={profile.followerCount}
           followingCount={profile.followingCount}
           headerActions={
-            <>
+            <div className="flex items-start gap-2">
               {capabilities.canFollow && (
                 <button
                   type="button"
@@ -249,7 +327,8 @@ export default function UserProfilePage() {
                   Request sent
                 </span>
               )}
-            </>
+              {profileSafetyActions}
+            </div>
           }
         />
         <div className="flex items-center gap-2 text-sm text-[var(--color-muted)]">
@@ -283,7 +362,7 @@ export default function UserProfilePage() {
           setIsConnectionsModalOpen(true);
         } : undefined}
         headerActions={
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex items-start gap-2">
             {(capabilities.canFollow || capabilities.canUnfollow) && (
               <button
                 type="button"
@@ -298,6 +377,7 @@ export default function UserProfilePage() {
                 {capabilities.canUnfollow ? 'Unfollow' : 'Follow'}
               </button>
             )}
+            {profileSafetyActions}
           </div>
         }
       />
