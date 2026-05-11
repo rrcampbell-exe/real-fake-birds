@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { Bird } from 'lucide-react';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { markLaunchStage } from '@/lib/native/launch-metrics';
 import { getSoundController } from '@/lib/sound/sound-platform';
 import { finch } from '@/lib/themes';
 
@@ -54,6 +55,8 @@ export default function AppBootScreen({ progress, status }: AppBootScreenProps) 
   // Play ambient bird chirps while loading data. Stops automatically when this
   // component unmounts (i.e. when the boot sequence completes).
   useEffect(() => {
+    markLaunchStage('boot-overlay-mounted', undefined, { once: true });
+
     const controller = getSoundController();
     controller.startLoop('loadingLoop');
     return () => {

@@ -1,13 +1,26 @@
 import UIKit
 import Capacitor
 
+private extension UIColor {
+    static let rfbLaunchGreen = UIColor(
+        red: 27.0 / 255.0,
+        green: 92.0 / 255.0,
+        blue: 27.0 / 255.0,
+        alpha: 1
+    )
+}
+
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        DispatchQueue.main.async { [weak self] in
+            self?.window?.backgroundColor = .rfbLaunchGreen
+            self?.window?.rootViewController?.view.backgroundColor = .rfbLaunchGreen
+            self?.window?.rootViewController?.view.isOpaque = true
+        }
         return true
     }
 

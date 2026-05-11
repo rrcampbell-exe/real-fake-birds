@@ -2,7 +2,9 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const serverUrl = process.env.CAPACITOR_SERVER_URL;
 const allowCleartext = serverUrl?.startsWith('http://') ?? false;
-const usesRemoteWebServer = Boolean(serverUrl);
+const usesProductionHostedWebApp = serverUrl === 'https://www.realfakebirds.app'
+  || serverUrl === 'https://realfakebirds.app';
+const useManualSplashHandoff = usesProductionHostedWebApp;
 
 const config: CapacitorConfig = {
   appId: 'com.realfakebirds.app',
@@ -24,10 +26,11 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      launchShowDuration: 2000,
-      // When running against a remote dev/prod web server URL, prefer native
-      // auto-hide so failed JS hydration cannot trap the app on splash.
-      launchAutoHide: usesRemoteWebServer,
+      // Keep manual splash control only for the production hosted app. Localhost
+      // and LAN builds should fail open instead of trapping on splash when the
+      // device cannot reach the dev server.
+      launchShowDuration: useManualSplashHandoff ? 500 : 2000,
+      launchAutoHide: !useManualSplashHandoff,
       backgroundColor: '#1B5C1B',
       androidSplashResourceName: 'splash',
       androidScaleType: 'CENTER_CROP',

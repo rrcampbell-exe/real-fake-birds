@@ -1,4 +1,5 @@
 import { track } from '@/lib/analytics';
+import { markLaunchStage } from '@/lib/native/launch-metrics';
 import type { BirdErrorResponse, BirdResponse, GameMode, ImageAttribution } from '@/types';
 
 const BIRD_DATA_STORAGE_KEY = 'birdData';
@@ -96,6 +97,9 @@ const fetchData = async (
       if (!delayCompleted || signal?.aborted) {
         return;
       }
+      markLaunchStage('first-round-ready', {
+        source: 'cache',
+      }, { once: true });
       setIsLoading(false);
       setBirdData(birdName);
       return;
@@ -162,6 +166,10 @@ const fetchData = async (
     if (!delayCompleted || signal?.aborted) {
       return;
     }
+    markLaunchStage('first-round-ready', {
+      source: 'network',
+      requestDurationMs,
+    }, { once: true });
     setIsLoading(false);
     setBirdData(data.birdName);
   } catch (error) {
