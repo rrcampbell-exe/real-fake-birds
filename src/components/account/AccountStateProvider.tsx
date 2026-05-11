@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import AppBootScreen from '@/components/account/AppBootScreen';
@@ -248,6 +248,7 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
   const [remoteSummary, setRemoteSummary] = useState<RemoteProgressSummary | null>(null);
   const [remoteUnlockedThemes, setRemoteUnlockedThemes] = useState<string[]>([]);
   const [weeklyOverview, setWeeklyOverview] = useState<WeeklyOverview | null>(null);
+  const currentAuthUserIdRef = useRef<string | null>(null);
 
   const applyRemoteAccountState = useCallback((accountState: AccountStateResponse) => {
     setIsSignedIn(true);
@@ -309,6 +310,7 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clearAccountState = useCallback(() => {
+    currentAuthUserIdRef.current = null;
     setIsSignedIn(false);
     setAccountEmail(null);
     setAccountUsername(null);
@@ -359,6 +361,7 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      currentAuthUserIdRef.current = sessionUser.id;
       setIsSignedIn(true);
       applyRemoteAccountState(await fetchAccountState());
     } catch (error) {
@@ -518,6 +521,7 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
     };
 
     let active = true;
+    let bootBackgroundSyncActive = false;
     const bootWatchdogId = window.setTimeout(() => {
       if (!active) {
         return;
@@ -571,6 +575,7 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
           const hasWarmCache = hasWarmProgressCache();
 
           if (active) {
+            bootBackgroundSyncActive = true;
             setIsBackgroundSyncing(true);
           }
 
@@ -601,7 +606,8 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
           } catch {
             logNativeAuthEvent('boot-account-refresh-deferred');
           } finally {
-            if (active) {
+            if (bootBackgroundSyncActive) {
+              bootBackgroundSyncActive = false;
               setIsBackgroundSyncing(false);
             }
           }
@@ -625,6 +631,10 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
     return () => {
       active = false;
       window.clearTimeout(bootWatchdogId);
+      if (bootBackgroundSyncActive) {
+        bootBackgroundSyncActive = false;
+        setIsBackgroundSyncing(false);
+      }
     };
   }, [applyAccountStateCache, clearAccountState, refreshAccountState, supabaseReady]);
 
@@ -638,6 +648,10 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
 
     void (async () => {
       const { App } = await import('@capacitor/app');
+      if (!active) {
+        return;
+      }
+
       const listener = await App.addListener('appStateChange', ({ isActive }) => {
         logNativeAuthEvent('app-state-change', { isActive });
 
@@ -663,6 +677,11 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
           void syncSignedInProgress({ silent: true });
         })();
       });
+
+      if (!active) {
+        await listener.remove();
+        return;
+      }
 
       removeListener = () => listener.remove();
     })();
@@ -721,10 +740,13 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
+      const nextUserId = session?.user.id ?? null;
+      const currentUserId = currentAuthUserIdRef.current;
+
       logNativeAuthEvent('auth-state-change', {
         event,
         hasSession: Boolean(session?.user),
-        userId: session?.user.id ?? null,
+        userId: nextUserId,
       });
 
       if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
@@ -734,7 +756,16 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      if (session?.user) {
+      if (nextUserId && currentUserId && nextUserId !== currentUserId) {
+        clearAccountState();
+      }
+
+      if (event === 'SIGNED_IN') {
+        clearAccountState();
+      }
+
+      if (nextUserId) {
+        currentAuthUserIdRef.current = nextUserId;
         setIsSignedIn(true);
       }
 

@@ -1,5 +1,5 @@
 import { render, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockHide = vi.fn();
 const mockPreloadAll = vi.fn();
@@ -30,6 +30,7 @@ import NativeSplashHandler from './NativeSplashHandler';
 
 describe('NativeSplashHandler', () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     document.documentElement.removeAttribute('data-app-booting');
     document.body.innerHTML = '';
     mockHide.mockReset();
@@ -43,6 +44,10 @@ describe('NativeSplashHandler', () => {
       callback(0);
       return 1;
     });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('returns early outside the native shell', async () => {

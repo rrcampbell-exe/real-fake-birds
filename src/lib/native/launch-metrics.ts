@@ -16,7 +16,9 @@ export function markLaunchStage(
     return;
   }
 
-  seenLaunchStages.add(stage);
+  if (options?.once) {
+    seenLaunchStages.add(stage);
+  }
 
   const markName = `rfb:${stage}`;
   performance.mark(markName);
