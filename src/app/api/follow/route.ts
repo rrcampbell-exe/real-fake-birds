@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { hasSupabaseEnv } from '@/lib/supabase/env';
 import { createSupabaseAdminClient, createSupabaseServerClient } from '@/lib/supabase/server';
 import { consumeRateLimit, getRateLimitKey } from '@/lib/server/rate-limiter';
+import { fetchRelationshipRows, hasBlockRelationship } from '@/lib/server/social-relationships';
 import type { FollowRow } from '@/types/profile';
 
 const FOLLOW_ACTION_WINDOW_MS = 60_000;
@@ -77,27 +78,6 @@ function isMissingSupabaseColumnError(error: unknown, columnName: string): boole
   }
 
   return code === '42703' || code === 'PGRST204' || code === '';
-}
-
-async function fetchFollowsForUsers(
-  admin: ReturnType<typeof createSupabaseAdminClient>,
-  userId: string,
-  targetUserId: string,
-): Promise<FollowRow[]> {
-  const { data: follows } = await admin
-    .from('follows')
-    .select('user_id, related_user_id, relationship_type, status')
-    .or(
-      `and(user_id.eq.${userId},related_user_id.eq.${targetUserId}),` +
-        `and(user_id.eq.${targetUserId},related_user_id.eq.${userId})`,
-    );
-
-  return (follows ?? []).map((row) => ({
-    userId: row.user_id as string,
-    relatedUserId: row.related_user_id as string,
-    relationshipType: row.relationship_type as 'follow' | 'block',
-    status: row.status as 'pending' | 'approved',
-  }));
 }
 
 async function fetchTargetProfile(
@@ -256,14 +236,10 @@ async function handleFollowPost(request: NextRequest): Promise<NextResponse> {
   const privacyMode = targetProfile.privacy_mode;
 
   // Fetch existing follows/blocks
-  const followsRows = await fetchFollowsForUsers(admin, userId, targetUserId);
+  const followsRows = await fetchRelationshipRows(admin, userId, targetUserId);
 
   // Check for blocks (prevents any action)
-  const isBlocked = followsRows.some(
-    (row) =>
-      row.relationshipType === 'block' &&
-      (row.userId === userId || row.relatedUserId === userId),
-  );
+  const isBlocked = hasBlockRelationship(followsRows, userId, targetUserId);
 
   if (isBlocked) {
     return NextResponse.json({ error: 'blocked' }, { status: 403 });

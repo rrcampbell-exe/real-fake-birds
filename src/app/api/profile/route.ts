@@ -3,9 +3,11 @@ import { hasSupabaseEnv } from '@/lib/supabase/env';
 import { createSupabaseAdminClient, createSupabaseServerClient } from '@/lib/supabase/server';
 import { consumeRateLimit, getRateLimitKey } from '@/lib/server/rate-limiter';
 import { resolveProfileRelationshipAndCapabilities } from '@/lib/server/profile-visibility';
+import { fetchRelationshipRows } from '@/lib/server/social-relationships';
 import { formatJoinedMonthYear } from '@/lib/utils/profile-helpers';
 import { getCdnImageUrl, isCdnEnabled } from '@/lib/server/cdn';
 import type {
+  BlockedProfilePayload,
   FollowRow,
   OwnProfilePayload,
   ProfileProgressSummary,
@@ -76,16 +78,17 @@ function getClientIp(request: NextRequest): string | null {
   return request.headers.get('x-real-ip');
 }
 
-function blockedResponse(): NextResponse<ProfileReadResponse> {
+function blockedResponse(profile: BlockedProfilePayload | null, blockState: ProfileReadResponse['blockState']): NextResponse<ProfileReadResponse> {
   return NextResponse.json({
     visibility: { reason: 'blocked', canViewFull: false, canFollow: false },
     relationship: 'blocked',
+    blockState,
     capabilities: {
       canFollow: false,
       canUnfollow: false,
       canChallengeBirdBlitz: false,
     },
-    profile: null,
+    profile,
   });
 }
 
@@ -163,6 +166,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({
       visibility: { reason: 'private_unapproved', canViewFull: false, canFollow: false },
       relationship: 'none',
+      blockState: 'none',
       capabilities: {
         canFollow: false,
         canUnfollow: false,
@@ -173,30 +177,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   // Fetch follow/block rows involving either party
-  let followsRows: FollowRow[] = [];
-  if (viewerId) {
-    const { data: follows } = await admin
-      .from('follows')
-      .select('user_id, related_user_id, relationship_type, status')
-      .or(
-        `and(user_id.eq.${viewerId},related_user_id.eq.${targetProfile.user_id}),` +
-          `and(user_id.eq.${targetProfile.user_id},related_user_id.eq.${viewerId})`,
-      );
-
-    followsRows = (follows ?? []).map((row) => ({
-      userId: row.user_id as string,
-      relatedUserId: row.related_user_id as string,
-      relationshipType: row.relationship_type as 'follow' | 'block',
-      status: row.status as 'pending' | 'approved',
-    }));
-  }
+  const followsRows: FollowRow[] = viewerId
+    ? await fetchRelationshipRows(admin, viewerId, targetProfile.user_id)
+    : [];
 
   const privacyMode =
     ('privacy_mode' in targetProfile && targetProfile.privacy_mode === 'private')
       ? 'private'
       : 'public';
 
-  const { visibility, relationship, capabilities } = resolveProfileRelationshipAndCapabilities(
+  const { visibility, relationship, blockState, capabilities } = resolveProfileRelationshipAndCapabilities(
     viewerId,
     { userId: targetProfile.user_id, privacyMode },
     followsRows,
@@ -219,7 +209,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   if (!visibility.canViewFull) {
     if (visibility.reason === 'blocked') {
-      return blockedResponse();
+      if (blockState === 'viewer_blocked_target') {
+        return blockedResponse({
+          kind: 'blocked',
+          username: targetProfile.username,
+          isHouseAccount: targetProfile.is_house_account === true,
+          joinedMonthYear: formatJoinedMonthYear(targetProfile.created_at as string),
+        }, blockState);
+      }
+
+      return blockedResponse(null, blockState);
     }
 
     // Private, unapproved — return restricted payload
@@ -235,6 +234,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({
       visibility,
       relationship,
+      blockState,
       capabilities,
       profile: restricted,
     } satisfies ProfileReadResponse);
@@ -293,6 +293,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({
       visibility,
       relationship,
+      blockState,
       capabilities,
       profile: payload,
     } satisfies ProfileReadResponse);
@@ -313,6 +314,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   return NextResponse.json({
     visibility,
     relationship,
+    blockState,
     capabilities,
     profile: payload,
   } satisfies ProfileReadResponse);

@@ -42,10 +42,15 @@ type ProfileRow = {
   is_house_account?: boolean | null;
 };
 
+interface SocialEntriesOptions {
+  includeBlockedByViewer?: boolean;
+}
+
 export async function buildSocialEntriesByUserId(
   admin: AdminClient,
   userIds: string[],
   viewerId: string | null,
+  options: SocialEntriesOptions = {},
 ): Promise<Map<string, SocialUserEntry>> {
   const uniqueUserIds = [...new Set(userIds)].filter(Boolean);
 
@@ -95,20 +100,51 @@ export async function buildSocialEntriesByUserId(
   let followRows:
     | Array<{ related_user_id: string; status: 'pending' | 'approved' }>
     | null = null;
+  let blockedUserIds = new Set<string>();
 
   if (viewerId) {
-    const followResult = await admin
-      .from('follows')
-      .select('related_user_id, status')
-      .eq('user_id', viewerId)
-      .eq('relationship_type', 'follow')
-      .in('related_user_id', uniqueUserIds);
+    const [followResult, outgoingBlocksResult, incomingBlocksResult] = await Promise.all([
+      admin
+        .from('follows')
+        .select('related_user_id, status')
+        .eq('user_id', viewerId)
+        .eq('relationship_type', 'follow')
+        .in('related_user_id', uniqueUserIds),
+      admin
+        .from('follows')
+        .select('related_user_id')
+        .eq('user_id', viewerId)
+        .eq('relationship_type', 'block')
+        .in('related_user_id', uniqueUserIds),
+      admin
+        .from('follows')
+        .select('user_id')
+        .eq('related_user_id', viewerId)
+        .eq('relationship_type', 'block')
+        .in('user_id', uniqueUserIds),
+    ]);
 
     if (followResult.error) {
       throw followResult.error;
     }
 
+    if (outgoingBlocksResult.error) {
+      throw outgoingBlocksResult.error;
+    }
+
+    if (incomingBlocksResult.error) {
+      throw incomingBlocksResult.error;
+    }
+
     followRows = (followResult.data ?? []) as Array<{ related_user_id: string; status: 'pending' | 'approved' }>;
+    blockedUserIds = new Set([
+      ...(
+        options.includeBlockedByViewer
+          ? []
+          : (outgoingBlocksResult.data ?? []).map((row) => row.related_user_id as string)
+      ),
+      ...(incomingBlocksResult.data ?? []).map((row) => row.user_id as string),
+    ]);
   }
 
   const birdsIdentifiedByUserId = new Map(
@@ -122,7 +158,11 @@ export async function buildSocialEntriesByUserId(
   );
 
   return new Map(
-    (profiles ?? []).map((profile) => {
+    (profiles ?? []).flatMap((profile) => {
+      if (viewerId && viewerId !== profile.user_id && blockedUserIds.has(profile.user_id)) {
+        return [];
+      }
+
       const avatarFakeBirdKey = typeof profile.avatar_fake_bird_key === 'string' ? profile.avatar_fake_bird_key : null;
       const avatarFakeBirdImageUrl =
         avatarFakeBirdKey && isCdnEnabled()
@@ -152,7 +192,7 @@ export async function buildSocialEntriesByUserId(
         },
       };
 
-      return [profile.user_id, entry];
+      return [[profile.user_id, entry] as const];
     }),
   );
 }
@@ -161,8 +201,9 @@ export async function buildSocialEntries(
   admin: AdminClient,
   userIds: string[],
   viewerId: string | null,
+  options: SocialEntriesOptions = {},
 ): Promise<SocialUserEntry[]> {
-  const entriesByUserId = await buildSocialEntriesByUserId(admin, userIds, viewerId);
+  const entriesByUserId = await buildSocialEntriesByUserId(admin, userIds, viewerId, options);
   return userIds.flatMap((userId) => {
     const entry = entriesByUserId.get(userId);
     return entry ? [entry] : [];
