@@ -22,6 +22,7 @@ const liveThemeUnlockThresholds = themeUnlocks
 const themeBootstrapScript = `
   (() => {
     try {
+      window.performance?.mark?.('rfb:launch-start');
       document.documentElement.setAttribute('data-app-booting', 'true');
       const applyNativeShellBootstrap = () => {
         const capacitor = window.Capacitor;

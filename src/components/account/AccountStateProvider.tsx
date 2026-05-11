@@ -4,14 +4,21 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { AnimatePresence, motion } from 'framer-motion';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import AppBootScreen from '@/components/account/AppBootScreen';
-import { fetchAccountState } from '@/lib/auth/account-sync';
+import { fetchAccountState, type AccountStateResponse } from '@/lib/auth/account-sync';
 import {
   ACCOUNT_STATE_CHANGED_EVENT,
   resetLocalStateForGuestSession,
   syncSignedInAccountToLocalState,
 } from '@/lib/auth/account-session';
+import {
+  ensureBrowserSession,
+  logNativeAuthEvent,
+  recoverBrowserSessionFromUnauthorized,
+} from '@/lib/auth/browser-session';
 import { isUnauthenticatedAccountActionError } from '@/lib/auth/error';
 import { readAccountSyncMeta } from '@/lib/auth/account-sync-local';
+import { markLaunchStage } from '@/lib/native/launch-metrics';
+import { isNativePlatform } from '@/lib/native/platform';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { hasSupabaseEnv } from '@/lib/supabase/env';
 import { setUnlockedThemeNames } from '@/lib/utils/player-progress';
@@ -74,10 +81,10 @@ const BOOT_INSPECTION_STORAGE_KEY = 'rfb:inspectBootDelayMs';
 const WARM_CACHE_WINDOW_MS = 5 * 60_000;
 const DEFAULT_BOOT_INSPECTION_DELAY_MS = 2_500;
 const MAX_BOOT_INSPECTION_DELAY_MS = 10_000;
-const MIN_BOOT_SCREEN_DURATION_MS = 2_400;
-const BOOT_NETWORK_TIMEOUT_MS = 7_000;
-const BOOT_WATCHDOG_TIMEOUT_MS = 12_000;
-const BOOT_EXIT_DURATION_MS = 450;
+const MIN_BOOT_SCREEN_DURATION_MS = 700;
+const BOOT_NETWORK_TIMEOUT_MS = 2_500;
+const BOOT_WATCHDOG_TIMEOUT_MS = 8_000;
+const BOOT_EXIT_DURATION_MS = 220;
 const CONTENT_REVEAL_DELAY_MS = BOOT_EXIT_DURATION_MS;
 const CHROME_REVEAL_DELAY_MS = BOOT_EXIT_DURATION_MS;
 
@@ -242,6 +249,36 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
   const [remoteUnlockedThemes, setRemoteUnlockedThemes] = useState<string[]>([]);
   const [weeklyOverview, setWeeklyOverview] = useState<WeeklyOverview | null>(null);
 
+  const applyRemoteAccountState = useCallback((accountState: AccountStateResponse) => {
+    setIsSignedIn(true);
+    setAccountEmail(accountState.email);
+    setAccountUsername(accountState.profile?.username ?? null);
+    setAccountAvatarPalette(accountState.profile?.avatarPalette ?? null);
+    setAccountJoinedMonthYear(accountState.profile?.joinedMonthYear ?? null);
+    setAccountAvatarFakeBirdKey(accountState.profile?.avatarFakeBirdKey ?? null);
+    setAccountAvatarFakeBirdImageUrl(accountState.profile?.avatarFakeBirdImageUrl ?? null);
+    setAccountPrivacyMode(accountState.profile?.privacyMode ?? null);
+    setIsHouseAccount(accountState.profile?.isHouseAccount ?? false);
+    setRemoteSummary(accountState.progressSummary);
+    setRemoteUnlockedThemes(accountState.unlockedThemes);
+    setWeeklyOverview(accountState.weeklyOverview);
+    setUnlockedThemeNames(accountState.unlockedThemes);
+    writeAccountStateCache({
+      email: accountState.email,
+      username: accountState.profile?.username ?? null,
+      isHouseAccount: accountState.profile?.isHouseAccount ?? false,
+      avatarPalette: accountState.profile?.avatarPalette ?? null,
+      joinedMonthYear: accountState.profile?.joinedMonthYear ?? null,
+      avatarFakeBirdKey: accountState.profile?.avatarFakeBirdKey ?? null,
+      avatarFakeBirdImageUrl: accountState.profile?.avatarFakeBirdImageUrl ?? null,
+      privacyMode: accountState.profile?.privacyMode ?? null,
+      remoteSummary: accountState.progressSummary,
+      remoteUnlockedThemes: accountState.unlockedThemes,
+      weeklyOverview: accountState.weeklyOverview,
+      lastFetchedAt: new Date().toISOString(),
+    });
+  }, []);
+
   const applyAccountStateCache = useCallback((cache: AccountStateCache | null) => {
     if (!cache) {
       return;
@@ -287,6 +324,7 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clearStaleSignedInSession = useCallback(async () => {
+    logNativeAuthEvent('clearing-stale-session');
     clearAccountState();
     clearAccountStateCache();
     resetLocalStateForGuestSession();
@@ -322,35 +360,30 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
       }
 
       setIsSignedIn(true);
-      const accountState = await fetchAccountState();
-      setAccountEmail(accountState.email);
-      setAccountUsername(accountState.profile?.username ?? null);
-      setAccountAvatarPalette(accountState.profile?.avatarPalette ?? null);
-      setAccountJoinedMonthYear(accountState.profile?.joinedMonthYear ?? null);
-      setAccountAvatarFakeBirdKey(accountState.profile?.avatarFakeBirdKey ?? null);
-      setAccountAvatarFakeBirdImageUrl(accountState.profile?.avatarFakeBirdImageUrl ?? null);
-      setAccountPrivacyMode(accountState.profile?.privacyMode ?? null);
-      setIsHouseAccount(accountState.profile?.isHouseAccount ?? false);
-      setRemoteSummary(accountState.progressSummary);
-      setRemoteUnlockedThemes(accountState.unlockedThemes);
-      setWeeklyOverview(accountState.weeklyOverview);
-      setUnlockedThemeNames(accountState.unlockedThemes);
-      writeAccountStateCache({
-        email: accountState.email,
-        username: accountState.profile?.username ?? null,
-        isHouseAccount: accountState.profile?.isHouseAccount ?? false,
-        avatarPalette: accountState.profile?.avatarPalette ?? null,
-        joinedMonthYear: accountState.profile?.joinedMonthYear ?? null,
-        avatarFakeBirdKey: accountState.profile?.avatarFakeBirdKey ?? null,
-        avatarFakeBirdImageUrl: accountState.profile?.avatarFakeBirdImageUrl ?? null,
-        privacyMode: accountState.profile?.privacyMode ?? null,
-        remoteSummary: accountState.progressSummary,
-        remoteUnlockedThemes: accountState.unlockedThemes,
-        weeklyOverview: accountState.weeklyOverview,
-        lastFetchedAt: new Date().toISOString(),
-      });
+      applyRemoteAccountState(await fetchAccountState());
     } catch (error) {
       if (isUnauthenticatedAccountActionError(error)) {
+        logNativeAuthEvent('account-state-unauthorized', {
+          source: 'refreshAccountState',
+        });
+
+        const recovered = await recoverBrowserSessionFromUnauthorized('refresh-account-state');
+        if (recovered) {
+          await wait(150);
+
+          try {
+            applyRemoteAccountState(await fetchAccountState());
+            return;
+          } catch (retryError) {
+            if (isUnauthenticatedAccountActionError(retryError)) {
+              await clearStaleSignedInSession();
+              return;
+            }
+
+            throw retryError;
+          }
+        }
+
         await clearStaleSignedInSession();
         return;
       }
@@ -361,7 +394,7 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
         setIsLoadingAccount(false);
       }
     }
-  }, [clearAccountState, clearStaleSignedInSession, supabaseReady]);
+  }, [applyRemoteAccountState, clearAccountState, clearStaleSignedInSession, supabaseReady]);
 
   const syncSignedInProgress = useCallback(async (options?: { silent?: boolean }) => {
     if (!supabaseReady || !isSignedIn) {
@@ -390,6 +423,10 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    markLaunchStage('boot-complete', {
+      signedIn: isSignedIn,
+    }, { once: true });
+
     const contentTimeoutId = window.setTimeout(() => {
       setIsContentVisible(true);
     }, CONTENT_REVEAL_DELAY_MS);
@@ -402,7 +439,7 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
       window.clearTimeout(contentTimeoutId);
       window.clearTimeout(chromeTimeoutId);
     };
-  }, [isBooting]);
+  }, [isBooting, isSignedIn]);
 
   useEffect(() => {
     if (!isBrowser()) {
@@ -528,25 +565,47 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
         }
 
         setIsSignedIn(true);
-
-        if (!hasWarmProgressCache()) {
-          setBootStage('syncing-progress');
-          await withTimeout(
-            syncSignedInAccountToLocalState({ notify: false }),
-            BOOT_NETWORK_TIMEOUT_MS,
-            'syncSignedInAccountToLocalState() during boot'
-          );
-          if (!active) {
-            return;
-          }
-        }
-
         setBootStage('finalizing');
-        await withTimeout(
-          refreshAccountState({ silent: true }),
-          BOOT_NETWORK_TIMEOUT_MS,
-          'refreshAccountState() during boot'
-        );
+
+        void (async () => {
+          const hasWarmCache = hasWarmProgressCache();
+
+          if (active) {
+            setIsBackgroundSyncing(true);
+          }
+
+          try {
+            if (!hasWarmCache) {
+              setBootStage('syncing-progress');
+              await withTimeout(
+                syncSignedInAccountToLocalState({ notify: false }),
+                BOOT_NETWORK_TIMEOUT_MS,
+                'syncSignedInAccountToLocalState() during background boot sync'
+              );
+            }
+          } catch {
+            logNativeAuthEvent('boot-progress-sync-deferred');
+          }
+
+          try {
+            if (!active) {
+              return;
+            }
+
+            setBootStage('finalizing');
+            await withTimeout(
+              refreshAccountState({ silent: true }),
+              BOOT_NETWORK_TIMEOUT_MS,
+              'refreshAccountState() during background boot refresh'
+            );
+          } catch {
+            logNativeAuthEvent('boot-account-refresh-deferred');
+          } finally {
+            if (active) {
+              setIsBackgroundSyncing(false);
+            }
+          }
+        })();
       } catch {
         // Never let boot freeze due to network/auth stalls.
         clearAccountState();
@@ -568,6 +627,53 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
       window.clearTimeout(bootWatchdogId);
     };
   }, [applyAccountStateCache, clearAccountState, refreshAccountState, supabaseReady]);
+
+  useEffect(() => {
+    if (!supabaseReady || !isNativePlatform()) {
+      return;
+    }
+
+    let active = true;
+    let removeListener: (() => Promise<void>) | null = null;
+
+    void (async () => {
+      const { App } = await import('@capacitor/app');
+      const listener = await App.addListener('appStateChange', ({ isActive }) => {
+        logNativeAuthEvent('app-state-change', { isActive });
+
+        if (!isActive) {
+          return;
+        }
+
+        void (async () => {
+          const sessionState = await ensureBrowserSession({
+            forceRefresh: true,
+            reason: 'app-resume',
+          });
+
+          if (!active) {
+            return;
+          }
+
+          if (!sessionState.hasSession && !isSignedIn) {
+            return;
+          }
+
+          void refreshAccountState({ silent: true });
+          void syncSignedInProgress({ silent: true });
+        })();
+      });
+
+      removeListener = () => listener.remove();
+    })();
+
+    return () => {
+      active = false;
+      if (removeListener) {
+        void removeListener();
+      }
+    };
+  }, [isSignedIn, refreshAccountState, supabaseReady, syncSignedInProgress]);
 
   useEffect(() => {
     if (!supabaseReady || !isSignedIn) {
@@ -615,11 +721,21 @@ export function AccountStateProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      clearAccountState();
+      logNativeAuthEvent('auth-state-change', {
+        event,
+        hasSession: Boolean(session?.user),
+        userId: session?.user.id ?? null,
+      });
 
       if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
+        clearAccountState();
         resetLocalStateForGuestSession();
         clearAccountStateCache();
+        return;
+      }
+
+      if (session?.user) {
+        setIsSignedIn(true);
       }
 
       void refreshAccountState({ silent: true });

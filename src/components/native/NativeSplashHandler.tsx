@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { markLaunchStage } from '@/lib/native/launch-metrics';
 
 /**
  * Hides the native splash screen after React has hydrated **and** the app boot
@@ -8,8 +9,8 @@ import { useEffect } from 'react';
  * Capacitor splash disappears before the boot overlay is painted, producing a
  * black flash between the two screens.
  *
- * When CAPACITOR_SERVER_URL is not set (production), `launchAutoHide` is false
- * so we control the hide timing ourselves. On web this is a no-op.
+ * The native shell keeps `launchAutoHide` disabled so we control the hide
+ * timing ourselves. On web this is a no-op.
  *
  * Before hiding the splash, we preload all bundled audio assets so SFX and
  * the theme song are ready the moment the splash fades out.
@@ -26,7 +27,7 @@ function isBootOverlayReady(): boolean {
  * Resolves once the React boot overlay has mounted and the browser has had a
  * chance to paint it, or after `timeoutMs` at most.
  */
-function waitForBootOverlay(timeoutMs = 1500): Promise<void> {
+function waitForBootOverlay(timeoutMs = 4000): Promise<void> {
   return new Promise<void>((resolve) => {
     let settled = false;
     let observer: MutationObserver | null = null;
@@ -90,8 +91,12 @@ export default function NativeSplashHandler() {
         // Wait until the boot screen overlay is painted before hiding the
         // Capacitor splash — this eliminates the black-frame gap.
         await waitForBootOverlay();
+        markLaunchStage('boot-overlay-painted', undefined, { once: true });
 
         await SplashScreen.hide({ fadeOutDuration: 300 }).catch(() => undefined);
+        markLaunchStage('native-splash-hidden', {
+          fadeOutDurationMs: 300,
+        }, { once: true });
 
         // Warm audio in the background (best-effort) after splash dismissal.
         void (async () => {
