@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { getCdnImageUrl, getCdnFactUrl, isCdnEnabled } from './cdn';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fetchCdnFact, getCdnFactUrl, getCdnImageUrl, isCdnEnabled } from './cdn';
 
 describe('cdn utilities', () => {
   beforeEach(() => {
@@ -34,12 +34,64 @@ describe('cdn utilities', () => {
       expect(url).toContain('/image.webp');
       expect(url).not.toContain('/thumb.webp');
     });
+
+    it('supports fake bird image URLs', () => {
+      expect(getCdnImageUrl('paper-eagle', 'thumb', 'fake')).toContain('/birds/fake/paper-eagle/thumb.webp');
+    });
+
+    it('throws when the CDN base URL is missing', () => {
+      vi.stubEnv('CDN_BASE_URL', '');
+      expect(() => getCdnImageUrl('blue-jay')).toThrow('CDN_BASE_URL is not configured');
+    });
   });
 
   describe('getCdnFactUrl', () => {
     it('builds a fact.json URL', () => {
       const url = getCdnFactUrl('blue-jay');
       expect(url).toContain('/birds/real/blue-jay/fact.json');
+    });
+
+    it('throws when the CDN base URL is missing', () => {
+      vi.stubEnv('CDN_BASE_URL', '');
+      expect(() => getCdnFactUrl('blue-jay')).toThrow('CDN_BASE_URL is not configured');
+    });
+  });
+
+  describe('fetchCdnFact', () => {
+    it('returns null when the CDN is disabled', async () => {
+      vi.stubEnv('CDN_BASE_URL', '');
+      await expect(fetchCdnFact('blue-jay')).resolves.toBeNull();
+    });
+
+    it('returns parsed fact data and cache status for successful responses', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          headers: { get: vi.fn().mockReturnValue('HIT') },
+          json: async () => ({ fact: 'Blue jays mimic hawks.' }),
+        }),
+      );
+
+      await expect(fetchCdnFact('blue-jay')).resolves.toEqual({
+        fact: { fact: 'Blue jays mimic hawks.' },
+        cacheStatus: 'HIT',
+      });
+    });
+
+    it('returns null for non-ok responses and fetch failures', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn()
+          .mockResolvedValueOnce({
+            ok: false,
+            headers: { get: vi.fn() },
+          })
+          .mockRejectedValueOnce(new Error('network failure')),
+      );
+
+      await expect(fetchCdnFact('blue-jay')).resolves.toBeNull();
+      await expect(fetchCdnFact('blue-jay')).resolves.toBeNull();
     });
   });
 });

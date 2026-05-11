@@ -20,10 +20,12 @@ vi.mock('@/lib/server/social-entries', () => ({
 
 import { NextRequest } from 'next/server';
 import { createSupabaseAdminClient, createSupabaseServerClient } from '@/lib/supabase/server';
+import { buildSocialEntries } from '@/lib/server/social-entries';
 import { GET } from './route';
 
 const mockedAdminClient = vi.mocked(createSupabaseAdminClient);
 const mockedServerClient = vi.mocked(createSupabaseServerClient);
+const mockedBuildSocialEntries = vi.mocked(buildSocialEntries);
 
 function buildRequest(q: string): NextRequest {
   return new NextRequest(`http://localhost/api/users/search?q=${encodeURIComponent(q)}`);
@@ -36,6 +38,7 @@ function buildMockAdmin(ilikeSpy?: ReturnType<typeof vi.fn>) {
       select: vi.fn().mockReturnThis(),
       ilike,
       neq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
       limit: vi.fn().mockResolvedValue({ data: [], error: null }),
     }),
   };
@@ -129,5 +132,29 @@ describe('GET /api/users/search', () => {
     await GET(buildRequest('@robin'));
 
     expect(ilikeSpy).toHaveBeenCalledWith('username_canonical', '%robin%');
+  });
+
+  it('requests search entries with viewer-blocked users included', async () => {
+    mockedAdminClient.mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnThis(),
+        ilike: vi.fn().mockReturnThis(),
+        neq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockResolvedValue({
+          data: [{ user_id: 'target-uid' }],
+          error: null,
+        }),
+      }),
+    } as unknown as ReturnType<typeof createSupabaseAdminClient>);
+
+    await GET(buildRequest('bird'));
+
+    expect(mockedBuildSocialEntries).toHaveBeenCalledWith(
+      expect.anything(),
+      ['target-uid'],
+      'viewer-uid',
+      { includeBlockedByViewer: true },
+    );
   });
 });

@@ -1,5 +1,7 @@
 import type {
+  BirdBlitzChallengeAccess,
   FollowRow,
+  ProfileBlockState,
   ProfileVisibility,
   ProfileVisibilityReason,
   UserRelationshipStatus,
@@ -88,6 +90,61 @@ export function resolveProfileVisibility(
   return { reason: 'private_unapproved', canViewFull: false, canFollow: false };
 }
 
+export function resolveProfileBlockState(
+  viewerId: string | null,
+  targetProfile: TargetProfile,
+  followsRows: FollowRow[],
+): ProfileBlockState {
+  if (!viewerId || viewerId === targetProfile.userId) {
+    return 'none';
+  }
+
+  const isBlockedByTarget = followsRows.some(
+    (row) =>
+      row.relationshipType === 'block' &&
+      row.userId === targetProfile.userId &&
+      row.relatedUserId === viewerId,
+  );
+
+  if (isBlockedByTarget) {
+    return 'blocked_by_target';
+  }
+
+  const isBlockingTarget = followsRows.some(
+    (row) =>
+      row.relationshipType === 'block' &&
+      row.userId === viewerId &&
+      row.relatedUserId === targetProfile.userId,
+  );
+
+  return isBlockingTarget ? 'viewer_blocked_target' : 'none';
+}
+
+export function resolveBirdBlitzChallengeAccess(
+  viewerId: string | null,
+  targetProfile: TargetProfile,
+  followsRows: FollowRow[],
+): BirdBlitzChallengeAccess {
+  if (!viewerId) {
+    return { allowed: false, reason: 'unauthenticated' };
+  }
+
+  if (viewerId === targetProfile.userId) {
+    return { allowed: false, reason: 'owner' };
+  }
+
+  const visibility = resolveProfileVisibility(viewerId, targetProfile, followsRows);
+  if (visibility.reason === 'blocked') {
+    return { allowed: false, reason: 'blocked' };
+  }
+
+  if (!visibility.canViewFull) {
+    return { allowed: false, reason: 'private_requires_approved_follow' };
+  }
+
+  return { allowed: true, reason: 'allowed' };
+}
+
 /**
  * Derives the viewer's relationship status and capabilities for a target profile.
  * Wraps resolveProfileVisibility and adds explicit relationship state and action capabilities.
@@ -106,9 +163,11 @@ export function resolveProfileRelationshipAndCapabilities(
 ): {
   visibility: ProfileVisibility;
   relationship: UserRelationshipStatus;
+  blockState: ProfileBlockState;
   capabilities: ProfileCapabilities;
 } {
   const visibility = resolveProfileVisibility(viewerId, targetProfile, followsRows);
+  const blockState = resolveProfileBlockState(viewerId, targetProfile, followsRows);
 
   // Derive relationship status from visibility and follow state
   let relationship: UserRelationshipStatus;
@@ -148,17 +207,17 @@ export function resolveProfileRelationshipAndCapabilities(
   const canFollow =
     visibility.canFollow && !['following', 'requested', 'owner'].includes(relationship);
   const canUnfollow = relationship === 'following';
-  const canChallengeBirdBlitz =
-    viewerId !== null &&
-    visibility.canViewFull &&
-    relationship !== 'blocked' &&
-    relationship !== 'owner';
+  const birdBlitzChallengeAccess = resolveBirdBlitzChallengeAccess(
+    viewerId,
+    targetProfile,
+    followsRows,
+  );
 
   const capabilities: ProfileCapabilities = {
     canFollow,
     canUnfollow,
-    canChallengeBirdBlitz,
+    canChallengeBirdBlitz: birdBlitzChallengeAccess.allowed,
   };
 
-  return { visibility, relationship, capabilities };
+  return { visibility, relationship, blockState, capabilities };
 }

@@ -31,6 +31,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   );
 
   if (!rateLimit.allowed) {
+    console.warn('[users-search] rate limited request');
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
 
@@ -75,6 +76,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     .select('user_id')
     .ilike('username_canonical', `%${escaped}%`)
     .neq('user_id', viewerId)
+    .order('username_canonical', { ascending: true })
     .limit(SEARCH_RESULTS_LIMIT);
 
   if (error) {
@@ -83,6 +85,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .select('user_id')
       .ilike('username_canonical', `%${escaped}%`)
       .neq('user_id', viewerId)
+      .order('username', { ascending: true })
       .limit(SEARCH_RESULTS_LIMIT);
 
     if (fallbackResult.error) {
@@ -91,7 +94,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     try {
       const userIds = (fallbackResult.data ?? []).map((row) => row.user_id as string);
-      const users = await buildSocialEntries(admin, userIds, viewerId);
+      const users = await buildSocialEntries(admin, userIds, viewerId, {
+        includeBlockedByViewer: true,
+      });
       return NextResponse.json({ users } satisfies UserSearchResponse);
     } catch {
       return NextResponse.json({ error: 'fetch_failed' }, { status: 500 });
@@ -100,7 +105,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   try {
     const userIds = (data ?? []).map((row) => row.user_id as string);
-    const users: SocialUserEntry[] = await buildSocialEntries(admin, userIds, viewerId);
+    const users: SocialUserEntry[] = await buildSocialEntries(admin, userIds, viewerId, {
+      includeBlockedByViewer: true,
+    });
     return NextResponse.json({ users } satisfies UserSearchResponse);
   } catch {
     return NextResponse.json({ error: 'fetch_failed' }, { status: 500 });

@@ -137,6 +137,7 @@ describe('GET /api/profile', () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.profile?.kind).toBe('public');
+    expect(body.blockState).toBe('none');
     expect(body.profile?.username).toBe('birdlover');
     expect(body.profile?.progress?.birdsIdentified).toBe(42);
     expect(body.profile?.followerCount).toBe(0);
@@ -166,6 +167,7 @@ describe('GET /api/profile', () => {
     const response = await GET(buildRequest('birdlover'));
     const body = await response.json();
     expect(body.profile?.kind).toBe('own');
+    expect(body.blockState).toBe('none');
     expect(body.profile?.privacyMode).toBe('public');
     expect(body.profile?.followerCount).toBe(0);
     expect(body.profile?.followingCount).toBe(0);
@@ -182,11 +184,12 @@ describe('GET /api/profile', () => {
     const response = await GET(buildRequest('birdlover'));
     const body = await response.json();
     expect(body.profile?.kind).toBe('restricted');
+    expect(body.blockState).toBe('none');
     // Must NOT leak full progress on restricted payload
     expect(body.profile?.progress).toBeUndefined();
   });
 
-  it('returns null profile for blocked viewer (no data leakage)', async () => {
+  it('returns null profile when the target has blocked the viewer', async () => {
     mockedServerClient.mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
@@ -215,8 +218,48 @@ describe('GET /api/profile', () => {
     const body = await response.json();
     expect(body.profile).toBeNull();
     expect(body.visibility?.reason).toBe('blocked');
+    expect(body.blockState).toBe('blocked_by_target');
     // Blocked response must not include any progress data
     expect(body.profile?.progress).toBeUndefined();
+  });
+
+  it('returns a minimal blocked payload when the viewer has blocked the target', async () => {
+    mockedServerClient.mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { id: 'viewer-uid' } },
+          error: null,
+        }),
+      },
+    } as unknown as Awaited<ReturnType<typeof createSupabaseServerClient>>);
+
+    mockedAdminClient.mockReturnValue(
+      buildMockAdmin({
+        profile: BASE_PROFILE,
+        follows: [
+          {
+            user_id: 'viewer-uid',
+            related_user_id: 'target-uid',
+            relationship_type: 'block',
+            status: 'approved',
+          },
+        ],
+        progress: BASE_PROGRESS,
+      }) as unknown as ReturnType<typeof createSupabaseAdminClient>,
+    );
+
+    const response = await GET(buildRequest('birdlover'));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.visibility?.reason).toBe('blocked');
+    expect(body.blockState).toBe('viewer_blocked_target');
+    expect(body.profile).toEqual({
+      kind: 'blocked',
+      username: 'birdlover',
+      isHouseAccount: false,
+      joinedMonthYear: 'April 2026',
+    });
   });
 
   it('falls back when privacy_mode is unavailable in the Supabase schema cache', async () => {

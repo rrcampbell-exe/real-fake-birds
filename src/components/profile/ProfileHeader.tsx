@@ -23,6 +23,7 @@ interface ProfileHeaderProps {
   followersHref?: string;
   followingHref?: string;
   headerActions?: ReactNode;
+  showFollowerSummary?: boolean;
 }
 
 export default function ProfileHeader({
@@ -42,8 +43,10 @@ export default function ProfileHeader({
   followersHref,
   followingHref,
   headerActions,
+  showFollowerSummary,
 }: ProfileHeaderProps) {
   const isPublic = privacyMode !== 'private';
+  const shouldShowFollowerSummary = showFollowerSummary ?? (isPublic || isOwner);
 
   return (
     <div className="flex items-start gap-4">
@@ -77,7 +80,7 @@ export default function ProfileHeader({
             <Bot size={14} className="shrink-0 text-[var(--color-muted)]" aria-label="House account" />
           ) : null}
         </div>
-        {(isPublic || isOwner) && (
+        {shouldShowFollowerSummary && (
           <FollowerSummary
             followerCount={followerCount}
             followingCount={followingCount}

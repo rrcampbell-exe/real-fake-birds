@@ -33,6 +33,11 @@ export type UserRelationshipStatus =
   | 'owner'      // viewer is viewing their own profile
   | 'blocked';   // either party has blocked the other
 
+export type ProfileBlockState =
+  | 'none'
+  | 'viewer_blocked_target'
+  | 'blocked_by_target';
+
 /** Capabilities the viewer has relative to the target. */
 export interface ProfileCapabilities {
   /** Whether the viewer can initiate or update a follow action. */
@@ -41,6 +46,18 @@ export interface ProfileCapabilities {
   canUnfollow: boolean;
   /** Whether the viewer can challenge this target in Bird Blitz. */
   canChallengeBirdBlitz: boolean;
+}
+
+export type BirdBlitzChallengeReason =
+  | 'allowed'
+  | 'unauthenticated'
+  | 'owner'
+  | 'blocked'
+  | 'private_requires_approved_follow';
+
+export interface BirdBlitzChallengeAccess {
+  allowed: boolean;
+  reason: BirdBlitzChallengeReason;
 }
 
 // ---------------------------------------------------------------------------
@@ -108,10 +125,18 @@ export interface RestrictedProfilePayload {
   followingCount: number;
 }
 
+export interface BlockedProfilePayload {
+  kind: 'blocked';
+  username: string;
+  isHouseAccount: boolean;
+  joinedMonthYear: string;
+}
+
 export type ProfilePayload =
   | OwnProfilePayload
   | PublicProfilePayload
-  | RestrictedProfilePayload;
+  | RestrictedProfilePayload
+  | BlockedProfilePayload;
 
 // ---------------------------------------------------------------------------
 // Top-level API response
@@ -121,10 +146,12 @@ export interface ProfileReadResponse {
   visibility: ProfileVisibility;
   /** The viewer's relationship to this profile (none, requested, following, owner, blocked). */
   relationship: UserRelationshipStatus;
+  /** Whether a block exists and, if so, which direction it applies. */
+  blockState: ProfileBlockState;
   /** Capabilities the viewer has for actions on this profile. */
   capabilities: ProfileCapabilities;
   /**
-   * null only when the viewer is blocked (or target user does not exist).
+   * null only when the target user does not exist or the target has blocked the viewer.
    * Use visibility.reason to distinguish the two cases on the client.
    */
   profile: ProfilePayload | null;

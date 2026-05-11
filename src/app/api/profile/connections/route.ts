@@ -4,6 +4,7 @@ import { hasSupabaseEnv } from '@/lib/supabase/env';
 import { createSupabaseAdminClient, createSupabaseServerClient } from '@/lib/supabase/server';
 import { consumeRateLimit, getRateLimitKey } from '@/lib/server/rate-limiter';
 import { resolveProfileRelationshipAndCapabilities } from '@/lib/server/profile-visibility';
+import { fetchRelationshipRows } from '@/lib/server/social-relationships';
 import type { SocialConnectionsListResponse } from '@/types/social';
 import type { FollowRow } from '@/types/profile';
 
@@ -121,23 +122,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   const privacyMode = targetProfile.privacy_mode === 'private' ? 'private' : 'public';
 
-  let followsRows: FollowRow[] = [];
-  if (viewerId) {
-    const { data: follows } = await admin
-      .from('follows')
-      .select('user_id, related_user_id, relationship_type, status')
-      .or(
-        `and(user_id.eq.${viewerId},related_user_id.eq.${targetProfile.user_id}),` +
-          `and(user_id.eq.${targetProfile.user_id},related_user_id.eq.${viewerId})`,
-      );
-
-    followsRows = (follows ?? []).map((row) => ({
-      userId: row.user_id as string,
-      relatedUserId: row.related_user_id as string,
-      relationshipType: row.relationship_type as 'follow' | 'block',
-      status: row.status as 'pending' | 'approved',
-    }));
-  }
+  const followsRows: FollowRow[] = viewerId
+    ? await fetchRelationshipRows(admin, viewerId, targetProfile.user_id)
+    : [];
 
   const { visibility } = resolveProfileRelationshipAndCapabilities(
     viewerId,
@@ -146,7 +133,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   );
 
   if (!visibility.canViewFull) {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+    return NextResponse.json(
+      { error: visibility.reason === 'blocked' ? 'blocked' : 'private_profile' },
+      { status: 403 },
+    );
   }
 
   const { data: followRows, error: followRowsError } = await admin

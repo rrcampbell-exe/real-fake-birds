@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import FollowersModal from './FollowersModal';
@@ -160,5 +160,95 @@ describe('FollowersModal', () => {
     await waitFor(() => expect(screen.getByText('bob')).toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: /unfollow/i }));
     await waitFor(() => expect(screen.getByText('bob')).toBeInTheDocument());
+  });
+
+  it('allows owners to approve and deny pending follow requests', async () => {
+    const user = userEvent.setup();
+    const pendingData = {
+      followers: [],
+      following: [],
+      pendingRequests: [
+        {
+          userId: 'u3',
+          username: 'charlie',
+          avatarPalette: 'finch',
+          avatarFakeBirdImageUrl: null,
+          isHouseAccount: false,
+          latestBadgeName: null,
+          relationship: 'none',
+          capabilities: { canFollow: false, canUnfollow: false },
+        },
+        {
+          userId: 'u4',
+          username: 'delta',
+          avatarPalette: 'finch',
+          avatarFakeBirdImageUrl: null,
+          isHouseAccount: false,
+          latestBadgeName: null,
+          relationship: 'none',
+          capabilities: { canFollow: false, canUnfollow: false },
+        },
+      ],
+    };
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => pendingData } as Response)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) } as Response)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) } as Response);
+
+    render(<FollowersModal isOpen initialTab="requests" isOwner onClose={vi.fn()} />);
+    await waitFor(() => expect(screen.getByText('charlie')).toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: /Approve follow request from charlie/i }));
+    await waitFor(() => expect(screen.queryByText('charlie')).not.toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: /Deny follow request from delta/i }));
+    await waitFor(() => expect(screen.queryByText('No pending follow requests.')).toBeInTheDocument());
+  });
+
+  it('searches for users and renders search results', async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => mockFollowersData } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          users: [
+            {
+              userId: 'u4',
+              username: 'dove',
+              avatarPalette: 'finch',
+              avatarFakeBirdImageUrl: null,
+              isHouseAccount: false,
+              latestBadgeName: null,
+              relationship: 'none',
+              capabilities: { canFollow: true, canUnfollow: false },
+            },
+          ],
+        }),
+      } as Response);
+
+    render(<FollowersModal isOpen initialTab="search" onClose={vi.fn()} />);
+    fireEvent.change(screen.getByPlaceholderText('Search by username'), {
+      target: { value: 'dove' },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 350));
+
+    await waitFor(() => expect(screen.getByText('dove')).toBeInTheDocument());
+  });
+
+  it('shows an empty state when search returns no users', async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => mockFollowersData } as Response)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ users: [] }) } as Response);
+
+    render(<FollowersModal isOpen initialTab="search" onClose={vi.fn()} />);
+    fireEvent.change(screen.getByPlaceholderText('Search by username'), {
+      target: { value: 'nobody' },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 350));
+
+    await waitFor(() => expect(screen.getByText('No users found.')).toBeInTheDocument());
   });
 });
