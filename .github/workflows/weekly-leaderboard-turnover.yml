@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Trigger weekly leaderboard finalization
         run: |
-          response=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+          response=$(curl -sL -o /tmp/response.json -w "%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ secrets.APP_URL }}/api/cron/weekly-leaderboard-turnover")
           echo "HTTP status: $response"
