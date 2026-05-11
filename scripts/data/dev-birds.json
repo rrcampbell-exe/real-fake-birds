@@ -504,6 +504,10 @@
     "bird_name": "Green-headed Hillstar"
   },
   {
+    "bird_key": "real:green-headed-sunbird",
+    "bird_name": "Green-headed Sunbird"
+  },
+  {
     "bird_key": "real:green-throated-carib",
     "bird_name": "Green-throated Carib"
   },
@@ -710,6 +714,10 @@
   {
     "bird_key": "real:muscovy-duck",
     "bird_name": "Muscovy Duck"
+  },
+  {
+    "bird_key": "real:northern-fiscal",
+    "bird_name": "Northern Fiscal"
   },
   {
     "bird_key": "real:northern-gray-headed-sparrow",
@@ -1088,6 +1096,10 @@
     "bird_name": "Spotted Honeyguide"
   },
   {
+    "bird_key": "real:spotted-sandpiper",
+    "bird_name": "Spotted Sandpiper"
+  },
+  {
     "bird_key": "real:streak-headed-woodcreeper",
     "bird_name": "Streak-headed Woodcreeper"
   },
@@ -1116,8 +1128,16 @@
     "bird_name": "Tawny-flanked Prinia"
   },
   {
+    "bird_key": "real:terrestrial-brownbul",
+    "bird_name": "Terrestrial Brownbul"
+  },
+  {
     "bird_key": "real:thick-billed-cuckoo",
     "bird_name": "Thick-billed Cuckoo"
+  },
+  {
+    "bird_key": "real:tree-pipit",
+    "bird_name": "Tree Pipit"
   },
   {
     "bird_key": "real:tropical-mockingbird",
@@ -1236,6 +1256,10 @@
     "bird_name": "White-tailed Crested Flycatcher"
   },
   {
+    "bird_key": "real:white-tailed-eagle",
+    "bird_name": "White-tailed Eagle"
+  },
+  {
     "bird_key": "real:white-tailed-tropicbird",
     "bird_name": "White-tailed Tropicbird"
   },
@@ -1250,6 +1274,10 @@
   {
     "bird_key": "real:white-winged-dove",
     "bird_name": "White-winged Dove"
+  },
+  {
+    "bird_key": "real:willet",
+    "bird_name": "Willet"
   },
   {
     "bird_key": "real:wilsons-plover",
