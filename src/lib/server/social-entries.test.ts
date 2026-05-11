@@ -227,6 +227,14 @@ describe('social-entries', () => {
     );
 
     expect(entries.map((entry) => entry.userId)).toEqual(['blocked-out']);
+    expect(entries[0]).toMatchObject({
+      userId: 'blocked-out',
+      relationship: 'none',
+      capabilities: {
+        canFollow: false,
+        canUnfollow: false,
+      },
+    });
   });
 
   it('falls back when profile avatar columns are unavailable', async () => {

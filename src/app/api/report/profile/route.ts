@@ -110,6 +110,13 @@ async function fetchTargetUserId(
   return fallback?.user_id ?? null;
 }
 
+function hasTargetIdentifier(body: ReportProfileRequest): boolean {
+  return (
+    (typeof body.targetUserId === 'string' && body.targetUserId.trim().length > 0)
+    || (typeof body.targetUsername === 'string' && body.targetUsername.trim().length > 0)
+  );
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!hasSupabaseEnv()) {
     return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
@@ -153,6 +160,10 @@ async function handleReportPost(request: NextRequest): Promise<NextResponse> {
   }
 
   const admin = createSupabaseAdminClient();
+  if (!hasTargetIdentifier(body as ReportProfileRequest)) {
+    return NextResponse.json({ error: 'invalid_request_body' }, { status: 400 });
+  }
+
   const targetUserId = await fetchTargetUserId(admin, body as ReportProfileRequest);
   if (!targetUserId) {
     return NextResponse.json({ error: 'target_not_found' }, { status: 404 });

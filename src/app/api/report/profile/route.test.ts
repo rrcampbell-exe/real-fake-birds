@@ -93,6 +93,14 @@ describe('POST /api/report/profile', () => {
     await expect(response.json()).resolves.toMatchObject({ error: 'invalid_request_body' });
   });
 
+  it('returns 400 when no target identifier is provided', async () => {
+    mockedAdminClient.mockReturnValue(buildAdmin() as never);
+
+    const response = await POST(buildRequest({ reason: 'spam' }));
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ error: 'invalid_request_body' });
+  });
+
   it('returns 404 when the target does not exist', async () => {
     mockedAdminClient.mockReturnValue(buildAdmin({ targetProfile: null }) as never);
 

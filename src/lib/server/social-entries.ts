@@ -101,6 +101,7 @@ export async function buildSocialEntriesByUserId(
     | Array<{ related_user_id: string; status: 'pending' | 'approved' }>
     | null = null;
   let blockedUserIds = new Set<string>();
+  let outgoingBlockedUserIds = new Set<string>();
 
   if (viewerId) {
     const [followResult, outgoingBlocksResult, incomingBlocksResult] = await Promise.all([
@@ -137,11 +138,14 @@ export async function buildSocialEntriesByUserId(
     }
 
     followRows = (followResult.data ?? []) as Array<{ related_user_id: string; status: 'pending' | 'approved' }>;
+    outgoingBlockedUserIds = new Set(
+      (outgoingBlocksResult.data ?? []).map((row) => row.related_user_id as string),
+    );
     blockedUserIds = new Set([
       ...(
         options.includeBlockedByViewer
           ? []
-          : (outgoingBlocksResult.data ?? []).map((row) => row.related_user_id as string)
+          : outgoingBlockedUserIds
       ),
       ...(incomingBlocksResult.data ?? []).map((row) => row.user_id as string),
     ]);
@@ -177,6 +181,9 @@ export async function buildSocialEntriesByUserId(
       const relationship = viewerId && viewerId !== profile.user_id
         ? relationshipByUserId.get(profile.user_id) ?? 'none'
         : 'none';
+      const isBlockedByViewer = viewerId && viewerId !== profile.user_id
+        ? outgoingBlockedUserIds.has(profile.user_id)
+        : false;
 
       const entry: SocialUserEntry = {
         userId: profile.user_id,
@@ -187,8 +194,14 @@ export async function buildSocialEntriesByUserId(
         latestBadgeName,
         relationship,
         capabilities: {
-          canFollow: Boolean(viewerId) && viewerId !== profile.user_id && relationship === 'none',
-          canUnfollow: Boolean(viewerId) && viewerId !== profile.user_id && relationship === 'following',
+          canFollow: Boolean(viewerId)
+            && viewerId !== profile.user_id
+            && relationship === 'none'
+            && !isBlockedByViewer,
+          canUnfollow: Boolean(viewerId)
+            && viewerId !== profile.user_id
+            && relationship === 'following'
+            && !isBlockedByViewer,
         },
       };
 
