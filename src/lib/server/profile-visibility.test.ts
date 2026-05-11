@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { resolveProfileVisibility, resolveProfileRelationshipAndCapabilities } from './profile-visibility';
+import {
+  resolveBirdBlitzChallengeAccess,
+  resolveProfileBlockState,
+  resolveProfileVisibility,
+  resolveProfileRelationshipAndCapabilities,
+} from './profile-visibility';
 import type { FollowRow } from '@/types/profile';
 
 const TARGET = { userId: 'target-uid', privacyMode: 'public' as const };
@@ -95,6 +100,7 @@ describe('resolveProfileRelationshipAndCapabilities', () => {
     const rows = [followRow(VIEWER_ID, 'target-uid', 'follow', 'approved')];
     const result = resolveProfileRelationshipAndCapabilities(VIEWER_ID, TARGET, rows);
     expect(result.relationship).toBe('following');
+    expect(result.blockState).toBe('none');
     expect(result.capabilities.canFollow).toBe(false);
     expect(result.capabilities.canUnfollow).toBe(true);
     expect(result.capabilities.canChallengeBirdBlitz).toBe(true);
@@ -122,6 +128,7 @@ describe('resolveProfileRelationshipAndCapabilities', () => {
     const rows = [followRow('target-uid', VIEWER_ID, 'block')];
     const result = resolveProfileRelationshipAndCapabilities(VIEWER_ID, TARGET, rows);
     expect(result.relationship).toBe('blocked');
+    expect(result.blockState).toBe('blocked_by_target');
     expect(result.capabilities.canFollow).toBe(false);
     expect(result.capabilities.canUnfollow).toBe(false);
     expect(result.capabilities.canChallengeBirdBlitz).toBe(false);
@@ -141,5 +148,65 @@ describe('resolveProfileRelationshipAndCapabilities', () => {
     expect(result.capabilities.canFollow).toBe(true);
     expect(result.capabilities.canUnfollow).toBe(false);
     expect(result.capabilities.canChallengeBirdBlitz).toBe(false);
+  });
+});
+
+describe('resolveProfileBlockState', () => {
+  it('returns none for guests', () => {
+    expect(resolveProfileBlockState(null, TARGET, NO_FOLLOWS)).toBe('none');
+  });
+
+  it('returns viewer_blocked_target when the viewer initiated the block', () => {
+    expect(
+      resolveProfileBlockState(VIEWER_ID, TARGET, [followRow(VIEWER_ID, 'target-uid', 'block')]),
+    ).toBe('viewer_blocked_target');
+  });
+
+  it('returns blocked_by_target when the target initiated the block', () => {
+    expect(
+      resolveProfileBlockState(VIEWER_ID, TARGET, [followRow('target-uid', VIEWER_ID, 'block')]),
+    ).toBe('blocked_by_target');
+  });
+});
+
+describe('resolveBirdBlitzChallengeAccess', () => {
+  it('denies guests from challenging', () => {
+    expect(resolveBirdBlitzChallengeAccess(null, TARGET, NO_FOLLOWS)).toEqual({
+      allowed: false,
+      reason: 'unauthenticated',
+    });
+  });
+
+  it('denies self-challenges', () => {
+    expect(resolveBirdBlitzChallengeAccess('target-uid', TARGET, NO_FOLLOWS)).toEqual({
+      allowed: false,
+      reason: 'owner',
+    });
+  });
+
+  it('denies blocked viewers', () => {
+    expect(
+      resolveBirdBlitzChallengeAccess(VIEWER_ID, TARGET, [followRow('target-uid', VIEWER_ID, 'block')]),
+    ).toEqual({
+      allowed: false,
+      reason: 'blocked',
+    });
+  });
+
+  it('requires an approved follow for private profiles', () => {
+    expect(resolveBirdBlitzChallengeAccess(VIEWER_ID, TARGET_PRIVATE, NO_FOLLOWS)).toEqual({
+      allowed: false,
+      reason: 'private_requires_approved_follow',
+    });
+    expect(
+      resolveBirdBlitzChallengeAccess(
+        VIEWER_ID,
+        TARGET_PRIVATE,
+        [followRow(VIEWER_ID, 'target-uid', 'follow', 'approved')],
+      ),
+    ).toEqual({
+      allowed: true,
+      reason: 'allowed',
+    });
   });
 });
