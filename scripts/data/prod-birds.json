@@ -596,6 +596,10 @@
     "bird_name": "Barred Parakeet"
   },
   {
+    "bird_key": "real:bat-falcon",
+    "bird_name": "Bat Falcon"
+  },
+  {
     "bird_key": "real:bateleur",
     "bird_name": "Bateleur"
   },
@@ -884,6 +888,10 @@
     "bird_name": "Black-eared Wood-Quail"
   },
   {
+    "bird_key": "real:black-faced-babbler",
+    "bird_name": "Black-faced Babbler"
+  },
+  {
     "bird_key": "real:black-faced-dacnis",
     "bird_name": "Black-faced Dacnis"
   },
@@ -1166,6 +1174,10 @@
   {
     "bird_key": "real:blue-breasted-kingfisher",
     "bird_name": "Blue-breasted Kingfisher"
+  },
+  {
+    "bird_key": "real:blue-capped-tanager",
+    "bird_name": "Blue-capped Tanager"
   },
   {
     "bird_key": "real:blue-cheeked-bee-eater",
@@ -1488,6 +1500,10 @@
     "bird_name": "Campina Thrush"
   },
   {
+    "bird_key": "real:canada-goose",
+    "bird_name": "Canada Goose"
+  },
+  {
     "bird_key": "real:canivets-emerald",
     "bird_name": "Canivet's Emerald"
   },
@@ -1640,6 +1656,10 @@
     "bird_name": "Chestnut-bellied Sandgrouse"
   },
   {
+    "bird_key": "real:chestnut-bellied-seedeater",
+    "bird_name": "Chestnut-bellied Seedeater"
+  },
+  {
     "bird_key": "real:chestnut-bellied-starling",
     "bird_name": "Chestnut-bellied Starling"
   },
@@ -1650,6 +1670,10 @@
   {
     "bird_key": "real:chestnut-capped-blackbird",
     "bird_name": "Chestnut-capped Blackbird"
+  },
+  {
+    "bird_key": "real:chestnut-collared-swift",
+    "bird_name": "Chestnut-collared Swift"
   },
   {
     "bird_key": "real:chestnut-colored-woodpecker",
@@ -1728,6 +1752,10 @@
     "bird_name": "Chinstrap Penguin"
   },
   {
+    "bird_key": "real:chirinda-apalis",
+    "bird_name": "Chirinda Apalis"
+  },
+  {
     "bird_key": "real:chivi-vireo",
     "bird_name": "Chivi Vireo"
   },
@@ -1778,6 +1806,10 @@
   {
     "bird_key": "real:cinnamon-vented-piha",
     "bird_name": "Cinnamon-vented Piha"
+  },
+  {
+    "bird_key": "real:cirl-bunting",
+    "bird_name": "Cirl Bunting"
   },
   {
     "bird_key": "real:clapper-rail",
@@ -1908,6 +1940,10 @@
     "bird_name": "Common Loon"
   },
   {
+    "bird_key": "real:common-merganser",
+    "bird_name": "Common Merganser"
+  },
+  {
     "bird_key": "real:common-myna",
     "bird_name": "Common Myna"
   },
@@ -1930,6 +1966,10 @@
   {
     "bird_key": "real:common-pochard",
     "bird_name": "Common Pochard"
+  },
+  {
+    "bird_key": "real:common-poorwill",
+    "bird_name": "Common Poorwill"
   },
   {
     "bird_key": "real:common-quail",
@@ -2184,6 +2224,10 @@
     "bird_name": "Dark-backed Weaver"
   },
   {
+    "bird_key": "real:dark-faced-ground-tyrant",
+    "bird_name": "Dark-faced Ground-Tyrant"
+  },
+  {
     "bird_key": "real:dartford-warbler",
     "bird_name": "Dartford Warbler"
   },
@@ -2198,6 +2242,10 @@
   {
     "bird_key": "real:desert-cisticola",
     "bird_name": "Desert Cisticola"
+  },
+  {
+    "bird_key": "real:desert-lark",
+    "bird_name": "Desert Lark"
   },
   {
     "bird_key": "real:desert-wheatear",
@@ -2400,6 +2448,10 @@
     "bird_name": "Eurasian Kestrel"
   },
   {
+    "bird_key": "real:eurasian-linnet",
+    "bird_name": "Eurasian Linnet"
+  },
+  {
     "bird_key": "real:eurasian-moorhen",
     "bird_name": "Eurasian Moorhen"
   },
@@ -2442,6 +2494,10 @@
   {
     "bird_key": "real:european-greenfinch",
     "bird_name": "European Greenfinch"
+  },
+  {
+    "bird_key": "real:european-honey-buzzard",
+    "bird_name": "European Honey-buzzard"
   },
   {
     "bird_key": "real:european-pied-flycatcher",
@@ -2608,6 +2664,10 @@
     "bird_name": "Freckled Nightjar"
   },
   {
+    "bird_key": "real:friedmanns-lark",
+    "bird_name": "Friedmann's Lark"
+  },
+  {
     "bird_key": "real:flleborns-longclaw",
     "bird_name": "Fülleborn's Longclaw"
   },
@@ -2684,6 +2744,10 @@
     "bird_name": "Golden Eagle"
   },
   {
+    "bird_key": "real:golden-greenbul",
+    "bird_name": "Golden Greenbul"
+  },
+  {
     "bird_key": "real:golden-swallow",
     "bird_name": "Golden Swallow"
   },
@@ -2698,6 +2762,10 @@
   {
     "bird_key": "real:golden-breasted-bunting",
     "bird_name": "Golden-breasted Bunting"
+  },
+  {
+    "bird_key": "real:golden-browed-warbler",
+    "bird_name": "Golden-browed Warbler"
   },
   {
     "bird_key": "real:golden-crowned-warbler",
@@ -3336,8 +3404,16 @@
     "bird_name": "Hispaniolan Parakeet"
   },
   {
+    "bird_key": "real:hispaniolan-spindalis",
+    "bird_name": "Hispaniolan Spindalis"
+  },
+  {
     "bird_key": "real:hispaniolan-woodpecker",
     "bird_name": "Hispaniolan Woodpecker"
+  },
+  {
+    "bird_key": "real:holubs-golden-weaver",
+    "bird_name": "Holub's Golden-Weaver"
   },
   {
     "bird_key": "real:honeyguide-greenbul",
@@ -3480,6 +3556,10 @@
     "bird_name": "Jameson's Firefinch"
   },
   {
+    "bird_key": "real:jamesons-wattle-eye",
+    "bird_name": "Jameson's Wattle-eye"
+  },
+  {
     "bird_key": "real:johannas-sunbird",
     "bird_name": "Johanna's Sunbird"
   },
@@ -3522,6 +3602,10 @@
   {
     "bird_key": "real:kentish-plover",
     "bird_name": "Kentish Plover"
+  },
+  {
+    "bird_key": "real:kentucky-warbler",
+    "bird_name": "Kentucky Warbler"
   },
   {
     "bird_key": "real:kerguelen-petrel",
@@ -3890,89 +3974,5 @@
   {
     "bird_key": "real:little-stint",
     "bird_name": "Little Stint"
-  },
-  {
-    "bird_key": "real:little-swift",
-    "bird_name": "Little Swift"
-  },
-  {
-    "bird_key": "real:little-tern",
-    "bird_name": "Little Tern"
-  },
-  {
-    "bird_key": "real:little-weaver",
-    "bird_name": "Little Weaver"
-  },
-  {
-    "bird_key": "real:lizard-buzzard",
-    "bird_name": "Lizard Buzzard"
-  },
-  {
-    "bird_key": "real:loggerhead-kingbird",
-    "bird_name": "Loggerhead Kingbird"
-  },
-  {
-    "bird_key": "real:long-billed-crombec",
-    "bird_name": "Long-billed Crombec"
-  },
-  {
-    "bird_key": "real:long-billed-dowitcher",
-    "bird_name": "Long-billed Dowitcher"
-  },
-  {
-    "bird_key": "real:long-crested-eagle",
-    "bird_name": "Long-crested Eagle"
-  },
-  {
-    "bird_key": "real:long-legged-buzzard",
-    "bird_name": "Long-legged Buzzard"
-  },
-  {
-    "bird_key": "real:long-legged-pipit",
-    "bird_name": "Long-legged Pipit"
-  },
-  {
-    "bird_key": "real:long-tailed-duck",
-    "bird_name": "Long-tailed Duck"
-  },
-  {
-    "bird_key": "real:long-tailed-glossy-starling",
-    "bird_name": "Long-tailed Glossy Starling"
-  },
-  {
-    "bird_key": "real:long-tailed-hermit",
-    "bird_name": "Long-tailed Hermit"
-  },
-  {
-    "bird_key": "real:long-tailed-jaeger",
-    "bird_name": "Long-tailed Jaeger"
-  },
-  {
-    "bird_key": "real:long-tailed-reed-finch",
-    "bird_name": "Long-tailed Reed Finch"
-  },
-  {
-    "bird_key": "real:long-toed-lapwing",
-    "bird_name": "Long-toed Lapwing"
-  },
-  {
-    "bird_key": "real:louisiana-waterthrush",
-    "bird_name": "Louisiana Waterthrush"
-  },
-  {
-    "bird_key": "real:lowland-sooty-boubou",
-    "bird_name": "Lowland Sooty Boubou"
-  },
-  {
-    "bird_key": "real:lhders-bushshrike",
-    "bird_name": "Lühder's Bushshrike"
-  },
-  {
-    "bird_key": "real:lyness-cisticola",
-    "bird_name": "Lynes's Cisticola"
-  },
-  {
-    "bird_key": "real:macaroni-penguin",
-    "bird_name": "Macaroni Penguin"
   }
 ]
