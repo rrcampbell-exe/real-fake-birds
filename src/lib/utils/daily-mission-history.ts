@@ -173,7 +173,8 @@ export function getDailyMissionStreaks(
   }
 
   const completedDates = new Set(normalizedHistory.map((entry) => entry.date));
-  let currentCursor = todayDate ?? getTodayMissionDate(now);
+  const isValidDateString = todayDate !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(todayDate);
+  let currentCursor = isValidDateString ? todayDate : getTodayMissionDate(now);
   let currentStreak = 0;
 
   const todayKey = currentCursor;
