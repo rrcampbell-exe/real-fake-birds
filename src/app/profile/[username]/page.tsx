@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Lock } from 'lucide-react';
 import { useScreenViewed } from '@/hooks/useScreenViewed';
-import BirdhousePreviewCard from '@/components/profile/BirdhousePreviewCard';
 import ProfileConnectionsModal from '@/components/profile/ProfileConnectionsModal';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import ProfileSafetyActions from '@/components/profile/ProfileSafetyActions';
@@ -399,11 +398,7 @@ export default function UserProfilePage() {
 
       <ProgressSummary progress={profile.progress} />
 
-      {data.visibility.reason === 'owner' ? (
-        <BirdhousePreviewCard />
-      ) : (
-        <PublicBirdhousePreviewCard username={profile.username} />
-      )}
+      <PublicBirdhousePreviewCard username={profile.username} />
 
       <section>
         <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold mb-3">
