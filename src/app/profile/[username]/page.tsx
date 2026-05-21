@@ -1,10 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Lock } from 'lucide-react';
 import { useScreenViewed } from '@/hooks/useScreenViewed';
-import BirdhousePreviewCard from '@/components/profile/BirdhousePreviewCard';
 import ProfileConnectionsModal from '@/components/profile/ProfileConnectionsModal';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import ProfileSafetyActions from '@/components/profile/ProfileSafetyActions';
@@ -89,6 +88,7 @@ function useProfileData(username: string) {
 export default function UserProfilePage() {
   useScreenViewed('profile-view');
   const params = useParams();
+  const router = useRouter();
   const username = typeof params?.username === 'string' ? params.username : '';
   const { data, setData, isLoading, error, fetchProfile } = useProfileData(username);
   const [isFollowActionPending, setIsFollowActionPending] = useState(false);
@@ -205,6 +205,12 @@ export default function UserProfilePage() {
     />
   ) : null;
 
+  useEffect(() => {
+    if (data?.visibility.reason === 'owner') {
+      router.replace('/profile');
+    }
+  }, [data?.visibility.reason, router]);
+
   if (isLoading) {
     return (
       <div className="w-full max-w-lg mx-auto px-4 py-8 flex flex-col gap-8">
@@ -250,6 +256,10 @@ export default function UserProfilePage() {
         <p className="text-sm text-[var(--color-muted)]">{error}</p>
       </div>
     );
+  }
+
+  if (data?.visibility.reason === 'owner') {
+    return null;
   }
 
   if (!data || !data.profile) {
@@ -388,11 +398,7 @@ export default function UserProfilePage() {
 
       <ProgressSummary progress={profile.progress} />
 
-      {data.visibility.reason === 'owner' ? (
-        <BirdhousePreviewCard />
-      ) : (
-        <PublicBirdhousePreviewCard username={profile.username} />
-      )}
+      <PublicBirdhousePreviewCard username={profile.username} />
 
       <section>
         <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold mb-3">

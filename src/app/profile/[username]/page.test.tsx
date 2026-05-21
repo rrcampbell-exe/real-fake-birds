@@ -4,6 +4,7 @@ import UserProfilePage from './page';
 
 vi.mock('next/navigation', () => ({
   useParams: vi.fn(),
+  useRouter: vi.fn(),
 }));
 
 vi.mock('@/hooks/useScreenViewed', () => ({
@@ -40,7 +41,7 @@ vi.mock('@/components/rewards/TrophyCaseReadOnly', () => ({
   default: () => <div>TrophyCaseReadOnly</div>,
 }));
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 
 const PUBLIC_PROFILE_RESPONSE = {
   visibility: { reason: 'public_profile', canViewFull: true, canFollow: true },
@@ -82,9 +83,41 @@ const VIEWER_BLOCKED_RESPONSE = {
   },
 };
 
+const OWNER_PROFILE_RESPONSE = {
+  visibility: { reason: 'owner', canViewFull: true, canFollow: false },
+  relationship: 'owner',
+  blockState: 'none',
+  capabilities: { canFollow: false, canUnfollow: false, canChallengeBirdBlitz: false },
+  profile: {
+    kind: 'own',
+    username: 'birdlover',
+    avatarPalette: 'finch',
+    avatarFakeBirdImageUrl: null,
+    isHouseAccount: false,
+    joinedMonthYear: 'April 2026',
+    privacyMode: 'public',
+    progress: {
+      birdsIdentified: 42,
+      seeds: 100,
+      bestStreak: 7,
+      bestDailyStreak: 5,
+      bestWeeklyPlacement: 3,
+      firstPlaceCount: 1,
+      secondPlaceCount: 2,
+      thirdPlaceCount: 3,
+    },
+    followerCount: 10,
+    followingCount: 5,
+  },
+};
+
 describe('UserProfilePage', () => {
+  const mockReplace = vi.fn();
+
   beforeEach(() => {
     vi.mocked(useParams).mockReturnValue({ username: 'birdlover' });
+    vi.mocked(useRouter).mockReturnValue({ replace: mockReplace } as ReturnType<typeof useRouter>);
+    mockReplace.mockReset();
     global.fetch = vi.fn();
   });
 
@@ -135,5 +168,18 @@ describe('UserProfilePage', () => {
 
     expect(await screen.findByText('This player is blocked.')).toBeInTheDocument();
     expect(screen.getByLabelText('Open profile safety actions')).toBeInTheDocument();
+  });
+
+  it('redirects owners to the personal profile page', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValue(OWNER_PROFILE_RESPONSE),
+    } as unknown as Response);
+
+    render(<UserProfilePage />);
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/profile');
+    });
   });
 });
