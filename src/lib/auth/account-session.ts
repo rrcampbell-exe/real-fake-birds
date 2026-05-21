@@ -7,12 +7,6 @@ import type { ProgressEvent } from '@/lib/progress/progress-events';
 import { clearProgressEventOutbox, readProgressEventOutbox, removeQueuedProgressEvents } from '@/lib/progress/progress-event-outbox';
 import { clearDirtyBirdJournalKeys, getDirtyBirdJournalEntries, readBirdJournal, writeBirdJournal } from '@/lib/utils/bird-journal';
 import { readBirdhouse, writeBirdhouse } from '@/lib/utils/birdhouse';
-import {
-  getTodayChallengeDate,
-  readDailyChallengeHistory,
-  resetDailyChallengeState,
-  writeDailyChallengeHistory,
-} from '@/lib/utils/daily-challenge';
 import { getTodayMissionDate } from '@/lib/utils/daily-mission-date';
 import { readDailyMissionHistory, writeDailyMissionHistory } from '@/lib/utils/daily-mission-history';
 import {
@@ -89,7 +83,6 @@ function readLocalProgressPayload(): LocalProgressPayload {
   return {
     score,
     unlockedThemes: getUnlockedThemeNames(score),
-    dailyChallengeHistory: readDailyChallengeHistory(),
     dailyMissionHistory: readDailyMissionHistory(),
     milestones: getEarnedMilestonesForBirds(score.birdsIdentified).map((milestone) => milestone.value),
     journalEntries: Object.values(readBirdJournal()),
@@ -102,7 +95,6 @@ function resetEphemeralLocalState(): void {
     return;
   }
 
-  resetDailyChallengeState(getTodayChallengeDate());
   resetSessionMissions(getTodayMissionDate());
   writeStreakInsuranceState(defaultStreakInsuranceState);
   localStorage.removeItem(`${CURRENT_HINTS_STORAGE_KEY}:classic`);
@@ -190,7 +182,6 @@ export async function flushQueuedProgressEventsForSignedInUser(options?: { keepa
       removeQueuedProgressEvents([...response.appliedEventIds, ...response.ignoredEventIds]);
       writeBirdScore(mergeFlushedProgressScore(readBirdScore(), response.snapshot.score, queuedEvents));
       setUnlockedThemeNames(response.snapshot.unlockedThemes);
-      writeDailyChallengeHistory(response.snapshot.dailyChallengeHistory);
 
       if (!options?.keepalive) {
         await pushDirtyBirdJournalEntriesToAccount();
@@ -270,7 +261,7 @@ export async function syncSignedInAccountToLocalState(options?: { notify?: boole
 }
 
 export async function pushCurrentLocalProgressToAccount(): Promise<void> {
-  await syncLocalProgress(readLocalProgressPayload());
+  await syncLocalProgress(readLocalProgressPayload(), getTodayMissionDate());
   notifyAccountStateChanged();
 }
 
@@ -291,7 +282,6 @@ export async function prepareSignedInSessionForSignOut(): Promise<void> {
 export function resetLocalStateForGuestSession(): void {
   writeBirdScore(defaultBirdScore);
   setUnlockedThemeNames([]);
-  writeDailyChallengeHistory([]);
   writeDailyMissionHistory([]);
   writeBirdJournal({});
   writeBirdhouse({ real: [], fake: [], updatedAt: new Date(0).toISOString() });

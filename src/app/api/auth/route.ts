@@ -33,7 +33,6 @@ import type {
   BirdJournalEntry,
   BirdJournalMetadata,
   BirdScore,
-  DailyChallengeHistoryEntry,
   DailyMissionHistoryEntry,
   WeeklyPlacementSummary,
 } from '@/types';
@@ -132,10 +131,10 @@ type LeaderboardAvatarRow = {
 
 interface SyncLocalProgressRequest {
   action: AuthAction;
+  missionDate?: string;
   progress: {
     score: Partial<BirdScore> | null;
     unlockedThemes: string[];
-    dailyChallengeHistory: DailyChallengeHistoryEntry[];
     dailyMissionHistory: DailyMissionHistoryEntry[];
     milestones: number[];
     journalEntries: BirdJournalEntry[];
@@ -531,17 +530,6 @@ function getDailyMissionIdsForDate(date: string): string[] {
     .map((mission) => mission.id);
 }
 
-function isDailyChallengeHistoryEntryArray(value: unknown): value is DailyChallengeHistoryEntry[] {
-  return Array.isArray(value) && value.every((entry) => (
-    Boolean(entry)
-      && typeof entry === 'object'
-      && typeof entry.date === 'string'
-      && typeof entry.correctAnswers === 'number'
-      && typeof entry.roundsPlayed === 'number'
-      && typeof entry.completed === 'boolean'
-  ));
-}
-
 function isBirdJournalEntryArray(value: unknown): value is BirdJournalEntry[] {
   return Array.isArray(value) && value.every((entry) => (
     Boolean(entry)
@@ -570,7 +558,6 @@ function isSyncLocalProgressRequest(value: unknown): value is SyncLocalProgressR
     && typeof candidate.progress === 'object'
     && Array.isArray(candidate.progress.unlockedThemes)
     && Array.isArray(candidate.progress.milestones)
-    && isDailyChallengeHistoryEntryArray(candidate.progress.dailyChallengeHistory)
     && (candidate.progress.dailyMissionHistory === undefined || Array.isArray(candidate.progress.dailyMissionHistory))
     && candidate.progress.journalEntries.length <= MAX_SYNC_JOURNAL_ENTRIES
     && isBirdJournalEntryArray(candidate.progress.journalEntries)
@@ -937,25 +924,6 @@ function normalizeThemeNames(themeNames: string[]): string[] {
         .filter(Boolean)
     )
   ).sort((left, right) => left.localeCompare(right));
-}
-
-function normalizeDailyHistory(history: DailyChallengeHistoryEntry[]): DailyChallengeHistoryEntry[] {
-  const uniqueByDate = new Map<string, DailyChallengeHistoryEntry>();
-
-  for (const entry of history) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(entry.date)) {
-      continue;
-    }
-
-    uniqueByDate.set(entry.date, {
-      date: entry.date,
-      correctAnswers: Math.max(0, Math.floor(entry.correctAnswers)),
-      roundsPlayed: Math.max(0, Math.floor(entry.roundsPlayed)),
-      completed: Boolean(entry.completed),
-    });
-  }
-
-  return Array.from(uniqueByDate.values()).sort((left, right) => right.date.localeCompare(left.date));
 }
 
 function normalizeDailyMissionHistory(history: DailyMissionHistoryEntry[]): DailyMissionHistoryEntry[] {
@@ -1678,7 +1646,7 @@ export async function POST(request: NextRequest) {
       const admin = createSupabaseAdminClient();
       const { currentWeekStart } = await finalizeExpiredWeeklyLeaderboards(admin);
       const eventIds = body.events.map((event) => event.eventId);
-      const [{ data: progress }, { data: unlockedThemes }, { data: dailyHistory }, { data: milestoneRows }, { data: seenEvents }, leaderboardRow] = await Promise.all([
+      const [{ data: progress }, { data: unlockedThemes }, { data: milestoneRows }, { data: seenEvents }, leaderboardRow] = await Promise.all([
         admin
           .from('player_progress')
           .select('birds_seen, birds_identified, current_streak, best_streak, current_daily_streak, best_daily_streak, seeds, streak_insurance_active, streak_insurance_purchased_at')
@@ -1688,11 +1656,6 @@ export async function POST(request: NextRequest) {
           .from('unlocked_themes')
           .select('theme_name')
           .eq('user_id', context.userId),
-        admin
-          .from('daily_challenge_history')
-          .select('challenge_date, correct_answers, rounds_played, completed')
-          .eq('user_id', context.userId)
-          .order('challenge_date', { ascending: false }),
         admin
           .from('milestones')
           .select('milestone_value')
@@ -1726,12 +1689,6 @@ export async function POST(request: NextRequest) {
             seeds: progress?.seeds ?? 0,
           }),
           unlockedThemes: (unlockedThemes ?? []).map((theme) => theme.theme_name),
-          dailyChallengeHistory: (dailyHistory ?? []).map((entry) => ({
-            date: entry.challenge_date,
-            correctAnswers: entry.correct_answers,
-            roundsPlayed: entry.rounds_played,
-            completed: entry.completed,
-          })),
           milestoneValues: (milestoneRows ?? []).map((row) => row.milestone_value),
         }),
         pendingEvents
@@ -1790,20 +1747,6 @@ export async function POST(request: NextRequest) {
                 { onConflict: 'user_id,milestone_value' }
               )
           : Promise.resolve(),
-        nextSnapshot.dailyChallengeHistory.length > 0
-          ? admin
-              .from('daily_challenge_history')
-              .upsert(
-                nextSnapshot.dailyChallengeHistory.map((entry) => ({
-                  user_id: context.userId,
-                  challenge_date: entry.date,
-                  correct_answers: entry.correctAnswers,
-                  rounds_played: entry.roundsPlayed,
-                  completed: entry.completed,
-                })),
-                { onConflict: 'user_id,challenge_date' }
-              )
-          : Promise.resolve(),
         pendingEvents.length > 0
           ? admin
               .from('progress_event_log')
@@ -1840,7 +1783,6 @@ export async function POST(request: NextRequest) {
         snapshot: {
           score: nextSnapshot.score,
           unlockedThemes: nextSnapshot.unlockedThemes,
-          dailyChallengeHistory: nextSnapshot.dailyChallengeHistory,
           milestones: nextSnapshot.milestoneValues,
         },
       });
@@ -1980,7 +1922,7 @@ export async function POST(request: NextRequest) {
       const missionDate = body.missionDate;
       const todayMissionIds = getDailyMissionIdsForDate(missionDate);
       const todayMissionClaimIds = todayMissionIds.map((missionId) => `${missionDate}:${missionId}`);
-      const [{ data: progress }, { data: themes }, { data: dailyHistory }, { data: dailyMissionHistory }, { data: milestoneRows }, { data: todayMissionEvents }, { data: journalRows }, { data: birdhouseRow }, { count: journalTotalCount }, { count: journalRealCount }] = await Promise.all([
+      const [{ data: progress }, { data: themes }, { data: dailyMissionHistory }, { data: milestoneRows }, { data: todayMissionEvents }, { data: journalRows }, { data: birdhouseRow }, { count: journalTotalCount }, { count: journalRealCount }] = await Promise.all([
         admin
           .from('player_progress')
           .select('birds_seen, birds_identified, current_streak, best_streak, current_daily_streak, best_daily_streak, seeds, last_local_sync_at')
@@ -1990,11 +1932,6 @@ export async function POST(request: NextRequest) {
           .from('unlocked_themes')
           .select('theme_name')
           .eq('user_id', context.userId),
-        admin
-          .from('daily_challenge_history')
-          .select('challenge_date, correct_answers, rounds_played, completed, bonus_seeds_awarded, claimed_at')
-          .eq('user_id', context.userId)
-          .order('challenge_date', { ascending: false }),
         admin
           .from('daily_mission_history')
           .select('mission_date')
@@ -2047,12 +1984,6 @@ export async function POST(request: NextRequest) {
             seeds: progress?.seeds ?? 0,
           }),
           unlockedThemes: (themes ?? []).map((theme) => theme.theme_name),
-          dailyChallengeHistory: (dailyHistory ?? []).map((entry) => ({
-            date: entry.challenge_date,
-            correctAnswers: entry.correct_answers,
-            roundsPlayed: entry.rounds_played,
-            completed: entry.completed,
-          })),
           dailyMissionHistory: (dailyMissionHistory ?? []).map((entry) => ({
             date: entry.mission_date,
           })),
@@ -2282,7 +2213,7 @@ export async function POST(request: NextRequest) {
 
       const missionStreaks = getDailyMissionStreaks((dailyMissionHistory ?? []).map((entry) => ({
         date: entry.mission_date,
-      })));
+      })), new Date(), body.date);
 
       await admin
         .from('player_progress')
@@ -2441,7 +2372,6 @@ export async function POST(request: NextRequest) {
       const { currentWeekStart } = await finalizeExpiredWeeklyLeaderboards(admin);
       const normalizedScore = normalizeBirdScore(body.progress.score);
       const themeNames = normalizeThemeNames(body.progress.unlockedThemes);
-      const dailyHistory = normalizeDailyHistory(body.progress.dailyChallengeHistory);
       const dailyMissionHistory = normalizeDailyMissionHistory(body.progress.dailyMissionHistory ?? []);
       const milestoneValues = normalizeMilestoneValues(body.progress.milestones);
       const journalEntries = normalizeBirdJournalEntries(body.progress.journalEntries);
@@ -2457,6 +2387,7 @@ export async function POST(request: NextRequest) {
         .eq('user_id', context.userId)
         .maybeSingle();
 
+      // Upsert non-streak progress fields. Daily streak is derived from mission history below.
       const { error: progressError } = await admin
         .from('player_progress')
         .upsert(
@@ -2466,8 +2397,6 @@ export async function POST(request: NextRequest) {
             birds_identified: normalizedScore.birdsIdentified,
             current_streak: normalizedScore.currentStreak,
             best_streak: normalizedScore.bestStreak,
-            current_daily_streak: normalizedScore.currentDailyStreak,
-            best_daily_streak: normalizedScore.bestDailyStreak,
             seeds: normalizedScore.seeds,
             last_local_sync_at: syncedAt,
           },
@@ -2495,25 +2424,6 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      if (dailyHistory.length > 0) {
-        const { error: dailyError } = await admin
-          .from('daily_challenge_history')
-          .upsert(
-            dailyHistory.map((entry) => ({
-              user_id: context.userId,
-              challenge_date: entry.date,
-              correct_answers: entry.correctAnswers,
-              rounds_played: entry.roundsPlayed,
-              completed: entry.completed,
-            })),
-            { onConflict: 'user_id,challenge_date' }
-          );
-
-        if (dailyError) {
-          return NextResponse.json({ error: 'progress_sync_failed' }, { status: 500 });
-        }
-      }
-
       if (dailyMissionHistory.length > 0) {
         const { error: dailyMissionError } = await admin
           .from('daily_mission_history')
@@ -2530,6 +2440,42 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: 'progress_sync_failed' }, { status: 500 });
         }
       }
+
+      // Derive daily streak from authoritative server-side mission history.
+      // Never trust the client-sent score fields for streak values.
+      const [{ data: storedMissionHistory }, { data: existingProgress }] = await Promise.all([
+        admin
+          .from('daily_mission_history')
+          .select('mission_date')
+          .eq('user_id', context.userId)
+          .order('mission_date', { ascending: false }),
+        admin
+          .from('player_progress')
+          .select('best_daily_streak')
+          .eq('user_id', context.userId)
+          .maybeSingle(),
+      ]);
+
+      const clientMissionDate = typeof body.missionDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.missionDate)
+        ? body.missionDate
+        : undefined;
+      const missionStreaks = getDailyMissionStreaks(
+        (storedMissionHistory ?? []).map((entry) => ({ date: entry.mission_date })),
+        new Date(),
+        clientMissionDate
+      );
+      await admin
+        .from('player_progress')
+        .upsert(
+          {
+            user_id: context.userId,
+            current_daily_streak: missionStreaks.currentStreak,
+            best_daily_streak: Math.max(existingProgress?.best_daily_streak ?? 0, missionStreaks.bestStreak),
+          },
+          { onConflict: 'user_id' }
+        );
+
+      const derivedBestDailyStreak = Math.max(existingProgress?.best_daily_streak ?? 0, missionStreaks.bestStreak);
 
       if (milestoneValues.length > 0) {
         const milestoneBadgeMap = new Map(milestones.map((milestone) => [milestone.value, milestone.badge]));
@@ -2588,7 +2534,7 @@ export async function POST(request: NextRequest) {
             current_week_start: currentWeekStart,
             birds_identified: normalizedScore.birdsIdentified,
             best_streak: normalizedScore.bestStreak,
-            best_daily_streak: normalizedScore.bestDailyStreak,
+            best_daily_streak: derivedBestDailyStreak,
             accuracy,
             seeds: normalizedScore.seeds,
           },
@@ -2599,7 +2545,6 @@ export async function POST(request: NextRequest) {
         action: 'sync-local-progress',
         syncedAt,
         themeCount: themeNames.length,
-        dailyHistoryCount: dailyHistory.length,
         milestoneCount: milestoneValues.length,
         journalCount: journalEntries.length,
       });

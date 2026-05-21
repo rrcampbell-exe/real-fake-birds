@@ -1,9 +1,8 @@
-import { DAILY_CHALLENGE_CONFIG } from '@/lib/constants/daily-challenge';
 import { progressMilestones } from '@/lib/constants/milestones';
 import { getStreakReward } from '@/lib/constants/streaks';
 import { getThemeUnlockByMilestoneValue } from '@/lib/constants/theme-unlocks';
 import { defaultBirdScore, normalizeBirdScore } from '@/lib/utils/player-progress';
-import type { BirdScore, DailyChallengeHistoryEntry, GameMode } from '@/types';
+import type { BirdScore, GameMode } from '@/types';
 
 export type ProgressEvent =
   | {
@@ -54,7 +53,6 @@ export type ProgressEvent =
 export interface ProgressSnapshot {
   score: BirdScore;
   unlockedThemes: string[];
-  dailyChallengeHistory: DailyChallengeHistoryEntry[];
   milestoneValues: number[];
 }
 
@@ -72,49 +70,12 @@ function calculateStreakSeedReward(currentStreak: number): number {
   return getStreakReward(currentStreak);
 }
 
-function normalizeHistory(history: DailyChallengeHistoryEntry[]): DailyChallengeHistoryEntry[] {
-  return [...history]
-    .map((entry) => ({
-      date: entry.date,
-      correctAnswers: Math.max(0, Math.floor(entry.correctAnswers)),
-      roundsPlayed: Math.max(0, Math.floor(entry.roundsPlayed)),
-      completed: Boolean(entry.completed),
-    }))
-    .sort((left, right) => right.date.localeCompare(left.date));
-}
-
 export function createProgressSnapshot(partial?: Partial<ProgressSnapshot>): ProgressSnapshot {
   return {
     score: normalizeBirdScore(partial?.score ?? defaultBirdScore),
     unlockedThemes: uniqueStrings(partial?.unlockedThemes ?? []),
-    dailyChallengeHistory: normalizeHistory(partial?.dailyChallengeHistory ?? []),
     milestoneValues: uniqueNumbers(partial?.milestoneValues ?? []),
   };
-}
-
-function applyDailyRound(
-  history: DailyChallengeHistoryEntry[],
-  challengeDate: string,
-  isCorrect: boolean
-): DailyChallengeHistoryEntry[] {
-  const historyByDate = new Map(history.map((entry) => [entry.date, entry]));
-  const current = historyByDate.get(challengeDate) ?? {
-    date: challengeDate,
-    correctAnswers: 0,
-    roundsPlayed: 0,
-    completed: false,
-  };
-
-  const roundsPlayed = Math.min(current.roundsPlayed + 1, DAILY_CHALLENGE_CONFIG.roundCount);
-  const updated: DailyChallengeHistoryEntry = {
-    date: challengeDate,
-    roundsPlayed,
-    correctAnswers: current.correctAnswers + (isCorrect ? 1 : 0),
-    completed: roundsPlayed >= DAILY_CHALLENGE_CONFIG.roundCount,
-  };
-
-  historyByDate.set(challengeDate, updated);
-  return normalizeHistory(Array.from(historyByDate.values()));
 }
 
 export function applyProgressEvents(
@@ -174,14 +135,6 @@ export function applyProgressEvents(
         : 0;
     const nextSeeds = snapshot.score.seeds + seedsEarned;
 
-    let nextHistory = snapshot.dailyChallengeHistory;
-    if (event.payload.mode === 'daily' && event.payload.challengeDate) {
-      nextHistory = applyDailyRound(
-        snapshot.dailyChallengeHistory,
-        event.payload.challengeDate,
-        event.payload.isCorrect
-      );
-    }
     const nextMilestones = uniqueNumbers([
       ...snapshot.milestoneValues,
       ...progressMilestones
@@ -205,7 +158,6 @@ export function applyProgressEvents(
         seeds: nextSeeds,
       },
       unlockedThemes: nextUnlockedThemes,
-      dailyChallengeHistory: nextHistory,
       milestoneValues: nextMilestones,
     };
   }

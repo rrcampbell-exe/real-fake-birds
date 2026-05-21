@@ -2,8 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   notifyStoredValueChangedMock,
-  readDailyChallengeHistoryMock,
-  writeDailyChallengeHistoryMock,
   getTodayMissionDateMock,
   readDailyMissionHistoryMock,
   writeDailyMissionHistoryMock,
@@ -23,8 +21,6 @@ const {
   writeSessionMissionsMock,
 } = vi.hoisted(() => ({
   notifyStoredValueChangedMock: vi.fn(),
-  readDailyChallengeHistoryMock: vi.fn(),
-  writeDailyChallengeHistoryMock: vi.fn(),
   getTodayMissionDateMock: vi.fn(),
   readDailyMissionHistoryMock: vi.fn(),
   writeDailyMissionHistoryMock: vi.fn(),
@@ -46,11 +42,6 @@ const {
 
 vi.mock('@/hooks/useStoredValue', () => ({
   notifyStoredValueChanged: notifyStoredValueChangedMock,
-}));
-
-vi.mock('@/lib/utils/daily-challenge', () => ({
-  readDailyChallengeHistory: readDailyChallengeHistoryMock,
-  writeDailyChallengeHistory: writeDailyChallengeHistoryMock,
 }));
 
 vi.mock('@/lib/utils/daily-mission-date', () => ({
@@ -106,9 +97,6 @@ describe('account-sync-local', () => {
   beforeEach(() => {
     localStorage.clear();
     notifyStoredValueChangedMock.mockReset();
-    readDailyChallengeHistoryMock.mockReset();
-    readDailyChallengeHistoryMock.mockReturnValue([{ date: '2026-04-05', correctAnswers: 2, roundsPlayed: 5, completed: true }]);
-    writeDailyChallengeHistoryMock.mockReset();
     getTodayMissionDateMock.mockReset();
     getTodayMissionDateMock.mockReturnValue('2026-04-07');
     readDailyMissionHistoryMock.mockReset();
@@ -196,7 +184,6 @@ describe('account-sync-local', () => {
     applyPulledAccountProgress({
       score: { seeds: 20 },
       unlockedThemes: ['Robin'],
-      dailyChallengeHistory: [{ date: '2026-04-06', correctAnswers: 4, roundsPlayed: 5, completed: true }],
       dailyMissionHistory: [{ date: '2026-04-06' }],
       milestones: [10],
       birdhouse: { real: ['real:bird-a'], fake: [], updatedAt: '2026-04-07T10:00:00.000Z' },
@@ -211,7 +198,6 @@ describe('account-sync-local', () => {
 
     expect(writeBirdScoreMock).toHaveBeenCalledWith({ seeds: 20, merged: true });
     expect(setUnlockedThemeNamesMock).toHaveBeenCalledWith(['Finch', 'Robin']);
-    expect(writeDailyChallengeHistoryMock).toHaveBeenCalled();
     expect(writeDailyMissionHistoryMock).toHaveBeenCalled();
     expect(mergeBirdJournalStoresMock).toHaveBeenCalledWith({ local: true }, { 'bird-a': { birdKey: 'bird-a' } });
     expect(writeBirdJournalMock).toHaveBeenCalledWith(mergedJournal);
@@ -228,7 +214,6 @@ describe('account-sync-local', () => {
     expect(notifyStoredValueChangedMock).toHaveBeenCalledWith('birdJournal');
     expect(notifyStoredValueChangedMock).toHaveBeenCalledWith('birdhouse');
     expect(notifyStoredValueChangedMock).toHaveBeenCalledWith('unlockedThemes');
-    expect(notifyStoredValueChangedMock).toHaveBeenCalledWith('dailyChallengeHistory');
     expect(notifyStoredValueChangedMock).toHaveBeenCalledWith('dailyMissionHistory');
     const meta = JSON.parse(localStorage.getItem(ACCOUNT_SYNC_META_STORAGE_KEY) ?? '{}');
     expect(meta.lastServerSyncAt).toBe('2026-04-07T10:00:00.000Z');
@@ -241,7 +226,6 @@ describe('account-sync-local', () => {
     applyPulledAccountProgress({
       score: { seeds: 20 },
       unlockedThemes: ['Robin'],
-      dailyChallengeHistory: [],
       dailyMissionHistory: [{ date: '2026-04-07' }],
       milestones: [],
       birdhouse: { real: [], fake: [], updatedAt: '2026-04-07T10:00:00.000Z' },
@@ -269,7 +253,6 @@ describe('account-sync-local', () => {
     applyPulledAccountProgress({
       score: { seeds: 20 },
       unlockedThemes: [],
-      dailyChallengeHistory: [],
       dailyMissionHistory: [],
       milestones: [],
       birdhouse: { real: [], fake: [], updatedAt: '2026-04-07T10:00:00.000Z' },
@@ -291,7 +274,6 @@ describe('account-sync-local', () => {
     applyPulledAccountProgress({
       score: { seeds: 0 },
       unlockedThemes: [],
-      dailyChallengeHistory: [],
       dailyMissionHistory: [],
       milestones: [],
       birdhouse: remoteStore,
@@ -317,7 +299,6 @@ describe('account-sync-local', () => {
     applyPulledAccountProgress({
       score: { seeds: 0 },
       unlockedThemes: [],
-      dailyChallengeHistory: [],
       dailyMissionHistory: [],
       milestones: [],
       birdhouse: remoteStore,
@@ -344,7 +325,6 @@ describe('account-sync-local', () => {
     applyPulledAccountProgress({
       score: { seeds: 0 },
       unlockedThemes: [],
-      dailyChallengeHistory: [],
       dailyMissionHistory: [],
       milestones: [],
       birdhouse: remoteStore,
@@ -364,7 +344,6 @@ describe('account-sync-local', () => {
     applyPulledAccountProgress({
       score: { seeds: 0 },
       unlockedThemes: [],
-      dailyChallengeHistory: [],
       dailyMissionHistory: [],
       milestones: [],
       birdhouse: { real: [], fake: [], updatedAt: '2026-04-07T00:00:00.000Z' },
@@ -384,7 +363,6 @@ describe('account-sync-local', () => {
     applyPulledAccountProgress({
       score: { seeds: 0 },
       unlockedThemes: [],
-      dailyChallengeHistory: [],
       dailyMissionHistory: [],
       milestones: [],
       birdhouse: { real: [], fake: [], updatedAt: '2026-04-07T00:00:00.000Z' },

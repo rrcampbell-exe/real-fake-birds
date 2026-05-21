@@ -2,7 +2,6 @@ import type {
   BirdhouseStore,
   BirdJournalEntry,
   BirdScore,
-  DailyChallengeHistoryEntry,
   DailyMissionHistoryEntry,
   WeeklyLeaderboardEntry,
   WeeklyOverview,
@@ -76,7 +75,6 @@ export interface SyncLocalProgressResponse {
   action: 'sync-local-progress';
   syncedAt: string;
   themeCount: number;
-  dailyHistoryCount: number;
   milestoneCount: number;
   journalCount: number;
 }
@@ -184,7 +182,6 @@ export interface SignInWithUsernameResponse {
 export interface LocalProgressPayload {
   score: BirdScore;
   unlockedThemes: string[];
-  dailyChallengeHistory: DailyChallengeHistoryEntry[];
   dailyMissionHistory: DailyMissionHistoryEntry[];
   milestones: number[];
   journalEntries: BirdJournalEntry[];
@@ -320,10 +317,11 @@ export function savePrivacyMode(privacyMode: 'public' | 'private'): Promise<Save
   });
 }
 
-export function syncLocalProgress(progress: LocalProgressPayload): Promise<SyncLocalProgressResponse> {
+export function syncLocalProgress(progress: LocalProgressPayload, missionDate?: string): Promise<SyncLocalProgressResponse> {
   return postAuthAction<SyncLocalProgressResponse>({
     action: 'sync-local-progress',
     progress,
+    missionDate,
   });
 }
 

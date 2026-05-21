@@ -1,9 +1,4 @@
 import { notifyStoredValueChanged } from '@/hooks/useStoredValue';
-import { DAILY_CHALLENGE_HISTORY_STORAGE_KEY } from '@/lib/constants/daily-challenge';
-import {
-  readDailyChallengeHistory,
-  writeDailyChallengeHistory,
-} from '@/lib/utils/daily-challenge';
 import { getTodayMissionDate } from '@/lib/utils/daily-mission-date';
 import {
   DAILY_MISSION_HISTORY_STORAGE_KEY,
@@ -33,7 +28,7 @@ import {
   writeBirdScore,
 } from '@/lib/utils/player-progress';
 import { getMissionDefinitionsForState, readSessionMissions, resetSessionMissions, writeSessionMissions } from '@/lib/utils/missions';
-import type { BirdJournalEntry, BirdScore, DailyChallengeHistoryEntry, DailyMissionHistoryEntry } from '@/types';
+import type { BirdJournalEntry, BirdScore, DailyMissionHistoryEntry } from '@/types';
 import type { BirdhouseStore } from '@/types';
 
 export const ACCOUNT_SYNC_META_STORAGE_KEY = 'accountSyncMeta';
@@ -48,7 +43,6 @@ export interface AccountSyncMeta {
 export interface PulledAccountProgress {
   score: BirdScore;
   unlockedThemes: string[];
-  dailyChallengeHistory: DailyChallengeHistoryEntry[];
   dailyMissionHistory: DailyMissionHistoryEntry[];
   milestones: number[];
   journalEntries: BirdJournalEntry[];
@@ -76,30 +70,6 @@ const defaultAccountSyncMeta: AccountSyncMeta = {
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined';
-}
-
-function mergeDailyChallengeHistory(
-  localHistory: DailyChallengeHistoryEntry[],
-  remoteHistory: DailyChallengeHistoryEntry[]
-): DailyChallengeHistoryEntry[] {
-  const merged = new Map<string, DailyChallengeHistoryEntry>();
-
-  for (const entry of [...localHistory, ...remoteHistory]) {
-    const existing = merged.get(entry.date);
-    if (!existing) {
-      merged.set(entry.date, entry);
-      continue;
-    }
-
-    merged.set(entry.date, {
-      date: entry.date,
-      correctAnswers: Math.max(existing.correctAnswers, entry.correctAnswers),
-      roundsPlayed: Math.max(existing.roundsPlayed, entry.roundsPlayed),
-      completed: existing.completed || entry.completed,
-    });
-  }
-
-  return [...merged.values()].sort((left, right) => right.date.localeCompare(left.date));
 }
 
 function mergeDailyMissionHistory(
@@ -149,9 +119,6 @@ export function writeAccountSyncMeta(metaLike: Partial<AccountSyncMeta>): Accoun
 export function applyPulledAccountProgress(progress: PulledAccountProgress): void {
   writeBirdScore(mergeNonRoundRemoteScore(progress.score));
   setUnlockedThemeNames([...getUnlockedThemeNames(), ...progress.unlockedThemes]);
-  writeDailyChallengeHistory(
-    mergeDailyChallengeHistory(readDailyChallengeHistory(), progress.dailyChallengeHistory)
-  );
   writeDailyMissionHistory(
     mergeDailyMissionHistory(readDailyMissionHistory(), progress.dailyMissionHistory)
   );
@@ -216,7 +183,6 @@ export function applyPulledAccountProgress(progress: PulledAccountProgress): voi
   notifyStoredValueChanged(BIRD_JOURNAL_STORAGE_KEY);
   notifyStoredValueChanged(BIRDHOUSE_STORAGE_KEY);
   notifyStoredValueChanged(UNLOCKED_THEMES_STORAGE_KEY);
-  notifyStoredValueChanged(DAILY_CHALLENGE_HISTORY_STORAGE_KEY);
   notifyStoredValueChanged(DAILY_MISSION_HISTORY_STORAGE_KEY);
   window.localStorage.setItem(JOURNAL_SUMMARY_STORAGE_KEY, JSON.stringify(progress.journalSummary));
   notifyStoredValueChanged(JOURNAL_SUMMARY_STORAGE_KEY);

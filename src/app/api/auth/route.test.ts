@@ -1057,6 +1057,21 @@ describe('auth route', () => {
             return {
               select: vi.fn().mockReturnValue({
                 in: vi.fn().mockResolvedValue({ data: [] }),
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+                }),
+              }),
+              upsert: vi.fn().mockResolvedValue({ error: null }),
+            };
+          }
+
+          if (table === 'daily_mission_history') {
+            return {
+              select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  order: vi.fn().mockResolvedValue({ data: [] }),
+                  upsert: vi.fn().mockResolvedValue({ error: null }),
+                }),
               }),
               upsert: vi.fn().mockResolvedValue({ error: null }),
             };
@@ -1160,7 +1175,25 @@ describe('auth route', () => {
           }
 
           if (table === 'player_progress') {
-            return { upsert: vi.fn().mockResolvedValue({ error: null }) };
+            return {
+              select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+                }),
+              }),
+              upsert: vi.fn().mockResolvedValue({ error: null }),
+            };
+          }
+
+          if (table === 'daily_mission_history') {
+            return {
+              select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  order: vi.fn().mockResolvedValue({ data: [] }),
+                }),
+              }),
+              upsert: vi.fn().mockResolvedValue({ error: null }),
+            };
           }
 
           if (table === 'profiles') {
