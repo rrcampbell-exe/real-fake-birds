@@ -58,12 +58,6 @@ describe('applyProgressEvents', () => {
     });
     expect(snapshot.unlockedThemes).toContain('Raven');
     expect(snapshot.milestoneValues).toContain(10);
-    expect(snapshot.dailyChallengeHistory[0]).toEqual({
-      date: '2026-04-04',
-      correctAnswers: 1,
-      roundsPlayed: 1,
-      completed: false,
-    });
   });
 
   it('adds mission reward grant events to the player seed total', () => {
