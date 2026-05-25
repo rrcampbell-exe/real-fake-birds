@@ -20,6 +20,10 @@
     "bird_name": "African Penduline-Tit"
   },
   {
+    "bird_key": "real:african-pygmy-kingfisher",
+    "bird_name": "African Pygmy Kingfisher"
+  },
+  {
     "bird_key": "real:african-swamphen",
     "bird_name": "African Swamphen"
   },
@@ -442,6 +446,10 @@
   {
     "bird_key": "real:gray-cowled-wood-rail",
     "bird_name": "Gray-cowled Wood-Rail"
+  },
+  {
+    "bird_key": "real:gray-fronted-dove",
+    "bird_name": "Gray-fronted Dove"
   },
   {
     "bird_key": "real:gray-headed-albatross",
@@ -944,6 +952,10 @@
     "bird_name": "Rufous Piha"
   },
   {
+    "bird_key": "real:rufous-bellied-tit",
+    "bird_name": "Rufous-bellied Tit"
+  },
+  {
     "bird_key": "real:rufous-collared-sparrow",
     "bird_name": "Rufous-collared Sparrow"
   },
@@ -1074,6 +1086,10 @@
   {
     "bird_key": "real:southern-gray-headed-sparrow",
     "bird_name": "Southern Gray-headed Sparrow"
+  },
+  {
+    "bird_key": "real:southern-masked-weaver",
+    "bird_name": "Southern Masked-Weaver"
   },
   {
     "bird_key": "real:spanish-sparrow",
