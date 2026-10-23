@@ -120,6 +120,16 @@ src/
 
 The app is structured for Next.js serverless deployment. Production runtime behavior is handled by Next.js and the App Router, not by Vite. Vite is only used indirectly for Vitest during local and CI testing.
 
+## Bundled Native App
+
+The iOS and Android Capacitor apps bundle the UI and static assets locally. Account and gameplay APIs remain hosted at `NEXT_PUBLIC_APP_URL` (defaults to `https://www.realfakebirds.app`), so online play and account actions require a network connection.
+
+- Run `npm run native:build` to create the native frontend in `out/`.
+- Run `npm run ios:device:bundle` to build the frontend, sync it into the iOS project, and open Xcode.
+- Provide the public Supabase and optional analytics/Turnstile environment values at build time when those services are enabled.
+- Native API requests use the signed-in Supabase access token; the hosted API validates it and only allows configured Capacitor origins.
+- The normal Next.js web deployment and its same-origin API requests remain unchanged. Web guest play remains available. Native online play requires an account, with the existing offline guest bypass.
+
 ## Supabase Setup
 
 Supabase powers account auth and progression sync for signed-in players. The game still works locally without an account, but signed-in sessions can merge and flush queued progress to the backend.
