@@ -1,4 +1,4 @@
-import type { NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 
 // ISO 3166-1 alpha-2 codes for EU member states + EEA/UK where GDPR applies.
@@ -15,6 +15,51 @@ const GDPR_COUNTRY_CODES = new Set([
 ]);
 
 const REGION_COOKIE = 'rfb-region';
+const CAPACITOR_CORS_ORIGINS = new Set([
+  'capacitor://localhost',
+  'https://localhost',
+  'http://localhost',
+]);
+const API_CORS_METHODS = 'GET, POST, DELETE, OPTIONS';
+const API_CORS_HEADERS = 'Authorization, Content-Type';
+
+function applyApiCors(request: NextRequest, response: Response): void {
+  if (request.nextUrl.pathname !== '/api' && !request.nextUrl.pathname.startsWith('/api/')) {
+    return;
+  }
+
+  const origin = request.headers.get('origin');
+  if (!origin || !CAPACITOR_CORS_ORIGINS.has(origin)) {
+    return;
+  }
+
+  if (request.method === 'OPTIONS') {
+    const requestedMethod = request.headers.get('access-control-request-method');
+    const requestedHeaders = (request.headers.get('access-control-request-headers') ?? '')
+      .split(',')
+      .map((header) => header.trim().toLowerCase())
+      .filter(Boolean);
+    const allowedMethods = API_CORS_METHODS.split(',').map((method) => method.trim());
+    const allowedHeaders = new Set(API_CORS_HEADERS.split(',').map((header) => header.trim().toLowerCase()));
+
+    if (
+      !requestedMethod ||
+      !allowedMethods.includes(requestedMethod.toUpperCase()) ||
+      requestedHeaders.some((header) => !allowedHeaders.has(header))
+    ) {
+      return;
+    }
+  }
+
+  response.headers.set('Access-Control-Allow-Origin', origin);
+  response.headers.set('Access-Control-Allow-Methods', API_CORS_METHODS);
+  response.headers.set('Access-Control-Allow-Headers', API_CORS_HEADERS);
+
+  const vary = response.headers.get('Vary');
+  if (!vary || vary.split(',').every((value) => value.trim().toLowerCase() !== 'origin')) {
+    response.headers.set('Vary', vary ? `${vary}, Origin` : 'Origin');
+  }
+}
 
 export function buildCsp(nonce: string): string {
   // Keep this host in sync with NEXT_PUBLIC_POSTHOG_HOST used by AnalyticsProvider.
@@ -50,6 +95,7 @@ export async function middleware(request: NextRequest) {
   requestHeaders.set('x-nonce', nonce);
 
   const response = await updateSession(request, requestHeaders);
+  applyApiCors(request, response);
 
   // Skip CSP in development: `upgrade-insecure-requests` breaks LAN dev on physical
   // devices (LAN IPs aren't "potentially trustworthy", so the WebView upgrades all
@@ -73,6 +119,25 @@ export async function middleware(request: NextRequest) {
         secure: true,
       });
     }
+  }
+
+  if (
+    request.method === 'OPTIONS' &&
+    (request.nextUrl.pathname === '/api' || request.nextUrl.pathname.startsWith('/api/')) &&
+    CAPACITOR_CORS_ORIGINS.has(request.headers.get('origin') ?? '') &&
+    response.headers.has('Access-Control-Allow-Origin')
+  ) {
+    const preflightResponse = new NextResponse(null, { status: 204 });
+    response.headers.forEach((value, key) => {
+      if (
+        !key.toLowerCase().startsWith('x-middleware-') &&
+        key.toLowerCase() !== 'set-cookie'
+      ) {
+        preflightResponse.headers.set(key, value);
+      }
+    });
+    response.cookies.getAll().forEach((cookie) => preflightResponse.cookies.set(cookie));
+    return preflightResponse;
   }
 
   return response;

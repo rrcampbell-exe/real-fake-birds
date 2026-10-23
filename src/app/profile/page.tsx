@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { apiFetch } from '@/lib/api/client';
 import { Binoculars, Bird } from 'lucide-react';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import { useScreenViewed } from '@/hooks/useScreenViewed';
@@ -33,7 +34,7 @@ function useOwnProfile(username: string | null) {
 
     let cancelled = false;
 
-    fetch(`/api/profile?username=${encodeURIComponent(key)}`)
+    apiFetch(`/api/profile?username=${encodeURIComponent(key)}`)
       .then(async (res) => res.json())
       .then((data) => {
         if (!cancelled && data?.profile?.kind === 'own') {
@@ -77,7 +78,7 @@ export default function ProfilePage() {
   const fetchFollowerCounts = useCallback(async () => {
     cancelledRef.current = false;
     try {
-      const res = await fetch('/api/followers');
+      const res = await apiFetch('/api/followers');
       if (!res.ok) return;
       const json = (await res.json()) as FollowersResponse;
       if (!cancelledRef.current) {

@@ -1,4 +1,5 @@
 import { track } from '@/lib/analytics';
+import { apiFetch } from '@/lib/api/client';
 import { markLaunchStage } from '@/lib/native/launch-metrics';
 import type { BirdErrorResponse, BirdResponse, GameMode, ImageAttribution } from '@/types';
 
@@ -110,7 +111,7 @@ const fetchData = async (
 
   try {
     const requestStartedAt = Date.now();
-    const response = await fetch('/api/bird', { signal });
+    const response = await apiFetch('/api/bird', { signal });
     const data: BirdResponse | BirdErrorResponse = await response.json();
     const requestDurationMs = Date.now() - requestStartedAt;
 

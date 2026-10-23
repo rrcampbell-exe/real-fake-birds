@@ -1,4 +1,5 @@
 import type { UsernameValidationIssue } from './username';
+import { apiFetch } from '@/lib/api/client';
 
 export interface UsernameAvailabilityResult {
   isValid: boolean;
@@ -11,7 +12,7 @@ export async function validateUsernameAvailability(
   username: string,
   signal?: AbortSignal
 ): Promise<UsernameAvailabilityResult> {
-  const response = await fetch('/api/auth', {
+  const response = await apiFetch('/api/auth', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

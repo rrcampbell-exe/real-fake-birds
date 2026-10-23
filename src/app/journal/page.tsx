@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bird, Birdhouse, BookOpen, Sparkles } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+import { apiFetch } from '@/lib/api/client';
 import { useAccountState } from '@/components/account/AccountStateProvider';
 import BirdhouseSwapSheet from '@/components/birdhouse/BirdhouseSwapSheet';
 import BirdCard from '@/components/journal/BirdCard';
@@ -344,7 +345,7 @@ export default function JournalPage() {
 
     let cancelled = false;
 
-    fetch(`/api/journal?action=search&q=${encodeURIComponent(trimmedDebouncedSearchQuery)}`)
+    apiFetch(`/api/journal?action=search&q=${encodeURIComponent(trimmedDebouncedSearchQuery)}`)
       .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
       .then((data: { entries: typeof journal }) => {
         if (!cancelled) {
@@ -383,7 +384,7 @@ export default function JournalPage() {
       ? `/api/journal?action=browse&cursor=${encodeURIComponent(cursor)}`
       : '/api/journal?action=browse';
 
-    fetch(url)
+    apiFetch(url)
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { entries?: BirdJournalEntry[]; nextCursor?: string | null } | null) => {
         setServerBrowseEntries((prev) => [...prev, ...(data?.entries ?? [])]);

@@ -6,6 +6,7 @@ import type {
   WeeklyLeaderboardEntry,
   WeeklyOverview,
 } from '@/types';
+import { apiFetch } from '@/lib/api/client';
 import type { ProgressEvent } from '@/lib/progress/progress-events';
 import { AccountActionError } from '@/lib/auth/error';
 
@@ -194,7 +195,7 @@ interface PostAuthActionOptions {
 }
 
 async function postAuthAction<T>(body: object, options?: PostAuthActionOptions): Promise<T> {
-  const response = await fetch('/api/auth', {
+  const response = await apiFetch('/api/auth', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -397,7 +398,7 @@ export function claimMissionSetBonusDirect(options: {
 }
 
 export async function deleteAccount(password: string): Promise<{ success: true }> {
-  const response = await fetch('/api/auth/account', {
+  const response = await apiFetch('/api/auth/account', {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password }),

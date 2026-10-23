@@ -1,12 +1,19 @@
 import { createServerClient } from '@supabase/ssr';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { getSupabaseAnonKey, getSupabaseServiceRoleKey, getSupabaseUrl } from './env';
 
 export async function createSupabaseServerClient(): Promise<SupabaseClient> {
-  const cookieStore = await cookies();
+  const [cookieStore, requestHeaders] = await Promise.all([cookies(), headers()]);
+  const authorization = requestHeaders.get('authorization');
+  const bearerToken = authorization?.match(
+    /^Bearer ([A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)$/i,
+  )?.[1];
 
   return createServerClient(getSupabaseUrl(), getSupabaseAnonKey(), {
+    ...(bearerToken
+      ? { global: { headers: { Authorization: `Bearer ${bearerToken}` } } }
+      : {}),
     cookies: {
       getAll() {
         return cookieStore.getAll();

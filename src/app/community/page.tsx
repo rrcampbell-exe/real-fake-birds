@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { apiFetch } from '@/lib/api/client';
 import {
   ArrowRight,
   Binoculars,
@@ -64,7 +65,7 @@ export default function CommunityPage() {
     setError(null);
 
     try {
-      const res = await fetch('/api/followers');
+      const res = await apiFetch('/api/followers');
       if (!res.ok) {
         throw new Error('followers_fetch_failed');
       }
@@ -155,7 +156,7 @@ export default function CommunityPage() {
       if (cancelledRef.current) return;
       setIsSearching(true);
       try {
-        const res = await fetch(`/api/users/search?q=${encodeURIComponent(query.trim())}`);
+        const res = await apiFetch(`/api/users/search?q=${encodeURIComponent(query.trim())}`);
         if (!res.ok) {
           return;
         }
@@ -193,7 +194,7 @@ export default function CommunityPage() {
     setActionPending(entry.userId);
 
     try {
-      const res = await fetch('/api/follow', {
+      const res = await apiFetch('/api/follow', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, targetUsername: entry.username }),
@@ -234,7 +235,7 @@ export default function CommunityPage() {
   const handleUnfollow = async (entry: FollowEntry) => {
     setActionPending(entry.userId);
     try {
-      const res = await fetch('/api/follow', {
+      const res = await apiFetch('/api/follow', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'unfollow', targetUsername: entry.username }),
@@ -257,7 +258,7 @@ export default function CommunityPage() {
   const handleRemoveFollower = async (entry: FollowEntry) => {
     setActionPending(entry.userId);
     try {
-      const res = await fetch('/api/follow', {
+      const res = await apiFetch('/api/follow', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'remove_follower', targetUserId: entry.userId }),
@@ -280,7 +281,7 @@ export default function CommunityPage() {
   const handleApprove = async (entry: FollowEntry) => {
     setActionPending(entry.userId);
     try {
-      const res = await fetch('/api/follow', {
+      const res = await apiFetch('/api/follow', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'approve', targetUserId: entry.userId }),
@@ -307,7 +308,7 @@ export default function CommunityPage() {
   const handleDeny = async (entry: FollowEntry) => {
     setActionPending(entry.userId);
     try {
-      const res = await fetch('/api/follow', {
+      const res = await apiFetch('/api/follow', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'deny', targetUserId: entry.userId }),

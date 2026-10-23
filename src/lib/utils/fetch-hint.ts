@@ -1,4 +1,5 @@
 import type { HintRequest, HintResponse, HintErrorResponse, HintType } from '@/types';
+import { apiFetch } from '@/lib/api/client';
 
 export default async function fetchHint(
   birdName: string,
@@ -17,7 +18,7 @@ export default async function fetchHint(
     ...(factHintContent ? { factHintContent } : {}),
   };
 
-  const response = await fetch('/api/bird', {
+  const response = await apiFetch('/api/bird', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
