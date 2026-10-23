@@ -68,6 +68,24 @@ describe('auth callback route', () => {
     expect(response.headers.get('location')).toBe('http://localhost/settings');
   });
 
+  it('sends recovery callbacks to the password reset page by default', async () => {
+    const verifyOtp = vi.fn().mockResolvedValue({ error: null });
+    const getUser = vi.fn().mockResolvedValue({ data: { user: null } });
+    mockedCreateSupabaseServerClient.mockResolvedValue({
+      auth: {
+        verifyOtp,
+        getUser,
+      },
+    } as never);
+
+    const response = await GET(
+      new Request('http://localhost/auth/callback?token_hash=token123&type=recovery&next=%2Fsettings') as never
+    );
+
+    expect(verifyOtp).toHaveBeenCalledWith({ token_hash: 'token123', type: 'recovery' });
+    expect(response.headers.get('location')).toBe('http://localhost/auth/reset-password');
+  });
+
   it('ignores unsafe external redirect targets', async () => {
     const response = await GET(
       new Request('http://localhost/auth/callback?next=https://evil.example.com') as never

@@ -127,6 +127,8 @@ Supabase powers account auth and progression sync for signed-in players. The gam
 - Create the schema by applying the SQL files in `supabase/migrations/`
 - Add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` to your environment
 - Enable email/password auth in Supabase Auth
+- Configure Supabase Auth URL settings to allow each deployment's `/auth/callback` URL; password reset emails return through this callback to `/auth/reset-password`
+- Email password recovery requires a real email address on the Supabase user; username-only accounts created with placeholder addresses cannot receive reset emails
 - If you are moving away from third-party login, disable unused OAuth providers such as Google in the Supabase dashboard
 - Keep preview and production projects separate so auth redirects and RLS checks stay environment-specific
 

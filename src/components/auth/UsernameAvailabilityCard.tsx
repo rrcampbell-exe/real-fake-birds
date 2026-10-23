@@ -55,6 +55,9 @@ export default function UsernameAvailabilityCard({
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [signInIdentifier, setSignInIdentifier] = useState('');
   const [signInPassword, setSignInPassword] = useState('');
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [showPasswordRecovery, setShowPasswordRecovery] = useState(false);
+  const [isRequestingPasswordReset, setIsRequestingPasswordReset] = useState(false);
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -126,6 +129,37 @@ export default function UsernameAvailabilityCard({
   const handleSignInSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     void handleEmailSignIn();
+  };
+
+  const handlePasswordRecoverySubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!supabaseReady || isRequestingPasswordReset) {
+      return;
+    }
+
+    const email = recoveryEmail.trim();
+    if (!email) {
+      setAuthError('Enter the email address associated with your account.');
+      return;
+    }
+
+    setIsRequestingPasswordReset(true);
+    setAuthError(null);
+    setAuthNotice(null);
+
+    try {
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent('/auth/reset-password')}`;
+      const { error } = await getSupabaseBrowserClient().auth.resetPasswordForEmail(email, { redirectTo });
+      if (error) {
+        throw error;
+      }
+
+      setAuthNotice('If an account exists for that email, a password reset link is on its way.');
+    } catch (caughtError) {
+      setAuthError(caughtError instanceof Error ? caughtError.message : 'Unable to send a password reset link.');
+    } finally {
+      setIsRequestingPasswordReset(false);
+    }
   };
 
   const handleCreateAccountKeyDown = (event: React.KeyboardEvent<HTMLFormElement>) => {
@@ -445,7 +479,10 @@ export default function UsernameAvailabilityCard({
               <div className={tabsClassName}>
                 <button
                   type="button"
-                  onClick={() => setAuthMode('create')}
+                  onClick={() => {
+                    setAuthMode('create');
+                    setShowPasswordRecovery(false);
+                  }}
                   className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
                     authMode === 'create'
                       ? 'bg-[var(--color-secondary)] text-[var(--color-on-secondary)]'
@@ -456,7 +493,10 @@ export default function UsernameAvailabilityCard({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setAuthMode('sign-in')}
+                  onClick={() => {
+                    setAuthMode('sign-in');
+                    setShowPasswordRecovery(false);
+                  }}
                   className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
                     authMode === 'sign-in'
                       ? 'bg-[var(--color-secondary)] text-[var(--color-on-secondary)]'
@@ -612,55 +652,113 @@ export default function UsernameAvailabilityCard({
                   </div>
                 </form>
               ) : (
-                <form className="contents" onKeyDown={handleSignInKeyDown} onSubmit={handleSignInSubmit}>
-                  {!compact ? (
-                    <div className="mt-4">
-                      <p className="text-sm font-semibold">Sign in</p>
-                      <p className="mt-1 text-sm text-[var(--color-muted)]">
-                        Use your username to sign in.
+                showPasswordRecovery ? (
+                  <form className="mt-4 grid gap-3" onSubmit={handlePasswordRecoverySubmit}>
+                    <div>
+                      <p className="text-sm font-semibold">Reset your password</p>
+                      <p className="mt-1 text-sm leading-6 text-[var(--color-muted)]">
+                        Enter the email address on your account. We’ll send a secure link if it matches.
                       </p>
                     </div>
-                  ) : null}
-
-                  <div className="mt-4 grid gap-3">
                     <label className="block">
                       <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
-                        Email or username
+                        Email address
                       </span>
                       <input
-                        type="text"
-                        value={signInIdentifier}
-                        onChange={(event) => setSignInIdentifier(event.target.value)}
-                        placeholder="BirdFan_17 or birdfan@example.com"
+                        type="email"
+                        value={recoveryEmail}
+                        onChange={(event) => setRecoveryEmail(event.target.value)}
+                        autoComplete="email"
                         autoCapitalize="none"
-                        autoCorrect="off"
-                        spellCheck={false}
+                        required
                         className="w-full rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-secondary)]"
                       />
                     </label>
-
-                    <label className="block">
-                      <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
-                        Password
-                      </span>
-                      <input
-                        type="password"
-                        value={signInPassword}
-                        onChange={(event) => setSignInPassword(event.target.value)}
-                        placeholder="Your password"
-                        className="w-full rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-secondary)]"
-                      />
-                    </label>
-
                     <button
                       type="submit"
-                      disabled={!supabaseReady || isSigningIn || isCreatingAccount}
+                      disabled={!supabaseReady || isRequestingPasswordReset}
                       className="inline-flex items-center justify-center rounded-full bg-[var(--color-secondary)] px-4 py-2 text-sm font-semibold text-[var(--color-on-secondary)] transition disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {isSigningIn ? 'Signing in...' : 'Sign in'}
+                      {isRequestingPasswordReset ? 'Sending link...' : 'Send reset link'}
                     </button>
-                  </div>
-                </form>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPasswordRecovery(false);
+                        setAuthError(null);
+                        setAuthNotice(null);
+                      }}
+                      className="self-start text-sm font-semibold text-[var(--color-muted)] underline decoration-[var(--color-surface-border)] underline-offset-4 transition hover:text-[var(--color-text)]"
+                    >
+                      Back to sign in
+                    </button>
+                    <p className="text-xs leading-5 text-[var(--color-muted)]">
+                      Accounts without a real email address on file can’t receive reset links.
+                    </p>
+                  </form>
+                ) : (
+                  <form className="contents" onKeyDown={handleSignInKeyDown} onSubmit={handleSignInSubmit}>
+                    {!compact ? (
+                      <div className="mt-4">
+                        <p className="text-sm font-semibold">Sign in</p>
+                        <p className="mt-1 text-sm text-[var(--color-muted)]">
+                          Use your username to sign in.
+                        </p>
+                      </div>
+                    ) : null}
+
+                    <div className="mt-4 grid gap-3">
+                      <label className="block">
+                        <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
+                          Email or username
+                        </span>
+                        <input
+                          type="text"
+                          value={signInIdentifier}
+                          onChange={(event) => setSignInIdentifier(event.target.value)}
+                          placeholder="BirdFan_17 or birdfan@example.com"
+                          autoCapitalize="none"
+                          autoCorrect="off"
+                          spellCheck={false}
+                          className="w-full rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-secondary)]"
+                        />
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
+                          Password
+                        </span>
+                        <input
+                          type="password"
+                          value={signInPassword}
+                          onChange={(event) => setSignInPassword(event.target.value)}
+                          placeholder="Your password"
+                          className="w-full rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-secondary)]"
+                        />
+                      </label>
+
+                      <button
+                        type="submit"
+                        disabled={!supabaseReady || isSigningIn || isCreatingAccount}
+                        className="inline-flex items-center justify-center rounded-full bg-[var(--color-secondary)] px-4 py-2 text-sm font-semibold text-[var(--color-on-secondary)] transition disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isSigningIn ? 'Signing in...' : 'Sign in'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRecoveryEmail(signInIdentifier.includes('@') ? signInIdentifier : '');
+                          setShowPasswordRecovery(true);
+                          setAuthError(null);
+                          setAuthNotice(null);
+                        }}
+                        className="justify-self-start text-sm font-semibold text-[var(--color-muted)] underline decoration-[var(--color-surface-border)] underline-offset-4 transition hover:text-[var(--color-text)]"
+                      >
+                        Forgot your password?
+                      </button>
+                    </div>
+                  </form>
+                )
               )}
             </>
           ) : null}
