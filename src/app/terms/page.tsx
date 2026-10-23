@@ -17,7 +17,7 @@ export default function TermsOfServicePage() {
           Terms of Service
         </h1>
         <p className="text-sm text-[var(--color-muted)]">
-          Last updated: May 1, 2026
+          Last updated: October 23, 2026
         </p>
       </div>
 
@@ -117,8 +117,37 @@ export default function TermsOfServicePage() {
             User-Generated Content
           </h2>
           <p>
-            By choosing a username and participating in leaderboards, you grant us a non-exclusive,
-            royalty-free license to display that username within the game and in promotional materials.
+            You are responsible for the username, avatar, and other information you choose to add to
+            your profile. You allow us to display your username and profile information in the game
+            as needed to provide profile, leaderboard, and social features. Your profile visibility
+            setting controls which profile details other players can see, as described in our{' '}
+            <Link
+              href="/privacy"
+              className="underline decoration-[var(--color-muted)] underline-offset-2 hover:text-[var(--color-secondary)]"
+            >
+              Privacy Policy
+            </Link>
+            .
+          </p>
+        </section>
+
+        <section className="flex flex-col gap-2">
+          <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">
+            Profiles and Social Features
+          </h2>
+          <p>
+            Profiles are public by default. A public profile can be viewed by guests and other
+            players and includes your username, avatar, join month and year, gameplay statistics,
+            and follower and following counts. You can make your profile private in Settings. For
+            private profiles, unapproved viewers cannot see gameplay statistics or connection lists;
+            approved followers can see the full profile. The profile page may still display limited
+            details, such as username and join month and year, to unapproved viewers.
+          </p>
+          <p>
+            Following a public profile takes effect immediately. Following a private profile sends
+            a request that the profile owner may approve or deny. You may block other accounts;
+            blocking limits profile access and social interactions between the accounts. You may
+            also submit a report about another profile with a reason and optional note.
           </p>
         </section>
 
