@@ -23,7 +23,10 @@ function buildRedirectUrl(request: NextRequest, nextPath: string, authError?: st
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
-  const nextPath = getSafeNextPath(requestUrl.searchParams.get('next'));
+  const requestedNextPath = requestUrl.searchParams.get('type') === 'recovery'
+    ? '/auth/reset-password'
+    : requestUrl.searchParams.get('next');
+  const nextPath = getSafeNextPath(requestedNextPath);
   const oauthError = requestUrl.searchParams.get('error_description');
   const code = requestUrl.searchParams.get('code');
   const tokenHash = requestUrl.searchParams.get('token_hash');

@@ -96,6 +96,7 @@ function createSupabaseClientMock(overrides?: {
   getUser?: () => Promise<unknown>;
   getSession?: () => Promise<unknown>;
   signInWithPassword?: (options: unknown) => Promise<unknown>;
+  resetPasswordForEmail?: (email: string, options: unknown) => Promise<unknown>;
   signUp?: (options: unknown) => Promise<unknown>;
   signOut?: () => Promise<unknown>;
 }) {
@@ -104,6 +105,7 @@ function createSupabaseClientMock(overrides?: {
       getUser: overrides?.getUser ?? vi.fn().mockResolvedValue({ data: { user: null } }),
       getSession: overrides?.getSession ?? vi.fn().mockResolvedValue({ data: { session: null } }),
       signInWithPassword: overrides?.signInWithPassword ?? vi.fn().mockResolvedValue({ error: null }),
+      resetPasswordForEmail: overrides?.resetPasswordForEmail ?? vi.fn().mockResolvedValue({ error: null }),
       setSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: 'user-1' } } }, error: null }),
       signUp: overrides?.signUp ?? vi.fn().mockResolvedValue({
         data: { user: { email: 'bird@example.com' }, session: null },
@@ -153,6 +155,32 @@ describe('UsernameAvailabilityCard', () => {
     expect(screen.getAllByRole('button', { name: 'Create account' }).at(-1)).toBeDisabled();
     fireEvent.click(screen.getAllByRole('button', { name: 'Sign in' }).at(-1)!);
     expect(screen.getAllByRole('button', { name: 'Sign in' }).at(-1)).toBeDisabled();
+  });
+
+  it('sends a password reset email with the in-app reset page as its redirect', async () => {
+    const resetPasswordForEmail = vi.fn().mockResolvedValue({ error: null });
+    mockedHasSupabaseEnv.mockReturnValue(true);
+    mockedGetSupabaseBrowserClient.mockReturnValue(
+      createSupabaseClientMock({ resetPasswordForEmail }) as never,
+    );
+    render(<UsernameAvailabilityCard />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Sign in' }).at(-1)!);
+    fireEvent.click(screen.getByRole('button', { name: 'Forgot your password?' }));
+    fireEvent.change(screen.getByLabelText('Email address'), {
+      target: { value: 'bird@example.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send reset link' }));
+
+    await waitFor(() => {
+      expect(resetPasswordForEmail).toHaveBeenCalledWith(
+        'bird@example.com',
+        expect.objectContaining({
+          redirectTo: expect.stringContaining('/auth/callback?next=%2Fauth%2Freset-password'),
+        }),
+      );
+    });
+    expect(await screen.findByText(/If an account exists for that email/)).toBeInTheDocument();
   });
 
   it('creates an account with required username, password, and confirmation', async () => {
