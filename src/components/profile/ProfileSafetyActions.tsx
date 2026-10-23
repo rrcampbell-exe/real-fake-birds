@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/lib/api/client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, Ban, Flag, MoreHorizontal, ShieldAlert, X } from 'lucide-react';
@@ -191,7 +192,7 @@ export default function ProfileSafetyActions({
     setFeedback(null);
 
     try {
-      const response = await fetch('/api/block', {
+      const response = await apiFetch('/api/block', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, targetUsername }),
@@ -232,7 +233,7 @@ export default function ProfileSafetyActions({
     setFeedback(null);
 
     try {
-      const response = await fetch('/api/report/profile', {
+      const response = await apiFetch('/api/report/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

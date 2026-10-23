@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/lib/api/client';
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import SocialUserRow from '@/components/profile/SocialUserRow';
@@ -57,7 +58,7 @@ export default function ProfileConnectionsModal({
       setError(null);
 
       try {
-        const res = await fetch(
+        const res = await apiFetch(
           `/api/profile/connections?username=${encodeURIComponent(username)}&list=${encodeURIComponent(activeTab)}`,
         );
 
@@ -96,7 +97,7 @@ export default function ProfileConnectionsModal({
     setActionPending(entry.userId);
 
     try {
-      const res = await fetch('/api/follow', {
+      const res = await apiFetch('/api/follow', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, targetUsername: entry.username }),

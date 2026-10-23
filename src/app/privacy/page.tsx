@@ -18,7 +18,7 @@ export default function PrivacyPolicyPage() {
           Privacy Policy
         </h1>
         <p className="text-sm text-[var(--color-muted)]">
-          Last updated: May 1, 2026
+          Last updated: October 23, 2026
         </p>
       </div>
 
@@ -30,7 +30,7 @@ export default function PrivacyPolicyPage() {
           <p>
             Real Fake Birds is a bird guessing game operated by Catbird Games.
             This policy explains what information we collect, why we collect it, and how it is used.
-            We are committed to collecting as little data as possible and never selling your information.
+            We aim to collect as little data as possible and do not sell your information.
           </p>
         </section>
 
@@ -44,38 +44,62 @@ export default function PrivacyPolicyPage() {
             Passwords are hashed and managed exclusively by Supabase Auth — we never store raw passwords.
           </p>
           <p>
+            <strong>Profile and social information.</strong> Account profiles include your username,
+            avatar selection, and public or private profile setting. We store follow relationships and
+            request status, blocks, and profile reports. A report includes the reporting and reported
+            accounts, a reason, and any optional note you submit.
+          </p>
+          <p>
             <strong>Gameplay progress.</strong> Birds you have identified, seeds you have earned,
             your daily and longest streak, daily challenge history, unlocked themes, milestones reached,
             your bird journal, and your birdhouse collection are stored in our database so your progress
             is preserved when you sign in from a new device.
           </p>
           <p>
-            <strong>Local storage. </strong> If you play without an account, the same gameplay data
-            is stored only in your browser&apos;s local storage on your device. It is never transmitted to
-            our servers unless you later create an account and choose to sync.
+            <strong>Guest progress. </strong> On the web, you can play without an account and guest
+            progress is stored in your browser&apos;s local storage. If you clear that storage, the local
+            progress may be lost. In the iOS and Android apps, signed-out players are prompted to sign
+            in or create an account while online; guest play is available when offline. Offline guest
+            progress is stored locally on the device and is not account-synced while you remain signed out.
           </p>
           <p>
-            <strong>Analytics. </strong> We use PostHog to collect anonymized, aggregate product
-            analytics — for example, which game actions are taken, screen transitions, and
-            feature engagement. If you are signed in, your username is sent to PostHog to
-            associate events with your account; your email address is never sent. PostHog also
-            collects approximate location data (city/country level) derived from your IP address.
-            You can opt out via your browser&apos;s &ldquo;Do Not Track&rdquo; setting or by using a tracker-blocking
-            extension.
+            <strong>PostHog analytics. </strong> When enabled, PostHog receives product events that
+            the app sends, such as gameplay actions and feature use. We disable PostHog&apos;s automatic
+            interaction capture and automatic pageview/page-exit capture. For signed-in players, we
+            identify events using your username; we do not send your email address to PostHog. PostHog
+            persistence is configured to use local storage and cookies. PostHog may also infer
+            approximate location, such as city or country, from the IP address used to make a request.
+            This analytics is not anonymous for signed-in players.
+          </p>
+          <p>
+            Where our region check requires a choice (including the EU and cases where region is
+            unknown), the analytics prompt offers &ldquo;Allow analytics&rdquo; and &ldquo;No thanks.&rdquo; The
+            choice is saved in local storage. In regions identified as not requiring consent, PostHog
+            consent is accepted automatically. Do Not Track is not used to set this choice, and there
+            is currently no separate analytics toggle in Settings. The web app also includes Vercel
+            Analytics; it is separate from the PostHog prompt and is not gated by that choice.
           </p>
         </section>
 
         <section className="flex flex-col gap-2">
           <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">
-            Information We Do Not Collect
+            Profile Visibility
           </h2>
-          <ul className="flex flex-col gap-1.5 pl-5 list-disc marker:text-[var(--color-muted)]">
-            <li>Precise GPS or fine-grained location coordinates</li>
-            <li>Contact list, microphone, or camera access</li>
-            <li>Advertising identifiers or cross-site tracking cookies</li>
-            <li>Financial or payment information (we process no purchases)</li>
-            <li>Browsing history outside of this application</li>
-          </ul>
+          <p>
+            Profiles are public by default. Public profiles can be viewed by guests and other players;
+            they show the username, avatar, join month and year, gameplay statistics, and follower and
+            following counts. Approved followers can view the full profile of a private account.
+            Visitors who are not approved followers still see limited details such as the username
+            and join month and year; gameplay statistics and connection lists are restricted. The
+            restricted profile response also includes follower and following totals, although the
+            profile page does not display those totals for private profiles.
+          </p>
+          <p>
+            Public profiles can show follower and following lists. You can follow public profiles
+            immediately; following a private profile sends a request that its owner can approve or
+            deny. Blocking limits profile visibility and prevents social actions between the
+            accounts. We store these relationships to provide these features.
+          </p>
         </section>
 
         <section className="flex flex-col gap-2">
@@ -139,20 +163,23 @@ export default function PrivacyPolicyPage() {
           </h2>
           <p>
             Your account and associated data is retained for as long as your account exists.
-            You may request deletion at any time from the{' '}
+            You can delete your account from the{' '}
             <Link
               href="/settings"
               className="underline decoration-[var(--color-muted)] underline-offset-2 hover:text-[var(--color-secondary)]"
             >
               Settings
             </Link>{' '}
-            page or by contacting us directly. Upon account deletion, all data associated with
-            your account — including profile, progress, journal, and leaderboard history — is
-            permanently removed from our database.
+            page. The deletion flow deletes your Supabase Auth account; database records linked to
+            that account are configured to be deleted where the database relationships provide for
+            it. This flow does not send a separate deletion request to PostHog, and PostHog&apos;s
+            retention of analytics data is governed by its own policies.
           </p>
           <p>
-            Local-only gameplay data (for players without accounts) resides exclusively in your
-            browser and can be cleared at any time by clearing your browser&apos;s local storage.
+            Web guest progress is stored in your browser&apos;s local storage and may be removed by
+            clearing that storage. Offline guest progress in the native apps is stored locally on
+            the device; this policy does not make a claim about what the operating system retains
+            or removes when an app is uninstalled.
           </p>
         </section>
 

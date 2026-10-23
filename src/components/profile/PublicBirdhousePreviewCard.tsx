@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/lib/api/client';
 import { useEffect, useState } from 'react';
 import { BirdhousePreviewSection, type BirdhousePreviewEntry } from '@/components/profile/BirdhousePreviewCard';
 import type { PublicBirdhousePayload } from '@/app/api/birdhouse/[username]/route';
@@ -48,7 +49,7 @@ export default function PublicBirdhousePreviewCard({ username }: { username: str
 
     const controller = new AbortController();
 
-    fetch(`/api/birdhouse/${encodeURIComponent(username)}`, { signal: controller.signal })
+    apiFetch(`/api/birdhouse/${encodeURIComponent(username)}`, { signal: controller.signal })
       .then(async (response) => {
         if (controller.signal.aborted) {
           return;

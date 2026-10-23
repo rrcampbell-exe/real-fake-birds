@@ -17,7 +17,9 @@ const eslintConfig = defineConfig([
     "android/app/build/**",
     "android/.gradle/**",
     "ios/build/**",
+    "ios/App/build/**",
     "ios/DerivedData/**",
+    "ios/App/App/public/**",
   ]),
   // Treat _-prefixed variables as intentionally unused (standard convention).
   {

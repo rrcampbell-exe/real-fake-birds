@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/lib/api/client';
 import { useEffect, useRef, useState } from 'react';
 import { Check, Search, UserMinus, X } from 'lucide-react';
 import Link from 'next/link';
@@ -55,7 +56,7 @@ export default function FollowersModal({
       setIsLoading(true);
       setError(null);
       try {
-        const res = await fetch('/api/followers');
+        const res = await apiFetch('/api/followers');
         if (!res.ok) throw new Error('fetch_failed');
         const json = (await res.json()) as FollowersResponse;
         if (!cancelledRef.current) {
@@ -82,7 +83,7 @@ export default function FollowersModal({
   const handleUnfollow = async (entry: FollowEntry) => {
     setActionPending(entry.userId);
     try {
-      const res = await fetch('/api/follow', {
+      const res = await apiFetch('/api/follow', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'unfollow', targetUsername: entry.username }),
@@ -100,7 +101,7 @@ export default function FollowersModal({
   const handleRemoveFollower = async (entry: FollowEntry) => {
     setActionPending(entry.userId);
     try {
-      const res = await fetch('/api/follow', {
+      const res = await apiFetch('/api/follow', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'remove_follower', targetUserId: entry.userId }),
@@ -117,7 +118,7 @@ export default function FollowersModal({
   const handleApprove = async (entry: FollowEntry) => {
     setActionPending(entry.userId);
     try {
-      const res = await fetch('/api/follow', {
+      const res = await apiFetch('/api/follow', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'approve', targetUserId: entry.userId }),
@@ -140,7 +141,7 @@ export default function FollowersModal({
   const handleDeny = async (entry: FollowEntry) => {
     setActionPending(entry.userId);
     try {
-      const res = await fetch('/api/follow', {
+      const res = await apiFetch('/api/follow', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'deny', targetUserId: entry.userId }),
@@ -195,7 +196,7 @@ export default function FollowersModal({
 
       setIsSearching(true);
       try {
-        const res = await fetch(`/api/users/search?q=${encodeURIComponent(q.trim())}`);
+        const res = await apiFetch(`/api/users/search?q=${encodeURIComponent(q.trim())}`);
         if (!res.ok || searchCancelledRef.current) return;
         const json = (await res.json()) as { users: UserSearchEntry[] };
         if (searchCancelledRef.current) return;

@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { apiFetch } from '@/lib/api/client';
 import { BookOpen, Birdhouse, Bird, Compass, Sparkles, X } from 'lucide-react';
 import { useBirdhouse } from '@/hooks/useBirdhouse';
 import { useBirdJournal } from '@/hooks/useBirdJournal';
@@ -119,7 +120,7 @@ export default function BirdhousePage() {
     for (const k of newKeys) fetchedKeySet.current.add(k);
 
     const keysParam = encodeURIComponent(newKeys.join(','));
-    fetch(`/api/journal?action=keys&keys=${keysParam}`)
+    apiFetch(`/api/journal?action=keys&keys=${keysParam}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { entries?: BirdJournalEntry[] } | null) => {
         if (!data?.entries) return;
@@ -430,4 +431,3 @@ export default function BirdhousePage() {
     </div>
   );
 }
-

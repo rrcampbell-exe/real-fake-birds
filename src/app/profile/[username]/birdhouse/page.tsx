@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { apiFetch } from '@/lib/api/client';
 import { ArrowLeft, Birdhouse, Sparkles } from 'lucide-react';
 import { formatBirdName } from '@/lib/utils/format-bird-name';
 import type { PublicBirdhousePayload, PublicBirdhouseEntry } from '@/app/api/birdhouse/[username]/route';
@@ -102,7 +103,7 @@ export default function PublicBirdhousePage() {
 
     const controller = new AbortController();
 
-    fetch(`/api/birdhouse/${encodeURIComponent(username)}`, { signal: controller.signal })
+    apiFetch(`/api/birdhouse/${encodeURIComponent(username)}`, { signal: controller.signal })
       .then(async (res) => {
         if (controller.signal.aborted) {
           return;

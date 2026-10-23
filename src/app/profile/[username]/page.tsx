@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/api/client';
 import { Lock } from 'lucide-react';
 import { useScreenViewed } from '@/hooks/useScreenViewed';
 import ProfileConnectionsModal from '@/components/profile/ProfileConnectionsModal';
@@ -49,7 +50,7 @@ function useProfileData(username: string) {
     }
 
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/profile?username=${encodeURIComponent(username.toLowerCase())}`,
       );
       if (!res.ok && res.status !== 200) {
@@ -138,7 +139,7 @@ export default function UserProfilePage() {
     setIsFollowActionPending(true);
 
     try {
-      const response = await fetch('/api/follow', {
+      const response = await apiFetch('/api/follow', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, targetUsername }),

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { isNativePlatform } from '@/lib/native/platform';
 import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { AlertCircle, CheckCircle2, ChevronDown, LoaderCircle, ShieldCheck } from 'lucide-react';
 import { useAccountState } from '@/components/account/AccountStateProvider';
@@ -148,7 +149,9 @@ export default function UsernameAvailabilityCard({
     setAuthNotice(null);
 
     try {
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent('/auth/reset-password')}`;
+      const redirectTo = isNativePlatform()
+        ? `realfakebirds://auth/callback?type=recovery&next=${encodeURIComponent('/auth/reset-password')}`
+        : `${window.location.origin}/auth/callback?next=${encodeURIComponent('/auth/reset-password')}`;
       const { error } = await getSupabaseBrowserClient().auth.resetPasswordForEmail(email, { redirectTo });
       if (error) {
         throw error;
